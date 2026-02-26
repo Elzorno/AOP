@@ -14,6 +14,8 @@ use App\Http\Controllers\Aop\Schedule\ScheduleGridController;
 use App\Http\Controllers\Aop\Schedule\ScheduleReportsController;
 use App\Http\Controllers\Aop\Schedule\OfficeHoursController;
 use App\Http\Controllers\Aop\Schedule\SchedulePublishController;
+use App\Http\Controllers\Aop\Schedule\ScheduleReadinessController;
+use App\Http\Controllers\Aop\Schedule\ScheduleTermLockController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -51,8 +53,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/catalog', [CatalogCourseController::class, 'index'])->name('catalog.index');
         Route::get('/catalog/create', [CatalogCourseController::class, 'create'])->name('catalog.create');
         Route::post('/catalog', [CatalogCourseController::class, 'store'])->name('catalog.store');
-        Route::get('/catalog/{catalogCourse}/edit', [CatalogCourseController::class, 'edit'])->name('catalog.edit');
-        Route::put('/catalog/{catalogCourse}', [CatalogCourseController::class, 'update'])->name('catalog.update');
+        Route::get('/catalog/{course}/edit', [CatalogCourseController::class, 'edit'])->name('catalog.edit');
+        Route::put('/catalog/{course}', [CatalogCourseController::class, 'update'])->name('catalog.update');
 
         // Schedule (active term)
         Route::get('/schedule', [ScheduleHomeController::class, 'index'])->name('schedule.home');
@@ -69,11 +71,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/schedule/sections/{section}/edit', [SectionController::class, 'edit'])->name('schedule.sections.edit');
         Route::put('/schedule/sections/{section}', [SectionController::class, 'update'])->name('schedule.sections.update');
 
-        // Meeting blocks nested under section
+        // Meeting Blocks (attached to sections)
         Route::post('/schedule/sections/{section}/meeting-blocks', [MeetingBlockController::class, 'store'])->name('schedule.meetingBlocks.store');
         Route::put('/schedule/sections/{section}/meeting-blocks/{meetingBlock}', [MeetingBlockController::class, 'update'])->name('schedule.meetingBlocks.update');
 
-        // Office Hours (active term)
+        // Office Hours
         Route::get('/schedule/office-hours', [OfficeHoursController::class, 'index'])->name('schedule.officeHours.index');
         Route::get('/schedule/office-hours/{instructor}', [OfficeHoursController::class, 'show'])->name('schedule.officeHours.show');
         Route::post('/schedule/office-hours/{instructor}/blocks', [OfficeHoursController::class, 'store'])->name('schedule.officeHours.blocks.store');
@@ -100,6 +102,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/schedule/publish/{publication}/download/instructors', [SchedulePublishController::class, 'downloadInstructorsZip'])->name('schedule.publish.downloadInstructorsZip');
         Route::get('/schedule/publish/{publication}/download/rooms', [SchedulePublishController::class, 'downloadRoomsZip'])->name('schedule.publish.downloadRoomsZip');
 
+        // Readiness + Term Lock (active term)
+        Route::get('/schedule/readiness', [ScheduleReadinessController::class, 'index'])->name('schedule.readiness.index');
+        Route::post('/schedule/lock', [ScheduleTermLockController::class, 'lock'])->name('schedule.lock');
+        Route::post('/schedule/unlock', [ScheduleTermLockController::class, 'unlock'])->name('schedule.unlock');
+
         // Syllabi
         Route::get('/syllabi', [SyllabusController::class, 'index'])->name('syllabi.index');
         Route::post('/syllabi/template', [SyllabusController::class, 'uploadTemplate'])->name('syllabi.template.upload');
@@ -108,7 +115,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/syllabi/sections/{section}/download/json', [SyllabusController::class, 'downloadJson'])->name('syllabi.downloadJson');
         Route::get('/syllabi/sections/{section}/download/docx', [SyllabusController::class, 'downloadDocx'])->name('syllabi.downloadDocx');
         Route::get('/syllabi/sections/{section}/download/pdf', [SyllabusController::class, 'downloadPdf'])->name('syllabi.downloadPdf');
-
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -117,22 +123,3 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 require __DIR__.'/auth.php';
-
-
-
-// Public read-only published schedule (Phase 9)
-Route::get('/p/{termCode}/{version?}/{token}', [\App\Http\Controllers\Public\SchedulePublicController::class, 'show'])
-    ->whereNumber('version')
-    ->name('public.schedule.show');
-
-Route::get('/p/{termCode}/{version}/{token}/download/term', [\App\Http\Controllers\Public\SchedulePublicController::class, 'downloadTerm'])
-    ->whereNumber('version')
-    ->name('public.schedule.download.term');
-
-Route::get('/p/{termCode}/{version}/{token}/download/instructors', [\App\Http\Controllers\Public\SchedulePublicController::class, 'downloadInstructorsZip'])
-    ->whereNumber('version')
-    ->name('public.schedule.download.instructors');
-
-Route::get('/p/{termCode}/{version}/{token}/download/rooms', [\App\Http\Controllers\Public\SchedulePublicController::class, 'downloadRoomsZip'])
-    ->whereNumber('version')
-    ->name('public.schedule.download.rooms');

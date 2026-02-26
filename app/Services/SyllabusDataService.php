@@ -62,19 +62,23 @@ class SyllabusDataService
                 'code' => $course?->code ?? '',
                 'title' => $course?->title ?? '',
                 'department' => $course?->department ?? '',
+                'objectives' => $course?->objectives ?? '',
+                'required_materials' => $course?->required_materials ?? '',
                 'credits_text' => $course?->credits_text ?? '',
                 'credits_min' => $course?->credits_min,
                 'credits_max' => $course?->credits_max,
                 'contact_hours_per_week' => $course?->contact_hours_per_week,
                 'course_lab_fee' => $course?->course_lab_fee,
-                'prerequisites' => $course?->prerequisites ?? '',
-                'corequisites' => $course?->corequisites ?? '',
+                'prerequisites' => $course?->prereq_text ?? '',
+                'corequisites' => $course?->coreq_text ?? '',
                 'description' => $course?->description ?? '',
                 'notes' => $course?->notes ?? '',
             ],
             'section' => [
                 'code' => $section->section_code,
-                'modality' => $section->modality,
+                'modality' => is_object($section->modality) && property_exists($section->modality, 'value')
+                ? $section->modality->value
+                : (string)$section->modality,
                 'notes' => $section->notes,
             ],
             'instructor' => [

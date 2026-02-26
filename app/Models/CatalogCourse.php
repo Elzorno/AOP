@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class CatalogCourse extends Model
 {
     protected $fillable = [
-        'code','title',
+        'code','title','department',
         'credits','credits_text','credits_min','credits_max',
         'lecture_hours_per_week','lab_hours_per_week','contact_hours_per_week',
         'course_lab_fee',
-        'description','prereq_text','coreq_text','notes',
+        'description','objectives','required_materials',
+        'prereq_text','coreq_text','notes',
         'is_active',
     ];
 

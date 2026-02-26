@@ -146,6 +146,16 @@ class SyllabusController extends Controller
         ]);
     }
 
+    private function formatDeliveryMode(string $modality): string
+    {
+        return match ($modality) {
+            'IN_PERSON' => 'In Person',
+            'HYBRID' => 'Hybrid',
+            'ONLINE' => 'Online',
+            default => 'TBD',
+        };
+    }
+
     private function renderHtmlPreview(array $packet, SyllabusDataService $data): string
     {
         $repl = $this->buildReplacements($packet, $data);
@@ -200,7 +210,7 @@ class SyllabusController extends Controller
             'SYLLABUS_DATE' => now()->toDateString(),
 
             'CREDIT_HOURS' => $credits !== '' ? $credits : 'TBD',
-            'DELIVERY_MODE' => $meeting['delivery_mode'] ?? 'TBD',
+            'DELIVERY_MODE' => $this->formatDeliveryMode($packet['section']['modality'] ?? ''),
             'LOCATION' => $meeting['location'] ?? 'TBD',
             'MEETING_DAYS' => $meeting['days'] ?? 'TBD',
             'MEETING_TIME' => $meeting['time'] ?? 'TBD',
@@ -209,8 +219,8 @@ class SyllabusController extends Controller
             'OFFICE_HOURS' => $data->formatOfficeHoursLine($packet['office_hours'] ?? []),
 
             'COURSE_DESCRIPTION' => ($packet['course']['description'] ?? '') !== '' ? $packet['course']['description'] : 'TBD',
-            'COURSE_OBJECTIVES' => 'TBD',
-            'REQUIRED_MATERIALS' => 'TBD',
+            'COURSE_OBJECTIVES' => ($packet['course']['objectives'] ?? '') !== '' ? $packet['course']['objectives'] : 'TBD',
+            'REQUIRED_MATERIALS' => ($packet['course']['required_materials'] ?? '') !== '' ? $packet['course']['required_materials'] : 'TBD',
         ];
     }
 
