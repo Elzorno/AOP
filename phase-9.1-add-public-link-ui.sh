@@ -1,3 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+mkdir -p "$ROOT_DIR/resources/views/aop/schedule/publish"
+
+cat > "$ROOT_DIR/resources/views/aop/schedule/publish/index.blade.php" <<'BLADE'
 <x-aop-layout>
   <x-slot:title>Publish Snapshots</x-slot:title>
 
@@ -131,3 +139,9 @@
     </div>
   @endif
 </x-aop-layout>
+BLADE
+
+chown www-data:www-data "$ROOT_DIR/resources/views/aop/schedule/publish/index.blade.php"
+chmod 644 "$ROOT_DIR/resources/views/aop/schedule/publish/index.blade.php"
+
+echo "OK: Phase 9.1 applied (Public Link column/buttons added)."
