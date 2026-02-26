@@ -102,6 +102,7 @@ class ScheduleGridController extends Controller
             'end' => $end,
             'slot_minutes' => 30,
             'grid' => $grid,
+            'isPrint' => (bool)request()->boolean('print'),
         ]);
     }
 
@@ -146,19 +147,18 @@ class ScheduleGridController extends Controller
             'end' => $end,
             'slot_minutes' => 30,
             'grid' => $grid,
+            'isPrint' => (bool)request()->boolean('print'),
         ]);
     }
 
     private function formatMeetingBlockType($type): string
     {
         if ($type instanceof MeetingBlockType) {
-            return $type->value; // LECTURE/LAB/OTHER
+            return $type->value;
         }
-
         if (is_string($type)) {
             return $type;
         }
-
         return 'OTHER';
     }
 
@@ -184,7 +184,6 @@ class ScheduleGridController extends Controller
         $start = $this->roundDownToSlot($min ?? $defaultStart, $slotMinutes);
         $end = $this->roundUpToSlot($max ?? $defaultEnd, $slotMinutes);
 
-        // Enforce a minimum reasonable window
         if ($this->timeToMinutes($end) - $this->timeToMinutes($start) < $slotMinutes * 2) {
             $start = $defaultStart;
             $end = $defaultEnd;
@@ -199,13 +198,11 @@ class ScheduleGridController extends Controller
         $endMin = $this->timeToMinutes($end);
         $slots = (int)(($endMin - $startMin) / $slotMinutes);
 
-        // Initialize
         $grid = [];
         foreach ($days as $d) {
             $grid[$d] = array_fill(0, $slots, null);
         }
 
-        // Place events
         foreach ($events as $event) {
             $eventStart = $this->timeToMinutes($event['starts_at']);
             $eventEnd = $this->timeToMinutes($event['ends_at']);
@@ -213,7 +210,6 @@ class ScheduleGridController extends Controller
             $startIdx = (int)(($eventStart - $startMin) / $slotMinutes);
             $endIdx = (int)(($eventEnd - $startMin) / $slotMinutes);
 
-            // Clamp
             $startIdx = max(0, min($slots - 1, $startIdx));
             $endIdx = max(0, min($slots, $endIdx));
 
@@ -224,18 +220,15 @@ class ScheduleGridController extends Controller
                     continue;
                 }
 
-                // If something is already there at the start slot, do not attempt to merge; just append in the same cell.
                 if (is_array($grid[$day][$startIdx]) && ($grid[$day][$startIdx]['type'] ?? null) === 'cell') {
                     $grid[$day][$startIdx]['events'][] = $event;
                     continue;
                 }
 
-                // Mark covered slots as skip
                 for ($i = $startIdx; $i < min($slots, $startIdx + $rowspan); $i++) {
                     $grid[$day][$i] = ['type' => 'skip'];
                 }
 
-                // Place the master cell
                 $grid[$day][$startIdx] = [
                     'type' => 'cell',
                     'rowspan' => $rowspan,
@@ -256,7 +249,6 @@ class ScheduleGridController extends Controller
 
     private function normalizeTime($time): string
     {
-        // $time can be "HH:MM:SS" or "HH:MM"
         $t = (string)$time;
         return substr($t, 0, 5);
     }

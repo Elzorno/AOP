@@ -10,6 +10,7 @@ use App\Http\Controllers\Aop\Schedule\OfferingController;
 use App\Http\Controllers\Aop\Schedule\SectionController;
 use App\Http\Controllers\Aop\Schedule\MeetingBlockController;
 use App\Http\Controllers\Aop\Schedule\ScheduleGridController;
+use App\Http\Controllers\Aop\Schedule\ScheduleReportsController;
 use App\Http\Controllers\Aop\Schedule\OfficeHoursController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -83,6 +84,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/schedule/grids', [ScheduleGridController::class, 'index'])->name('schedule.grids.index');
         Route::get('/schedule/grids/instructors/{instructor}', [ScheduleGridController::class, 'instructor'])->name('schedule.grids.instructor');
         Route::get('/schedule/grids/rooms/{room}', [ScheduleGridController::class, 'room'])->name('schedule.grids.room');
+
+        // Schedule Reports (active term)
+        Route::get('/schedule/reports', [ScheduleReportsController::class, 'index'])->name('schedule.reports.index');
+        Route::get('/schedule/reports/export/term', [ScheduleReportsController::class, 'exportTerm'])->name('schedule.reports.exportTerm');
+        Route::get('/schedule/reports/export/instructors/{instructor}', [ScheduleReportsController::class, 'exportInstructor'])->name('schedule.reports.exportInstructor');
+        Route::get('/schedule/reports/export/rooms/{room}', [ScheduleReportsController::class, 'exportRoom'])->name('schedule.reports.exportRoom');
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

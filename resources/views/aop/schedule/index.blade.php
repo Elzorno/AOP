@@ -13,11 +13,12 @@
     @else
       <h2>Active Term</h2>
       <p><strong>{{ $term->code }}</strong> — {{ $term->name }}</p>
-      <div class="actions" style="margin-top:10px;">
+      <div class="actions" style="margin-top:10px; flex-wrap:wrap;">
         <a class="btn" href="{{ route('aop.schedule.offerings.index') }}">Offerings</a>
         <a class="btn" href="{{ route('aop.schedule.sections.index') }}">Sections</a>
         <a class="btn" href="{{ route('aop.schedule.officeHours.index') }}">Office Hours</a>
         <a class="btn" href="{{ route('aop.schedule.grids.index') }}">Schedule Grids</a>
+        <a class="btn" href="{{ route('aop.schedule.reports.index') }}">Schedule Reports</a>
       </div>
     @endif
   </div>

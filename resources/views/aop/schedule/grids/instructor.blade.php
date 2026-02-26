@@ -12,6 +12,14 @@
     .event.office { background:#f8fafc; }
     .event.class { background:#ffffff; }
     .muted { color:var(--muted); font-size:12px; }
+
+    @media print {
+      .actions, .btn, nav, header { display:none !important; }
+      .card { border:none !important; box-shadow:none !important; }
+      .sched-grid th { position:static; }
+      .time-col { position:static; }
+      body { background:#fff !important; }
+    }
   </style>
 
   <div class="row" style="margin-bottom:14px;">
@@ -20,11 +28,14 @@
       <p style="margin-top:6px;"><strong>{{ $term->code }}</strong> — {{ $term->name }}<span class="muted"> • </span><strong>{{ $instructor->name }}</strong></p>
       <p class="muted">Includes classes + office hours. Window auto-fits scheduled blocks.</p>
     </div>
-    <div class="actions">
-      <a class="btn secondary" href="{{ route('aop.schedule.grids.index') }}">Back to Grids</a>
-      <a class="btn" href="{{ route('aop.schedule.officeHours.show', $instructor) }}">Office Hours</a>
-      <a class="btn" href="{{ route('aop.schedule.sections.index') }}">Sections</a>
-    </div>
+    @if(!$isPrint)
+      <div class="actions">
+        <a class="btn secondary" href="{{ route('aop.schedule.grids.index') }}">Back to Grids</a>
+        <a class="btn" href="{{ route('aop.schedule.officeHours.show', $instructor) }}">Office Hours</a>
+        <a class="btn" href="{{ route('aop.schedule.sections.index') }}">Sections</a>
+        <a class="btn" href="{{ route('aop.schedule.grids.instructor', $instructor) }}?print=1" target="_blank">Print</a>
+      </div>
+    @endif
   </div>
 
   <div class="card" style="overflow:auto;">
@@ -95,4 +106,8 @@
       </table>
     @endif
   </div>
+
+  @if($isPrint)
+    <script>window.addEventListener('load', () => { window.print(); });</script>
+  @endif
 </x-aop-layout>
