@@ -8,7 +8,8 @@ class AopSeeder extends Seeder
 {
     public function run(): void
     {
-        // Intentionally minimal for now.
-        // Next step: parse course catalog + seed institutional syllabus blocks.
+        $this->call([
+            CatalogCourseCsvSeeder::class,
+        ]);
     }
 }
