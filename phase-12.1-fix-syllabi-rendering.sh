@@ -1,3 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+mkdir -p "$ROOT_DIR/app/Services"
+
+cat > "$ROOT_DIR/app/Services/SyllabusRenderService.php" <<'PHP'
 <?php
 
 namespace App\Services;
@@ -187,3 +195,9 @@ class SyllabusRenderService
         // error_log('[AOP SyllabusRenderService] ' . $msg);
     }
 }
+PHP
+
+chown www-data:www-data "$ROOT_DIR/app/Services/SyllabusRenderService.php"
+chmod 644 "$ROOT_DIR/app/Services/SyllabusRenderService.php"
+
+echo "OK: Phase 12.1 applied (pandoc docx + wkhtmltopdf pdf, LO fallback)."
