@@ -13,6 +13,7 @@ class SchedulePublication extends Model
         'published_at',
         'published_by_user_id',
         'storage_base_path',
+        'public_token',
     ];
 
     protected $casts = [

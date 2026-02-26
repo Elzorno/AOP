@@ -111,6 +111,9 @@ class SchedulePublishController extends Controller
         $this->createZipFromDir($base . '/instructors', $base . '/instructors.zip');
         $this->createZipFromDir($base . '/rooms', $base . '/rooms.zip');
 
+        // Token for public view (Phase 9)
+        $token = bin2hex(random_bytes(16));
+
         // Persist publication record
         SchedulePublication::create([
             'term_id' => $term->id,
@@ -119,6 +122,7 @@ class SchedulePublishController extends Controller
             'published_at' => now(),
             'published_by_user_id' => auth()->id(),
             'storage_base_path' => $base,
+            'public_token' => $token,
         ]);
 
         return redirect()
@@ -266,7 +270,6 @@ class SchedulePublishController extends Controller
     private function isCsvOnlyHeader(string $csv): bool
     {
         $lines = preg_split("/\r\n|\r|\n/", trim($csv));
-        // BOM may be present on first line; still counts as a line.
         return is_array($lines) && count(array_filter($lines, fn($l) => trim($l) !== '')) <= 1;
     }
 

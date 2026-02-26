@@ -106,3 +106,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+
+
+// Public read-only published schedule (Phase 9)
+Route::get('/p/{termCode}/{version?}/{token}', [\App\Http\Controllers\Public\SchedulePublicController::class, 'show'])
+    ->whereNumber('version')
+    ->name('public.schedule.show');
+
+Route::get('/p/{termCode}/{version}/{token}/download/term', [\App\Http\Controllers\Public\SchedulePublicController::class, 'downloadTerm'])
+    ->whereNumber('version')
+    ->name('public.schedule.download.term');
+
+Route::get('/p/{termCode}/{version}/{token}/download/instructors', [\App\Http\Controllers\Public\SchedulePublicController::class, 'downloadInstructorsZip'])
+    ->whereNumber('version')
+    ->name('public.schedule.download.instructors');
+
+Route::get('/p/{termCode}/{version}/{token}/download/rooms', [\App\Http\Controllers\Public\SchedulePublicController::class, 'downloadRoomsZip'])
+    ->whereNumber('version')
+    ->name('public.schedule.download.rooms');
+
