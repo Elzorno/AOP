@@ -12,6 +12,7 @@ use App\Http\Controllers\Aop\Schedule\MeetingBlockController;
 use App\Http\Controllers\Aop\Schedule\ScheduleGridController;
 use App\Http\Controllers\Aop\Schedule\ScheduleReportsController;
 use App\Http\Controllers\Aop\Schedule\OfficeHoursController;
+use App\Http\Controllers\Aop\Schedule\SchedulePublishController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -90,6 +91,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/schedule/reports/export/term', [ScheduleReportsController::class, 'exportTerm'])->name('schedule.reports.exportTerm');
         Route::get('/schedule/reports/export/instructors/{instructor}', [ScheduleReportsController::class, 'exportInstructor'])->name('schedule.reports.exportInstructor');
         Route::get('/schedule/reports/export/rooms/{room}', [ScheduleReportsController::class, 'exportRoom'])->name('schedule.reports.exportRoom');
+
+        // Publish Snapshots (active term)
+        Route::get('/schedule/publish', [SchedulePublishController::class, 'index'])->name('schedule.publish.index');
+        Route::post('/schedule/publish', [SchedulePublishController::class, 'store'])->name('schedule.publish.store');
+        Route::get('/schedule/publish/{publication}/download/term', [SchedulePublishController::class, 'downloadTerm'])->name('schedule.publish.downloadTerm');
+        Route::get('/schedule/publish/{publication}/download/instructors', [SchedulePublishController::class, 'downloadInstructorsZip'])->name('schedule.publish.downloadInstructorsZip');
+        Route::get('/schedule/publish/{publication}/download/rooms', [SchedulePublishController::class, 'downloadRoomsZip'])->name('schedule.publish.downloadRoomsZip');
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

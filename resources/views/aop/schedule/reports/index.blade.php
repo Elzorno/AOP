@@ -6,6 +6,11 @@
       <h1>Schedule Reports</h1>
       @if($term)
         <p style="margin-top:6px;"><strong>{{ $term->code }}</strong> — {{ $term->name }}</p>
+        @if($latestPublication)
+          <p class="muted">Published: <span class="badge">v{{ $latestPublication->version }}</span> {{ $latestPublication->published_at->format('Y-m-d H:i') }}</p>
+        @else
+          <p class="muted">Published: <span class="badge">None</span></p>
+        @endif
         <p class="muted">Exports are scoped to the active term.</p>
       @else
         <p class="muted">No active term is set.</p>
@@ -13,6 +18,9 @@
     </div>
     <div class="actions">
       <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
+      @if($term)
+        <a class="btn" href="{{ route('aop.schedule.publish.index') }}">Publish Snapshots</a>
+      @endif
       @if(!$term)
         <a class="btn" href="{{ route('aop.terms.index') }}">Go to Terms</a>
       @endif

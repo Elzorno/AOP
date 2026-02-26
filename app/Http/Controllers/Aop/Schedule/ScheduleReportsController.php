@@ -8,6 +8,7 @@ use App\Models\Instructor;
 use App\Models\MeetingBlock;
 use App\Models\OfficeHourBlock;
 use App\Models\Room;
+use App\Models\SchedulePublication;
 use App\Models\Section;
 use App\Models\Term;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -30,6 +31,11 @@ class ScheduleReportsController extends Controller
         $instructors = Instructor::where('is_active', true)->orderBy('name')->get();
         $rooms = Room::where('is_active', true)->orderBy('name')->get();
 
+        $latestPublication = null;
+        if ($term) {
+            $latestPublication = SchedulePublication::where('term_id', $term->id)->orderByDesc('version')->first();
+        }
+
         if (!$term) {
             return view('aop.schedule.reports.index', [
                 'term' => null,
@@ -37,6 +43,7 @@ class ScheduleReportsController extends Controller
                 'rooms' => $rooms,
                 'stats' => null,
                 'unassigned' => null,
+                'latestPublication' => null,
             ]);
         }
 
@@ -82,6 +89,7 @@ class ScheduleReportsController extends Controller
             'rooms' => $rooms,
             'stats' => $stats,
             'unassigned' => $unassigned,
+            'latestPublication' => $latestPublication,
         ]);
     }
 
@@ -261,8 +269,7 @@ class ScheduleReportsController extends Controller
     {
         return response()->streamDownload(function () use ($writer) {
             $out = fopen('php://output', 'w');
-            // UTF-8 BOM for Excel
-            fwrite($out, "ï»¿");
+            fwrite($out, "\xEF\xBB\xBF");
             $writer($out);
             fclose($out);
         }, $filename, [
