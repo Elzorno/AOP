@@ -22,11 +22,8 @@
 
     <div class="actions">
       <a class="btn secondary" href="{{ route('dashboard') }}">Home</a>
-      <a class="btn" href="{{ route('aop.schedule.grids.index') }}">Schedule Grids</a>
-      <a class="btn" href="{{ route('aop.schedule.reports.index') }}">Reports</a>
-      <a class="btn" href="{{ route('aop.syllabi.index') }}">Syllabi</a>
+      <a class="btn" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
       <a class="btn secondary" href="{{ route('aop.schedule.publish.index') }}">Publish</a>
-      <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
     </div>
   </div>
 
@@ -57,11 +54,12 @@
       </div>
 
       <div class="card col-6">
-        <h2>Meeting Blocks</h2>
-        <p class="muted">Add days, times, rooms, and meeting types for each section.</p>
+        <h2>Rooms & Time</h2>
+        <p class="muted">Meeting blocks, rooms, and grid views for quick conflict spotting.</p>
         <div class="actions">
-          <a class="btn" href="{{ route('aop.schedule.sections.index') }}">Edit Meeting Blocks</a>
-          <a class="btn secondary" href="{{ route('aop.rooms.index') }}">Rooms</a>
+          <a class="btn" href="{{ route('aop.schedule.sections.index') }}">Meeting Blocks</a>
+          <a class="btn" href="{{ route('aop.rooms.index') }}">Rooms</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.grids.index') }}">Schedule Grids</a>
         </div>
       </div>
 
@@ -75,9 +73,10 @@
 
       <div class="card col-6">
         <h2>Syllabi</h2>
-        <p class="muted">Generate DOCX/PDF syllabi using the template and published/locked schedule data.</p>
+        <p class="muted">Generate DOCX/PDF syllabi (template-driven).</p>
         <div class="actions">
           <a class="btn" href="{{ route('aop.syllabi.index') }}">Open Syllabi</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.reports.index') }}">Reports</a>
         </div>
       </div>
     </div>
