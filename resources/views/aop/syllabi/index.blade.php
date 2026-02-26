@@ -6,91 +6,98 @@
       <h1>Syllabi</h1>
       @if($term)
         <p style="margin-top:6px;"><strong>{{ $term->code }}</strong> — {{ $term->name }}</p>
-        @if($latestPublication)
-          <p class="muted">Latest published: <span class="badge">v{{ $latestPublication->version }}</span> {{ $latestPublication->published_at->format('Y-m-d H:i') }}</p>
-        @else
-          <p class="muted">Latest published: <span class="badge">None</span></p>
-        @endif
       @else
         <p class="muted">No active term is set.</p>
       @endif
     </div>
     <div class="actions">
       <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
-      @if(!$term)
-        <a class="btn" href="{{ route('aop.terms.index') }}">Go to Terms</a>
-      @endif
     </div>
   </div>
 
-  @if(!$term)
-    <div class="card">
-      <h2>No Active Term</h2>
-      <p>You must set an active term before generating syllabi.</p>
+  @if(session('status'))
+    <div class="card" style="border-left:4px solid #2ecc71;">
+      <strong>{{ session('status') }}</strong>
     </div>
-  @else
-    <div class="card">
-      <h2>Syllabus Bundle (Published Snapshot)</h2>
-      <p class="muted">
-        Generates a ZIP containing HTML + JSON + DOCX + PDF syllabi for all sections in the active term.
-        DOCX/PDF rendering requires LibreOffice installed in the LXC.
-      </p>
-
-      @if($latestPublication)
-        <form method="POST" action="{{ route('aop.syllabi.bundle', $latestPublication) }}" style="margin-top:10px;">
-          @csrf
-          <button class="btn" type="submit">Generate ZIP for Published v{{ $latestPublication->version }}</button>
-        </form>
-        <p class="muted" style="margin-top:10px; font-size:12px;">
-          If generation fails, install LibreOffice: <code>apt-get update && apt-get install -y libreoffice</code>
-        </p>
-      @else
-        <p class="muted" style="margin-top:10px;">Publish a snapshot to enable bundle generation.</p>
-        <a class="btn" href="{{ route('aop.schedule.publish.index') }}">Go to Publish Snapshots</a>
-      @endif
-    </div>
-
-    <div style="height:14px;"></div>
-
-    <div class="card">
-      <h2>Sections</h2>
-      @if($sections->count() === 0)
-        <p class="muted">No sections exist for the active term.</p>
-      @else
-        <table style="margin-top:8px;">
-          <thead>
-            <tr>
-              <th style="width:120px;">Course</th>
-              <th>Title</th>
-              <th style="width:90px;">Section</th>
-              <th style="width:180px;">Instructor</th>
-              <th style="width:120px;">Modality</th>
-              <th style="width:420px;">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @foreach($sections as $s)
-              @php $course = $s->offering->catalogCourse; @endphp
-              <tr>
-                <td><strong>{{ $course->code }}</strong></td>
-                <td class="muted">{{ $course->title }}</td>
-                <td>{{ $s->section_code }}</td>
-                <td class="muted">{{ $s->instructor?->name ?? 'TBD' }}</td>
-                <td class="muted">{{ $s->modality?->value ?? (string)$s->modality }}</td>
-                <td>
-                  <div class="actions" style="gap:8px; flex-wrap:wrap;">
-                    <a class="btn secondary" href="{{ route('aop.syllabi.show', $s) }}">View</a>
-                    <a class="btn secondary" href="{{ route('aop.syllabi.downloadHtml', $s) }}">HTML</a>
-                    <a class="btn secondary" href="{{ route('aop.syllabi.downloadJson', $s) }}">JSON</a>
-                    <a class="btn secondary" href="{{ route('aop.syllabi.downloadDocx', $s) }}">DOCX</a>
-                    <a class="btn secondary" href="{{ route('aop.syllabi.downloadPdf', $s) }}">PDF</a>
-                  </div>
-                </td>
-              </tr>
-            @endforeach
-          </tbody>
-        </table>
-      @endif
-    </div>
+    <div style="height:10px;"></div>
   @endif
+
+  <div class="card">
+    <h2>Template</h2>
+    <p class="muted">DOCX and PDF are generated from a DOCX template. Upload a new template to change formatting.</p>
+
+    <div style="margin-top:10px; display:flex; gap:12px; align-items:center;">
+      <div>
+        @if($templateExists)
+          <span class="badge">Template: Installed</span>
+        @else
+          <span class="badge" style="background:#ffe8e8;">Template: Missing</span>
+        @endif
+      </div>
+
+      <form method="POST" action="{{ route('aop.syllabi.template.upload') }}" enctype="multipart/form-data" style="display:flex; gap:10px; align-items:center; margin:0;">
+        @csrf
+        <input type="file" name="template" accept=".docx" required>
+        <button class="btn" type="submit">Upload Template</button>
+      </form>
+    </div>
+
+    @error('template')
+      <div class="muted" style="margin-top:8px; color:#b00020;">{{ $message }}</div>
+    @enderror
+
+    <div class="muted" style="margin-top:10px; font-size:12px;">
+      Tip: Install LibreOffice in the LXC for PDF conversion: <code>apt-get install -y libreoffice</code>
+    </div>
+  </div>
+
+  <div style="height:14px;"></div>
+
+  <div class="card">
+    <h2>Sections</h2>
+
+    @if(!$term)
+      <p class="muted">Set an active term to generate syllabi.</p>
+    @elseif($sections->count() === 0)
+      <p class="muted">No sections found for the active term.</p>
+    @else
+      <table style="margin-top:8px;">
+        <thead>
+          <tr>
+            <th>Course</th>
+            <th>Section</th>
+            <th>Instructor</th>
+            <th style="width:360px;">Outputs</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($sections as $s)
+            <tr>
+              <td>
+                <strong>{{ $s->offering->catalogCourse->code }}</strong>
+                <div class="muted">{{ $s->offering->catalogCourse->title }}</div>
+              </td>
+              <td>
+                <span class="badge">{{ $s->section_code }}</span>
+                <div class="muted">{{ $s->modality }}</div>
+              </td>
+              <td>
+                {{ $s->instructor?->name ?? 'TBD' }}
+                <div class="muted">{{ $s->instructor?->email ?? '' }}</div>
+              </td>
+              <td>
+                <div class="actions" style="gap:8px; flex-wrap:wrap;">
+                  <a class="btn secondary" href="{{ route('aop.syllabi.show', $s) }}">View</a>
+                  <a class="btn secondary" href="{{ route('aop.syllabi.downloadHtml', $s) }}">HTML</a>
+                  <a class="btn secondary" href="{{ route('aop.syllabi.downloadJson', $s) }}">JSON</a>
+                  <a class="btn" href="{{ route('aop.syllabi.downloadDocx', $s) }}">DOCX</a>
+                  <a class="btn" href="{{ route('aop.syllabi.downloadPdf', $s) }}">PDF</a>
+                </div>
+              </td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+    @endif
+  </div>
 </x-aop-layout>

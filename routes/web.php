@@ -5,6 +5,7 @@ use App\Http\Controllers\Aop\DashboardController;
 use App\Http\Controllers\Aop\InstructorController;
 use App\Http\Controllers\Aop\RoomController;
 use App\Http\Controllers\Aop\TermController;
+use App\Http\Controllers\Aop\SyllabusController;
 use App\Http\Controllers\Aop\Schedule\ScheduleHomeController;
 use App\Http\Controllers\Aop\Schedule\OfferingController;
 use App\Http\Controllers\Aop\Schedule\SectionController;
@@ -13,7 +14,6 @@ use App\Http\Controllers\Aop\Schedule\ScheduleGridController;
 use App\Http\Controllers\Aop\Schedule\ScheduleReportsController;
 use App\Http\Controllers\Aop\Schedule\OfficeHoursController;
 use App\Http\Controllers\Aop\Schedule\SchedulePublishController;
-use App\Http\Controllers\Aop\Syllabi\SyllabiController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -100,14 +100,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/schedule/publish/{publication}/download/instructors', [SchedulePublishController::class, 'downloadInstructorsZip'])->name('schedule.publish.downloadInstructorsZip');
         Route::get('/schedule/publish/{publication}/download/rooms', [SchedulePublishController::class, 'downloadRoomsZip'])->name('schedule.publish.downloadRoomsZip');
 
-        // Syllabi (active term)
-        Route::get('/syllabi', [SyllabiController::class, 'index'])->name('syllabi.index');
-        Route::get('/syllabi/sections/{section}', [SyllabiController::class, 'show'])->name('syllabi.show');
-        Route::get('/syllabi/sections/{section}/download/html', [SyllabiController::class, 'downloadHtml'])->name('syllabi.downloadHtml');
-        Route::get('/syllabi/sections/{section}/download/json', [SyllabiController::class, 'downloadJson'])->name('syllabi.downloadJson');
-        Route::get("/syllabi/sections/{section}/download/docx", [SyllabiController::class, "downloadDocx"])->name("syllabi.downloadDocx");
-        Route::get("/syllabi/sections/{section}/download/pdf", [SyllabiController::class, "downloadPdf"])->name("syllabi.downloadPdf");
-        Route::post('/syllabi/bundle/{publication}', [SyllabiController::class, 'generateBundle'])->name('syllabi.bundle');
+        // Syllabi
+        Route::get('/syllabi', [SyllabusController::class, 'index'])->name('syllabi.index');
+        Route::post('/syllabi/template', [SyllabusController::class, 'uploadTemplate'])->name('syllabi.template.upload');
+        Route::get('/syllabi/sections/{section}', [SyllabusController::class, 'show'])->name('syllabi.show');
+        Route::get('/syllabi/sections/{section}/download/html', [SyllabusController::class, 'downloadHtml'])->name('syllabi.downloadHtml');
+        Route::get('/syllabi/sections/{section}/download/json', [SyllabusController::class, 'downloadJson'])->name('syllabi.downloadJson');
+        Route::get('/syllabi/sections/{section}/download/docx', [SyllabusController::class, 'downloadDocx'])->name('syllabi.downloadDocx');
+        Route::get('/syllabi/sections/{section}/download/pdf', [SyllabusController::class, 'downloadPdf'])->name('syllabi.downloadPdf');
+
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -116,6 +117,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+
 
 // Public read-only published schedule (Phase 9)
 Route::get('/p/{termCode}/{version?}/{token}', [\App\Http\Controllers\Public\SchedulePublicController::class, 'show'])
