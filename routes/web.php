@@ -5,16 +5,15 @@ use App\Http\Controllers\Aop\DashboardController;
 use App\Http\Controllers\Aop\InstructorController;
 use App\Http\Controllers\Aop\RoomController;
 use App\Http\Controllers\Aop\TermController;
-use App\Http\Controllers\Aop\Schedule\MeetingBlockController;
-use App\Http\Controllers\Aop\Schedule\OfficeHoursController;
-use App\Http\Controllers\Aop\Schedule\OfferingController;
-use App\Http\Controllers\Aop\Schedule\ScheduleGridController;
 use App\Http\Controllers\Aop\Schedule\ScheduleHomeController;
-use App\Http\Controllers\Aop\Schedule\SchedulePublishController;
-use App\Http\Controllers\Aop\Schedule\ScheduleReadinessController;
-use App\Http\Controllers\Aop\Schedule\ScheduleReportsController;
-use App\Http\Controllers\Aop\Schedule\ScheduleTermLockController;
+use App\Http\Controllers\Aop\Schedule\OfferingController;
 use App\Http\Controllers\Aop\Schedule\SectionController;
+use App\Http\Controllers\Aop\Schedule\MeetingBlockController;
+use App\Http\Controllers\Aop\Schedule\ScheduleGridController;
+use App\Http\Controllers\Aop\Schedule\ScheduleReportsController;
+use App\Http\Controllers\Aop\Schedule\OfficeHoursController;
+use App\Http\Controllers\Aop\Schedule\SchedulePublishController;
+use App\Http\Controllers\Aop\Syllabi\SyllabiController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -58,13 +57,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Schedule (active term)
         Route::get('/schedule', [ScheduleHomeController::class, 'index'])->name('schedule.home');
 
-        // Term schedule lock/unlock
-        Route::post('/schedule/term/lock', [ScheduleTermLockController::class, 'lock'])->name('schedule.term.lock');
-        Route::post('/schedule/term/unlock', [ScheduleTermLockController::class, 'unlock'])->name('schedule.term.unlock');
-
-        // Readiness dashboard
-        Route::get('/schedule/readiness', [ScheduleReadinessController::class, 'index'])->name('schedule.readiness.index');
-
         // Offerings
         Route::get('/schedule/offerings', [OfferingController::class, 'index'])->name('schedule.offerings.index');
         Route::get('/schedule/offerings/create', [OfferingController::class, 'create'])->name('schedule.offerings.create');
@@ -107,6 +99,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/schedule/publish/{publication}/download/term', [SchedulePublishController::class, 'downloadTerm'])->name('schedule.publish.downloadTerm');
         Route::get('/schedule/publish/{publication}/download/instructors', [SchedulePublishController::class, 'downloadInstructorsZip'])->name('schedule.publish.downloadInstructorsZip');
         Route::get('/schedule/publish/{publication}/download/rooms', [SchedulePublishController::class, 'downloadRoomsZip'])->name('schedule.publish.downloadRoomsZip');
+
+        // Syllabi (active term)
+        Route::get('/syllabi', [SyllabiController::class, 'index'])->name('syllabi.index');
+        Route::get('/syllabi/sections/{section}', [SyllabiController::class, 'show'])->name('syllabi.show');
+        Route::get('/syllabi/sections/{section}/download/html', [SyllabiController::class, 'downloadHtml'])->name('syllabi.downloadHtml');
+        Route::get('/syllabi/sections/{section}/download/json', [SyllabiController::class, 'downloadJson'])->name('syllabi.downloadJson');
+        Route::post('/syllabi/bundle/{publication}', [SyllabiController::class, 'generateBundle'])->name('syllabi.bundle');
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

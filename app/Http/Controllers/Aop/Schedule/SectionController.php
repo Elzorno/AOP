@@ -19,13 +19,6 @@ class SectionController extends Controller
         return $term;
     }
 
-    private function ensureTermUnlocked(Term $term)
-    {
-        if ($term->schedule_locked) {
-            abort(403, 'Schedule is locked for the active term. Unlock the term schedule to make changes.');
-        }
-    }
-
     public function index()
     {
         $term = $this->activeTermOrFail();
@@ -62,7 +55,6 @@ class SectionController extends Controller
     public function store(Request $request)
     {
         $term = $this->activeTermOrFail();
-        $this->ensureTermUnlocked($term);
 
         $data = $request->validate([
             'offering_id' => ['required','integer','exists:offerings,id'],
@@ -98,7 +90,6 @@ class SectionController extends Controller
     {
         $term = $this->activeTermOrFail();
         abort_if($section->offering->term_id !== $term->id, 400, 'Section not in active term.');
-        $this->ensureTermUnlocked($term);
 
         $data = $request->validate([
             'section_code' => ['required','string','max:20'],

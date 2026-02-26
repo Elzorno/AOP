@@ -10,7 +10,7 @@ class ScheduleHomeController extends Controller
 {
     public function index()
     {
-        $term = Term::where('is_active', true)->with('scheduleLockedBy')->first();
+        $term = Term::where('is_active', true)->first();
 
         $latestPublication = null;
         if ($term) {

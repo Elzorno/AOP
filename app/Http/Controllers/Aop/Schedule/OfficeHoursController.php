@@ -19,13 +19,6 @@ class OfficeHoursController extends Controller
         return $term;
     }
 
-    private function ensureTermUnlocked(Term $term)
-    {
-        if ($term->schedule_locked) {
-            abort(403, 'Schedule is locked for the active term. Unlock the term schedule to make changes.');
-        }
-    }
-
     private function lockFor(Term $term, Instructor $instructor): InstructorTermLock
     {
         return InstructorTermLock::for($term, $instructor);
@@ -72,7 +65,6 @@ class OfficeHoursController extends Controller
     public function store(Request $request, Instructor $instructor, ScheduleConflictService $conflicts)
     {
         $term = $this->activeTermOrFail();
-        $this->ensureTermUnlocked($term);
         $this->ensureUnlocked($term, $instructor);
 
         $data = $request->validate([
@@ -120,7 +112,6 @@ class OfficeHoursController extends Controller
     public function update(Request $request, Instructor $instructor, OfficeHourBlock $officeHourBlock, ScheduleConflictService $conflicts)
     {
         $term = $this->activeTermOrFail();
-        $this->ensureTermUnlocked($term);
         $this->ensureUnlocked($term, $instructor);
 
         abort_if($officeHourBlock->term_id !== $term->id || $officeHourBlock->instructor_id !== $instructor->id, 400, 'Office hour block not in active term/instructor.');
@@ -168,7 +159,6 @@ class OfficeHoursController extends Controller
     public function destroy(Request $request, Instructor $instructor, OfficeHourBlock $officeHourBlock)
     {
         $term = $this->activeTermOrFail();
-        $this->ensureTermUnlocked($term);
         $this->ensureUnlocked($term, $instructor);
 
         abort_if($officeHourBlock->term_id !== $term->id || $officeHourBlock->instructor_id !== $instructor->id, 400, 'Office hour block not in active term/instructor.');
@@ -181,7 +171,6 @@ class OfficeHoursController extends Controller
     public function lock(Request $request, Instructor $instructor)
     {
         $term = $this->activeTermOrFail();
-        $this->ensureTermUnlocked($term);
 
         $lock = $this->lockFor($term, $instructor);
         $lock->update([
@@ -196,7 +185,6 @@ class OfficeHoursController extends Controller
     public function unlock(Request $request, Instructor $instructor)
     {
         $term = $this->activeTermOrFail();
-        $this->ensureTermUnlocked($term);
 
         $lock = $this->lockFor($term, $instructor);
         $lock->update([
