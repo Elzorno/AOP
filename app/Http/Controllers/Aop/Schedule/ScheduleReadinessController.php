@@ -65,8 +65,8 @@ class ScheduleReadinessController extends Controller
             ->orderBy('starts_at')
             ->get();
 
-        $roomConflicts = $this->computeRoomConflicts($meetingBlocks);
-        $instructorConflicts = $this->computeInstructorConflicts($meetingBlocks, $officeBlocks);
+        $roomConflicts = $this->computeRoomConflicts($term, $meetingBlocks);
+        $instructorConflicts = $this->computeInstructorConflicts($term, $meetingBlocks, $officeBlocks);
 
         $instructionalMinutes = $this->computeInstructionalMinutes($term, $sections);
         $minutesFailing = collect($instructionalMinutes)->where('pass', false)->values();
@@ -184,10 +184,12 @@ class ScheduleReadinessController extends Controller
         }
     }
 
-    private function computeRoomConflicts($meetingBlocks)
+    private function computeRoomConflicts(Term $term, $meetingBlocks)
     {
         $conflicts = [];
         $byRoom = $meetingBlocks->whereNotNull('room_id')->groupBy('room_id');
+
+        $buffer = (int)($term->buffer_minutes ?? 0);
 
         foreach ($byRoom as $roomId => $blocks) {
             $list = $blocks->values();
@@ -197,12 +199,13 @@ class ScheduleReadinessController extends Controller
                     $a = $list[$i];
                     $b = $list[$j];
                     if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) continue;
-                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at)) continue;
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, $buffer)) continue;
 
                     $conflicts[] = [
                         'room' => $a->room,
                         'a' => $a,
                         'b' => $b,
+                        'buffer_minutes' => $buffer,
                     ];
                 }
             }
@@ -211,9 +214,11 @@ class ScheduleReadinessController extends Controller
         return $conflicts;
     }
 
-    private function computeInstructorConflicts($meetingBlocks, $officeBlocks)
+    private function computeInstructorConflicts(Term $term, $meetingBlocks, $officeBlocks)
     {
         $conflicts = [];
+
+        $buffer = (int)($term->buffer_minutes ?? 0);
 
         $meetingByInstructor = $meetingBlocks
             ->filter(fn($mb) => (bool)$mb->section?->instructor_id)
@@ -237,7 +242,7 @@ class ScheduleReadinessController extends Controller
                     $a = $classList[$i];
                     $b = $classList[$j];
                     if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) continue;
-                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at)) continue;
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, $buffer)) continue;
                     $conflicts[] = [
                         'instructor' => $a->section->instructor,
                         'type' => 'CLASS vs CLASS',
@@ -245,6 +250,7 @@ class ScheduleReadinessController extends Controller
                         'b_label' => ScheduleConflictService::formatMeetingBlockLabel($b),
                         'a_section_id' => $a->section_id,
                         'b_section_id' => $b->section_id,
+                        'buffer_minutes' => $buffer,
                     ];
                 }
             }
@@ -256,7 +262,7 @@ class ScheduleReadinessController extends Controller
                     $a = $officeList[$i];
                     $b = $officeList[$j];
                     if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) continue;
-                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at)) continue;
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, $buffer)) continue;
                     $conflicts[] = [
                         'instructor' => $a->instructor,
                         'type' => 'OFFICE vs OFFICE',
@@ -264,6 +270,7 @@ class ScheduleReadinessController extends Controller
                         'b_label' => ScheduleConflictService::formatOfficeHourLabel($b),
                         'a_section_id' => null,
                         'b_section_id' => null,
+                        'buffer_minutes' => $buffer,
                     ];
                 }
             }
@@ -280,6 +287,7 @@ class ScheduleReadinessController extends Controller
                         'b_label' => ScheduleConflictService::formatOfficeHourLabel($o),
                         'a_section_id' => $c->section_id,
                         'b_section_id' => null,
+                        'buffer_minutes' => $buffer,
                     ];
                 }
             }

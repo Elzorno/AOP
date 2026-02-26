@@ -15,3 +15,7 @@ This file tracks what each phase changed so the project remains understandable w
 - Updated Readiness UI to show minutes required vs scheduled, with delta and quick edit links.
 - Decluttered Schedule home UI (dashboard-first actions; moved secondary links into tiles).
 - Added `docs/` source-of-truth documents for continuity.
+
+## Phase 16
+- Enforced term-level `buffer_minutes` in room, instructor, and office-hour conflict detection.
+- Updated Readiness conflict output to explicitly show buffer minutes applied.

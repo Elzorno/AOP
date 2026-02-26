@@ -142,6 +142,7 @@
 
     <div class="card col-6">
       <h2>Room Conflicts</h2>
+      <p class="muted" style="margin-top:4px;">Buffer minutes applied: <strong>{{ (int)($term->buffer_minutes ?? 0) }}</strong> min</p>
       @if(count($roomConflicts) === 0)
         <p class="muted">No room conflicts detected.</p>
       @else
@@ -150,6 +151,7 @@
             <li>
               <strong>{{ $c['room']?->name ?? 'Room' }}</strong>: {{ \App\Services\ScheduleConflictService::formatMeetingBlockLabel($c['a']) }}
               vs {{ \App\Services\ScheduleConflictService::formatMeetingBlockLabel($c['b']) }}
+              <span class="muted">(buffer {{ (int)($c['buffer_minutes'] ?? ($term->buffer_minutes ?? 0)) }}m)</span>
             </li>
           @endforeach
         </ul>
@@ -158,6 +160,7 @@
 
     <div class="card col-12">
       <h2>Instructor Conflicts</h2>
+      <p class="muted" style="margin-top:4px;">Buffer minutes applied: <strong>{{ (int)($term->buffer_minutes ?? 0) }}</strong> min</p>
       @if(count($instructorConflicts) === 0)
         <p class="muted">No instructor conflicts detected.</p>
       @else
@@ -166,6 +169,7 @@
             <li>
               <strong>{{ $c['instructor']?->name ?? 'Instructor' }}</strong> ({{ $c['type'] }}):
               {{ $c['a_label'] }} vs {{ $c['b_label'] }}
+              <span class="muted">(buffer {{ (int)($c['buffer_minutes'] ?? ($term->buffer_minutes ?? 0)) }}m)</span>
               @if($c['a_section_id'])
                 <a href="{{ route('aop.schedule.sections.edit', $c['a_section_id']) }}">Edit A</a>
               @endif
