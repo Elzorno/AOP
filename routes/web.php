@@ -9,6 +9,8 @@ use App\Http\Controllers\Aop\Schedule\ScheduleHomeController;
 use App\Http\Controllers\Aop\Schedule\OfferingController;
 use App\Http\Controllers\Aop\Schedule\SectionController;
 use App\Http\Controllers\Aop\Schedule\MeetingBlockController;
+use App\Http\Controllers\Aop\Schedule\ScheduleGridController;
+use App\Http\Controllers\Aop\Schedule\OfficeHoursController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -67,6 +69,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Meeting blocks nested under section
         Route::post('/schedule/sections/{section}/meeting-blocks', [MeetingBlockController::class, 'store'])->name('schedule.meetingBlocks.store');
         Route::put('/schedule/sections/{section}/meeting-blocks/{meetingBlock}', [MeetingBlockController::class, 'update'])->name('schedule.meetingBlocks.update');
+
+        // Office Hours (active term)
+        Route::get('/schedule/office-hours', [OfficeHoursController::class, 'index'])->name('schedule.officeHours.index');
+        Route::get('/schedule/office-hours/{instructor}', [OfficeHoursController::class, 'show'])->name('schedule.officeHours.show');
+        Route::post('/schedule/office-hours/{instructor}/blocks', [OfficeHoursController::class, 'store'])->name('schedule.officeHours.blocks.store');
+        Route::put('/schedule/office-hours/{instructor}/blocks/{officeHourBlock}', [OfficeHoursController::class, 'update'])->name('schedule.officeHours.blocks.update');
+        Route::delete('/schedule/office-hours/{instructor}/blocks/{officeHourBlock}', [OfficeHoursController::class, 'destroy'])->name('schedule.officeHours.blocks.destroy');
+        Route::post('/schedule/office-hours/{instructor}/lock', [OfficeHoursController::class, 'lock'])->name('schedule.officeHours.lock');
+        Route::post('/schedule/office-hours/{instructor}/unlock', [OfficeHoursController::class, 'unlock'])->name('schedule.officeHours.unlock');
+
+        // Schedule Grids (active term)
+        Route::get('/schedule/grids', [ScheduleGridController::class, 'index'])->name('schedule.grids.index');
+        Route::get('/schedule/grids/instructors/{instructor}', [ScheduleGridController::class, 'instructor'])->name('schedule.grids.instructor');
+        Route::get('/schedule/grids/rooms/{room}', [ScheduleGridController::class, 'room'])->name('schedule.grids.room');
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

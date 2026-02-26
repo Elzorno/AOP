@@ -16,6 +16,8 @@
       <div class="actions" style="margin-top:10px;">
         <a class="btn" href="{{ route('aop.schedule.offerings.index') }}">Offerings</a>
         <a class="btn" href="{{ route('aop.schedule.sections.index') }}">Sections</a>
+        <a class="btn" href="{{ route('aop.schedule.officeHours.index') }}">Office Hours</a>
+        <a class="btn" href="{{ route('aop.schedule.grids.index') }}">Schedule Grids</a>
       </div>
     @endif
   </div>

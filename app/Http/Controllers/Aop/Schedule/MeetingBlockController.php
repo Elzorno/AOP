@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MeetingBlock;
 use App\Models\Section;
 use App\Models\Term;
+use App\Services\ScheduleConflictService;
 use Illuminate\Http\Request;
 
 class MeetingBlockController extends Controller
@@ -17,16 +18,17 @@ class MeetingBlockController extends Controller
         return $term;
     }
 
-    private function ensureSectionInActiveTerm(Section $section): void
+    private function ensureSectionInActiveTerm(Section $section): Term
     {
         $term = $this->activeTermOrFail();
         $section->load('offering');
         abort_if($section->offering->term_id !== $term->id, 400, 'Section not in active term.');
+        return $term;
     }
 
-    public function store(Request $request, Section $section)
+    public function store(Request $request, Section $section, ScheduleConflictService $conflicts)
     {
-        $this->ensureSectionInActiveTerm($section);
+        $term = $this->ensureSectionInActiveTerm($section);
 
         $data = $request->validate([
             'type' => ['required','string'],
@@ -50,10 +52,38 @@ class MeetingBlockController extends Controller
             }
         }
 
+        $days = array_values($data['days']);
+
+        // Room conflicts: class vs class only
+        $roomConflicts = $conflicts->roomConflictsForMeetingBlock($term, (int)($data['room_id'] ?? 0), $days, $data['starts_at'], $data['ends_at']);
+
+        if ($roomConflicts->count() > 0) {
+            $msg = 'Room conflict with: ' . $roomConflicts->map(fn($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
+            return back()->withErrors(['conflicts' => $msg])->withInput();
+        }
+
+        // Instructor conflicts: class vs class + office hours
+        if (!empty($section->instructor_id)) {
+            $insConf = $conflicts->instructorConflictsForMeetingBlock($term, (int)$section->instructor_id, $days, $data['starts_at'], $data['ends_at']);
+            $messages = [];
+
+            if ($insConf['meeting_blocks']->count() > 0) {
+                $messages[] = 'Instructor conflict with classes: ' . $insConf['meeting_blocks']->map(fn($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
+            }
+
+            if ($insConf['office_hour_blocks']->count() > 0) {
+                $messages[] = 'Instructor conflict with office hours: ' . $insConf['office_hour_blocks']->map(fn($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))->implode('; ');
+            }
+
+            if (!empty($messages)) {
+                return back()->withErrors(['conflicts' => implode(' | ', $messages)])->withInput();
+            }
+        }
+
         MeetingBlock::create([
             'section_id' => $section->id,
             'type' => $data['type'],
-            'days_json' => array_values($data['days']),
+            'days_json' => $days,
             'starts_at' => $data['starts_at'],
             'ends_at' => $data['ends_at'],
             'room_id' => $data['room_id'],
@@ -63,9 +93,9 @@ class MeetingBlockController extends Controller
         return redirect()->route('aop.schedule.sections.edit', $section)->with('status', 'Meeting block added.');
     }
 
-    public function update(Request $request, Section $section, MeetingBlock $meetingBlock)
+    public function update(Request $request, Section $section, MeetingBlock $meetingBlock, ScheduleConflictService $conflicts)
     {
-        $this->ensureSectionInActiveTerm($section);
+        $term = $this->ensureSectionInActiveTerm($section);
         abort_if($meetingBlock->section_id !== $section->id, 400, 'Meeting block not in section.');
 
         $data = $request->validate([
@@ -90,9 +120,37 @@ class MeetingBlockController extends Controller
             }
         }
 
+        $days = array_values($data['days']);
+
+        // Room conflicts: class vs class only
+        $roomConflicts = $conflicts->roomConflictsForMeetingBlock($term, (int)($data['room_id'] ?? 0), $days, $data['starts_at'], $data['ends_at'], $meetingBlock->id);
+
+        if ($roomConflicts->count() > 0) {
+            $msg = 'Room conflict with: ' . $roomConflicts->map(fn($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
+            return back()->withErrors(['conflicts' => $msg])->withInput();
+        }
+
+        // Instructor conflicts: class vs class + office hours
+        if (!empty($section->instructor_id)) {
+            $insConf = $conflicts->instructorConflictsForMeetingBlock($term, (int)$section->instructor_id, $days, $data['starts_at'], $data['ends_at'], $meetingBlock->id);
+            $messages = [];
+
+            if ($insConf['meeting_blocks']->count() > 0) {
+                $messages[] = 'Instructor conflict with classes: ' . $insConf['meeting_blocks']->map(fn($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
+            }
+
+            if ($insConf['office_hour_blocks']->count() > 0) {
+                $messages[] = 'Instructor conflict with office hours: ' . $insConf['office_hour_blocks']->map(fn($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))->implode('; ');
+            }
+
+            if (!empty($messages)) {
+                return back()->withErrors(['conflicts' => implode(' | ', $messages)])->withInput();
+            }
+        }
+
         $meetingBlock->update([
             'type' => $data['type'],
-            'days_json' => array_values($data['days']),
+            'days_json' => $days,
             'starts_at' => $data['starts_at'],
             'ends_at' => $data['ends_at'],
             'room_id' => $data['room_id'],
