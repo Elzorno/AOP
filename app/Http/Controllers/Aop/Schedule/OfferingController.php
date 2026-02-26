@@ -17,6 +17,13 @@ class OfferingController extends Controller
         return $term;
     }
 
+    private function ensureTermUnlocked(Term $term)
+    {
+        if ($term->schedule_locked) {
+            abort(403, 'Schedule is locked for the active term. Unlock the term schedule to make changes.');
+        }
+    }
+
     public function index()
     {
         $term = $this->activeTermOrFail();
@@ -45,6 +52,7 @@ class OfferingController extends Controller
     public function store(Request $request)
     {
         $term = $this->activeTermOrFail();
+        $this->ensureTermUnlocked($term);
 
         $data = $request->validate([
             'catalog_course_id' => ['required','integer','exists:catalog_courses,id'],

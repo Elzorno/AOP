@@ -18,6 +18,13 @@ class MeetingBlockController extends Controller
         return $term;
     }
 
+    private function ensureTermUnlocked(Term $term)
+    {
+        if ($term->schedule_locked) {
+            abort(403, 'Schedule is locked for the active term. Unlock the term schedule to make changes.');
+        }
+    }
+
     private function ensureSectionInActiveTerm(Section $section): Term
     {
         $term = $this->activeTermOrFail();
@@ -29,6 +36,7 @@ class MeetingBlockController extends Controller
     public function store(Request $request, Section $section, ScheduleConflictService $conflicts)
     {
         $term = $this->ensureSectionInActiveTerm($section);
+        $this->ensureTermUnlocked($term);
 
         $data = $request->validate([
             'type' => ['required','string'],
@@ -96,6 +104,8 @@ class MeetingBlockController extends Controller
     public function update(Request $request, Section $section, MeetingBlock $meetingBlock, ScheduleConflictService $conflicts)
     {
         $term = $this->ensureSectionInActiveTerm($section);
+        $this->ensureTermUnlocked($term);
+
         abort_if($meetingBlock->section_id !== $section->id, 400, 'Meeting block not in section.');
 
         $data = $request->validate([

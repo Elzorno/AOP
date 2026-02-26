@@ -5,14 +5,16 @@ use App\Http\Controllers\Aop\DashboardController;
 use App\Http\Controllers\Aop\InstructorController;
 use App\Http\Controllers\Aop\RoomController;
 use App\Http\Controllers\Aop\TermController;
-use App\Http\Controllers\Aop\Schedule\ScheduleHomeController;
-use App\Http\Controllers\Aop\Schedule\OfferingController;
-use App\Http\Controllers\Aop\Schedule\SectionController;
 use App\Http\Controllers\Aop\Schedule\MeetingBlockController;
-use App\Http\Controllers\Aop\Schedule\ScheduleGridController;
-use App\Http\Controllers\Aop\Schedule\ScheduleReportsController;
 use App\Http\Controllers\Aop\Schedule\OfficeHoursController;
+use App\Http\Controllers\Aop\Schedule\OfferingController;
+use App\Http\Controllers\Aop\Schedule\ScheduleGridController;
+use App\Http\Controllers\Aop\Schedule\ScheduleHomeController;
 use App\Http\Controllers\Aop\Schedule\SchedulePublishController;
+use App\Http\Controllers\Aop\Schedule\ScheduleReadinessController;
+use App\Http\Controllers\Aop\Schedule\ScheduleReportsController;
+use App\Http\Controllers\Aop\Schedule\ScheduleTermLockController;
+use App\Http\Controllers\Aop\Schedule\SectionController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -55,6 +57,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Schedule (active term)
         Route::get('/schedule', [ScheduleHomeController::class, 'index'])->name('schedule.home');
+
+        // Term schedule lock/unlock
+        Route::post('/schedule/term/lock', [ScheduleTermLockController::class, 'lock'])->name('schedule.term.lock');
+        Route::post('/schedule/term/unlock', [ScheduleTermLockController::class, 'unlock'])->name('schedule.term.unlock');
+
+        // Readiness dashboard
+        Route::get('/schedule/readiness', [ScheduleReadinessController::class, 'index'])->name('schedule.readiness.index');
 
         // Offerings
         Route::get('/schedule/offerings', [OfferingController::class, 'index'])->name('schedule.offerings.index');
@@ -107,8 +116,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 require __DIR__.'/auth.php';
 
-
-
 // Public read-only published schedule (Phase 9)
 Route::get('/p/{termCode}/{version?}/{token}', [\App\Http\Controllers\Public\SchedulePublicController::class, 'show'])
     ->whereNumber('version')
@@ -125,4 +132,3 @@ Route::get('/p/{termCode}/{version}/{token}/download/instructors', [\App\Http\Co
 Route::get('/p/{termCode}/{version}/{token}/download/rooms', [\App\Http\Controllers\Public\SchedulePublicController::class, 'downloadRoomsZip'])
     ->whereNumber('version')
     ->name('public.schedule.download.rooms');
-
