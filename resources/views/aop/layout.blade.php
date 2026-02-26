@@ -63,6 +63,7 @@
       <a href="{{ route('aop.instructors.index') }}" class="{{ request()->routeIs('aop.instructors.*') ? 'active' : '' }}">Instructors</a>
       <a href="{{ route('aop.rooms.index') }}" class="{{ request()->routeIs('aop.rooms.*') ? 'active' : '' }}">Rooms</a>
       <a href="{{ route('aop.catalog.index') }}" class="{{ request()->routeIs('aop.catalog.*') ? 'active' : '' }}">Catalog</a>
+      <a href="{{ route('aop.schedule.home') }}" class="{{ request()->routeIs('aop.schedule.*') ? 'active' : '' }}">Schedule</a>
       <a href="{{ route('profile.edit') }}" class="{{ request()->routeIs('profile.*') ? 'active' : '' }}">Profile</a>
       <form method="POST" action="{{ route('logout') }}" style="display:inline;">
         @csrf
