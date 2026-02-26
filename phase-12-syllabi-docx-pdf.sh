@@ -1,3 +1,120 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Phase 12: Syllabi DOCX/PDF rendering (LibreOffice headless)
+# Host requirement:
+#   apt-get update && apt-get install -y libreoffice
+
+mkdir -p "$ROOT_DIR/app/Services"
+mkdir -p "$ROOT_DIR/app/Http/Controllers/Aop/Syllabi"
+mkdir -p "$ROOT_DIR/resources/views/aop/syllabi"
+
+cat > "$ROOT_DIR/app/Services/SyllabusRenderService.php" <<'PHP'
+<?php
+
+namespace App\Services;
+
+use Symfony\Component\Process\Process;
+
+class SyllabusRenderService
+{
+    /**
+     * Render HTML to DOCX or PDF using LibreOffice (soffice) headless conversion.
+     *
+     * Host requirement:
+     *  - Install LibreOffice in the LXC (package: libreoffice)
+     *  - `soffice` must be available on PATH
+     */
+    public function renderHtmlTo(string $html, string $format, string $outDir, string $baseName): string
+    {
+        $format = strtolower(trim($format));
+        if (!in_array($format, ['docx', 'pdf'], true)) {
+            throw new \InvalidArgumentException('Unsupported format: ' . $format);
+        }
+
+        if (!is_dir($outDir) && !@mkdir($outDir, 0755, true) && !is_dir($outDir)) {
+            throw new \RuntimeException('Unable to create output directory: ' . $outDir);
+        }
+
+        $soffice = $this->findSoffice();
+        if ($soffice === null) {
+            throw new \RuntimeException('LibreOffice is not installed or `soffice` is not available. Install `libreoffice` in the LXC.');
+        }
+
+        $tmpDir = rtrim(sys_get_temp_dir(), '/') . '/aop_syllabi_' . bin2hex(random_bytes(6));
+        if (!@mkdir($tmpDir, 0700, true) && !is_dir($tmpDir)) {
+            throw new \RuntimeException('Unable to create temp directory.');
+        }
+
+        $htmlPath = $tmpDir . '/' . $baseName . '.html';
+        file_put_contents($htmlPath, $html);
+
+        $process = new Process([
+            $soffice,
+            '--headless',
+            '--nologo',
+            '--nolockcheck',
+            '--nodefault',
+            '--norestore',
+            '--convert-to',
+            $format,
+            '--outdir',
+            $outDir,
+            $htmlPath,
+        ]);
+        $process->setTimeout(120);
+        $process->run();
+
+        @unlink($htmlPath);
+        @rmdir($tmpDir);
+
+        if (!$process->isSuccessful()) {
+            $err = trim($process->getErrorOutput() ?: $process->getOutput());
+            throw new \RuntimeException('LibreOffice conversion failed: ' . ($err !== '' ? $err : 'unknown error'));
+        }
+
+        $outPath = rtrim($outDir, '/') . '/' . $baseName . '.' . $format;
+        if (!is_file($outPath)) {
+            $candidates = glob(rtrim($outDir, '/') . '/*.' . $format) ?: [];
+            if ($candidates) {
+                usort($candidates, fn($a, $b) => filemtime($b) <=> filemtime($a));
+                $outPath = $candidates[0];
+            }
+        }
+
+        if (!is_file($outPath)) {
+            throw new \RuntimeException('Converted file not found after LibreOffice conversion.');
+        }
+
+        return $outPath;
+    }
+
+    private function findSoffice(): ?string
+    {
+        foreach (['/usr/bin/soffice', '/usr/local/bin/soffice'] as $p) {
+            if (is_file($p) && is_executable($p)) {
+                return $p;
+            }
+        }
+
+        $proc = new Process(['bash', '-lc', 'command -v soffice']);
+        $proc->setTimeout(5);
+        $proc->run();
+        if ($proc->isSuccessful()) {
+            $path = trim($proc->getOutput());
+            if ($path !== '' && is_file($path) && is_executable($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+}
+PHP
+
+cat > "$ROOT_DIR/app/Http/Controllers/Aop/Syllabi/SyllabiController.php" <<'PHP'
 <?php
 
 namespace App\Http\Controllers\Aop\Syllabi;
@@ -369,3 +486,150 @@ class SyllabiController extends Controller
         return 'Students requiring accommodations should contact the appropriate campus office and notify the instructor early in the term so arrangements can be made.';
     }
 }
+PHP
+
+cat > "$ROOT_DIR/resources/views/aop/syllabi/index.blade.php" <<'BLADE'
+<x-aop-layout>
+  <x-slot:title>Syllabi</x-slot:title>
+
+  <div class="row" style="margin-bottom:14px;">
+    <div>
+      <h1>Syllabi</h1>
+      @if($term)
+        <p style="margin-top:6px;"><strong>{{ $term->code }}</strong> — {{ $term->name }}</p>
+        @if($latestPublication)
+          <p class="muted">Latest published: <span class="badge">v{{ $latestPublication->version }}</span> {{ $latestPublication->published_at->format('Y-m-d H:i') }}</p>
+        @else
+          <p class="muted">Latest published: <span class="badge">None</span></p>
+        @endif
+      @else
+        <p class="muted">No active term is set.</p>
+      @endif
+    </div>
+    <div class="actions">
+      <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
+      @if(!$term)
+        <a class="btn" href="{{ route('aop.terms.index') }}">Go to Terms</a>
+      @endif
+    </div>
+  </div>
+
+  @if(!$term)
+    <div class="card">
+      <h2>No Active Term</h2>
+      <p>You must set an active term before generating syllabi.</p>
+    </div>
+  @else
+    <div class="card">
+      <h2>Syllabus Bundle (Published Snapshot)</h2>
+      <p class="muted">
+        Generates a ZIP containing HTML + JSON + DOCX + PDF syllabi for all sections in the active term.
+        DOCX/PDF rendering requires LibreOffice installed in the LXC.
+      </p>
+
+      @if($latestPublication)
+        <form method="POST" action="{{ route('aop.syllabi.bundle', $latestPublication) }}" style="margin-top:10px;">
+          @csrf
+          <button class="btn" type="submit">Generate ZIP for Published v{{ $latestPublication->version }}</button>
+        </form>
+        <p class="muted" style="margin-top:10px; font-size:12px;">
+          If generation fails, install LibreOffice: <code>apt-get update && apt-get install -y libreoffice</code>
+        </p>
+      @else
+        <p class="muted" style="margin-top:10px;">Publish a snapshot to enable bundle generation.</p>
+        <a class="btn" href="{{ route('aop.schedule.publish.index') }}">Go to Publish Snapshots</a>
+      @endif
+    </div>
+
+    <div style="height:14px;"></div>
+
+    <div class="card">
+      <h2>Sections</h2>
+      @if($sections->count() === 0)
+        <p class="muted">No sections exist for the active term.</p>
+      @else
+        <table style="margin-top:8px;">
+          <thead>
+            <tr>
+              <th style="width:120px;">Course</th>
+              <th>Title</th>
+              <th style="width:90px;">Section</th>
+              <th style="width:180px;">Instructor</th>
+              <th style="width:120px;">Modality</th>
+              <th style="width:420px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach($sections as $s)
+              @php $course = $s->offering->catalogCourse; @endphp
+              <tr>
+                <td><strong>{{ $course->code }}</strong></td>
+                <td class="muted">{{ $course->title }}</td>
+                <td>{{ $s->section_code }}</td>
+                <td class="muted">{{ $s->instructor?->name ?? 'TBD' }}</td>
+                <td class="muted">{{ $s->modality?->value ?? (string)$s->modality }}</td>
+                <td>
+                  <div class="actions" style="gap:8px; flex-wrap:wrap;">
+                    <a class="btn secondary" href="{{ route('aop.syllabi.show', $s) }}">View</a>
+                    <a class="btn secondary" href="{{ route('aop.syllabi.downloadHtml', $s) }}">HTML</a>
+                    <a class="btn secondary" href="{{ route('aop.syllabi.downloadJson', $s) }}">JSON</a>
+                    <a class="btn secondary" href="{{ route('aop.syllabi.downloadDocx', $s) }}">DOCX</a>
+                    <a class="btn secondary" href="{{ route('aop.syllabi.downloadPdf', $s) }}">PDF</a>
+                  </div>
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      @endif
+    </div>
+  @endif
+</x-aop-layout>
+BLADE
+
+cat > "$ROOT_DIR/resources/views/aop/syllabi/show.blade.php" <<'BLADE'
+<x-aop-layout>
+  <x-slot:title>Syllabus</x-slot:title>
+
+  <div class="row" style="margin-bottom:14px;">
+    <div>
+      <h1>Syllabus</h1>
+      <p style="margin-top:6px;"><strong>{{ $syllabus['course_code'] }}</strong> — {{ $syllabus['course_title'] }} ({{ $syllabus['section_code'] }})</p>
+      <p class="muted">{{ $term->code }} — {{ $term->name }}</p>
+    </div>
+    <div class="actions" style="flex-wrap:wrap;">
+      <a class="btn secondary" href="{{ route('aop.syllabi.index') }}">Back to Syllabi</a>
+      <a class="btn secondary" href="{{ route('aop.syllabi.downloadHtml', $section) }}">HTML</a>
+      <a class="btn secondary" href="{{ route('aop.syllabi.downloadJson', $section) }}">JSON</a>
+      <a class="btn secondary" href="{{ route('aop.syllabi.downloadDocx', $section) }}">DOCX</a>
+      <a class="btn secondary" href="{{ route('aop.syllabi.downloadPdf', $section) }}">PDF</a>
+      <a class="btn" href="#" onclick="window.open('{{ route('aop.syllabi.show', $section) }}?print=1','_blank'); return false;">Print</a>
+    </div>
+  </div>
+
+  <div class="card">
+    @include('aop.syllabi.partials.syllabus', ['syllabus' => $syllabus])
+    <div class="muted" style="margin-top:10px; font-size:12px;">
+      DOCX/PDF rendering requires LibreOffice installed in the LXC.
+    </div>
+  </div>
+</x-aop-layout>
+BLADE
+
+# Patch routes/web.php by full replacement: we re-write the file content as-is except we ensure docx/pdf routes exist.
+# For simplicity, we do an idempotent insert if missing.
+
+if ! grep -q "syllabi.downloadDocx" "$ROOT_DIR/routes/web.php"; then
+  tmpfile="$(mktemp)"
+  awk 'BEGIN{added=0} {print} /syllabi\\/sections\\/{section}\\/download\\/json/ && added==0 {print "        Route::get(\"/syllabi/sections/{section}/download/docx\", [SyllabiController::class, \"downloadDocx\"])->name(\"syllabi.downloadDocx\");"; print "        Route::get(\"/syllabi/sections/{section}/download/pdf\", [SyllabiController::class, \"downloadPdf\"])->name(\"syllabi.downloadPdf\");"; added=1} ' "$ROOT_DIR/routes/web.php" > "$tmpfile"
+  mv "$tmpfile" "$ROOT_DIR/routes/web.php"
+fi
+
+# Permissions (keeps things readable; storage/cache writable is handled elsewhere)
+chown -R www-data:www-data "$ROOT_DIR/app/Http/Controllers/Aop/Syllabi" "$ROOT_DIR/app/Services" "$ROOT_DIR/resources/views/aop/syllabi" "$ROOT_DIR/routes/web.php" || true
+find "$ROOT_DIR/app/Http/Controllers/Aop/Syllabi" -type f -exec chmod 644 {} \;
+find "$ROOT_DIR/app/Services" -type f -exec chmod 644 {} \;
+find "$ROOT_DIR/resources/views/aop/syllabi" -type f -exec chmod 644 {} \;
+chmod 644 "$ROOT_DIR/routes/web.php" || true
+
+echo "OK: Phase 12 applied (Syllabi DOCX/PDF rendering via LibreOffice)."

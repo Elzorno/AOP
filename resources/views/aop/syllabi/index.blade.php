@@ -30,14 +30,20 @@
     </div>
   @else
     <div class="card">
-      <h2>Syllabus Bundle</h2>
-      <p class="muted">This generates a ZIP containing HTML + JSON syllabi for all sections in the active term (based on current schedule data). DOCX/PDF rendering will be added in a later phase.</p>
+      <h2>Syllabus Bundle (Published Snapshot)</h2>
+      <p class="muted">
+        Generates a ZIP containing HTML + JSON + DOCX + PDF syllabi for all sections in the active term.
+        DOCX/PDF rendering requires LibreOffice installed in the LXC.
+      </p>
 
       @if($latestPublication)
         <form method="POST" action="{{ route('aop.syllabi.bundle', $latestPublication) }}" style="margin-top:10px;">
           @csrf
           <button class="btn" type="submit">Generate ZIP for Published v{{ $latestPublication->version }}</button>
         </form>
+        <p class="muted" style="margin-top:10px; font-size:12px;">
+          If generation fails, install LibreOffice: <code>apt-get update && apt-get install -y libreoffice</code>
+        </p>
       @else
         <p class="muted" style="margin-top:10px;">Publish a snapshot to enable bundle generation.</p>
         <a class="btn" href="{{ route('aop.schedule.publish.index') }}">Go to Publish Snapshots</a>
@@ -59,7 +65,7 @@
               <th style="width:90px;">Section</th>
               <th style="width:180px;">Instructor</th>
               <th style="width:120px;">Modality</th>
-              <th style="width:260px;">Actions</th>
+              <th style="width:420px;">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -76,6 +82,8 @@
                     <a class="btn secondary" href="{{ route('aop.syllabi.show', $s) }}">View</a>
                     <a class="btn secondary" href="{{ route('aop.syllabi.downloadHtml', $s) }}">HTML</a>
                     <a class="btn secondary" href="{{ route('aop.syllabi.downloadJson', $s) }}">JSON</a>
+                    <a class="btn secondary" href="{{ route('aop.syllabi.downloadDocx', $s) }}">DOCX</a>
+                    <a class="btn secondary" href="{{ route('aop.syllabi.downloadPdf', $s) }}">PDF</a>
                   </div>
                 </td>
               </tr>

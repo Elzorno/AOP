@@ -105,6 +105,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/syllabi/sections/{section}', [SyllabiController::class, 'show'])->name('syllabi.show');
         Route::get('/syllabi/sections/{section}/download/html', [SyllabiController::class, 'downloadHtml'])->name('syllabi.downloadHtml');
         Route::get('/syllabi/sections/{section}/download/json', [SyllabiController::class, 'downloadJson'])->name('syllabi.downloadJson');
+        Route::get("/syllabi/sections/{section}/download/docx", [SyllabiController::class, "downloadDocx"])->name("syllabi.downloadDocx");
+        Route::get("/syllabi/sections/{section}/download/pdf", [SyllabiController::class, "downloadPdf"])->name("syllabi.downloadPdf");
         Route::post('/syllabi/bundle/{publication}', [SyllabiController::class, 'generateBundle'])->name('syllabi.bundle');
     });
 
