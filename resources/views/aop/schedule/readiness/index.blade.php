@@ -89,6 +89,80 @@
     @endif
   </div>
 
+
+  {{-- Office Hours Compliance --}}
+  <div class="card" style="margin-bottom:16px;">
+    <h2>Office Hours Compliance (Full-Time)</h2>
+    <p class="muted">
+      Full-time instructors must have <strong>at least 4 hours/week</strong> of office hours
+      across <strong>at least 3 distinct days</strong>. (Office hours are checked against that instructor’s classes, with buffer minutes.)
+    </p>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Instructor</th>
+          <th>Full-Time</th>
+          <th>Locked</th>
+          <th>Hours/Week</th>
+          <th>Days</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        @forelse($officeHoursCompliance ?? [] as $row)
+          @php
+            $ins = $row['instructor'];
+            $isFull = (bool)$row['is_full_time'];
+            $locked = (bool)$row['locked'];
+            $pass = (bool)$row['pass'];
+            $hours = $row['hours_per_week'] ?? 0;
+            $mins = $row['minutes_per_week'] ?? 0;
+            $days = $row['distinct_days'] ?? 0;
+          @endphp
+          <tr>
+            <td>
+              @if(!$isFull)
+                <span class="badge" style="background:#e5e7eb;color:#111827;">N/A</span>
+              @elseif($pass)
+                <span class="badge" style="background:#dcfce7;color:#14532d;">PASS</span>
+              @else
+                <span class="badge" style="background:#fee2e2;color:#7f1d1d;">FAIL</span>
+              @endif
+            </td>
+            <td><strong>{{ $ins->name }}</strong><br><span class="muted">{{ $ins->email }}</span></td>
+            <td>{{ $isFull ? 'Yes' : 'No' }}</td>
+            <td>
+              @if($locked)
+                <span class="badge" style="background:#dcfce7;color:#14532d;">Locked</span>
+              @else
+                <span class="badge" style="background:#fef9c3;color:#854d0e;">Unlocked</span>
+              @endif
+            </td>
+            <td>{{ number_format($hours, 2) }} hrs <span class="muted">({{ number_format($mins) }} min)</span></td>
+            <td>{{ $days }}</td>
+            <td>
+              <a class="btn" href="{{ route('aop.schedule.officeHours.show', $ins) }}">Edit</a>
+            </td>
+          </tr>
+        @empty
+          <tr><td colspan="7" class="muted">No instructors found.</td></tr>
+        @endforelse
+      </tbody>
+    </table>
+
+    @if(($officeHoursFailing ?? collect())->count() > 0)
+      <div class="muted" style="margin-top:10px;">
+        <strong>{{ ($officeHoursFailing ?? collect())->count() }}</strong> full-time instructor(s) are failing the office hours requirement.
+      </div>
+    @else
+      <div class="muted" style="margin-top:10px;">
+        All full-time instructors are meeting the office hours requirement.
+      </div>
+    @endif
+  </div>
+
   {{-- Existing checks remain below (instructor, blocks, rooms, conflicts) --}}
 
   <div class="grid">
@@ -142,7 +216,6 @@
 
     <div class="card col-6">
       <h2>Room Conflicts</h2>
-      <p class="muted" style="margin-top:4px;">Buffer minutes applied: <strong>{{ (int)($term->buffer_minutes ?? 0) }}</strong> min</p>
       @if(count($roomConflicts) === 0)
         <p class="muted">No room conflicts detected.</p>
       @else
@@ -151,7 +224,6 @@
             <li>
               <strong>{{ $c['room']?->name ?? 'Room' }}</strong>: {{ \App\Services\ScheduleConflictService::formatMeetingBlockLabel($c['a']) }}
               vs {{ \App\Services\ScheduleConflictService::formatMeetingBlockLabel($c['b']) }}
-              <span class="muted">(buffer {{ (int)($c['buffer_minutes'] ?? ($term->buffer_minutes ?? 0)) }}m)</span>
             </li>
           @endforeach
         </ul>
@@ -160,7 +232,6 @@
 
     <div class="card col-12">
       <h2>Instructor Conflicts</h2>
-      <p class="muted" style="margin-top:4px;">Buffer minutes applied: <strong>{{ (int)($term->buffer_minutes ?? 0) }}</strong> min</p>
       @if(count($instructorConflicts) === 0)
         <p class="muted">No instructor conflicts detected.</p>
       @else
@@ -169,7 +240,6 @@
             <li>
               <strong>{{ $c['instructor']?->name ?? 'Instructor' }}</strong> ({{ $c['type'] }}):
               {{ $c['a_label'] }} vs {{ $c['b_label'] }}
-              <span class="muted">(buffer {{ (int)($c['buffer_minutes'] ?? ($term->buffer_minutes ?? 0)) }}m)</span>
               @if($c['a_section_id'])
                 <a href="{{ route('aop.schedule.sections.edit', $c['a_section_id']) }}">Edit A</a>
               @endif
