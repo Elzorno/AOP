@@ -3,17 +3,33 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SyllabusRender extends Model
 {
     protected $fillable = [
-        'syllabus_id','format','path','sha256','rendered_at','status','error_message',
+        'term_id',
+        'section_id',
+        'format',
+        'status',
+        'storage_path',
+        'file_size',
+        'sha1',
+        'error_message',
+        'completed_at',
     ];
 
     protected $casts = [
-        'rendered_at' => 'datetime',
+        'file_size' => 'integer',
+        'completed_at' => 'datetime',
     ];
 
-    public function syllabus(): BelongsTo { return $this->belongsTo(Syllabus::class); }
+    public function section()
+    {
+        return $this->belongsTo(Section::class);
+    }
+
+    public function term()
+    {
+        return $this->belongsTo(Term::class);
+    }
 }
