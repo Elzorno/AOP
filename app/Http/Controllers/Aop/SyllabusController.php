@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Aop;
 
 use App\Http\Controllers\Controller;
 use App\Models\Section;
+use App\Models\Syllabus;
+use App\Models\SyllabusRender;
 use App\Models\Term;
 use App\Services\DocxPdfConvertService;
 use App\Services\DocxTemplateService;
 use App\Services\SyllabusDataService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -21,7 +25,7 @@ class SyllabusController extends Controller
         $sections = collect();
         if ($term) {
             $sections = Section::query()
-                ->with(['offering.catalogCourse','instructor'])
+                ->with(['offering.catalogCourse', 'instructor'])
                 ->whereHas('offering', fn($q) => $q->where('term_id', $term->id))
                 ->orderBy('id')
                 ->get();
@@ -29,17 +33,24 @@ class SyllabusController extends Controller
 
         $templateExists = Storage::disk('local')->exists('aop/syllabi/templates/default.docx');
 
+        // Latest successful docx/pdf per section (best-effort; supports both legacy and newer schema)
+        $latestBySection = [];
+        if ($term) {
+            $latestBySection = $this->latestSuccessfulRendersBySection($term->id);
+        }
+
         return view('aop.syllabi.index', [
             'term' => $term,
             'sections' => $sections,
             'templateExists' => $templateExists,
+            'latestBySection' => $latestBySection,
         ]);
     }
 
     public function uploadTemplate(Request $request)
     {
         $request->validate([
-            'template' => ['required','file','mimes:docx','max:10240'],
+            'template' => ['required', 'file', 'mimes:docx', 'max:10240'],
         ]);
 
         $file = $request->file('template');
@@ -54,10 +65,13 @@ class SyllabusController extends Controller
         $packet = $data->buildPacketForSection($section);
         $html = $this->renderHtmlPreview($packet, $data);
 
+        $history = $this->renderHistoryForSection($section);
+
         return view('aop.syllabi.show', [
             'section' => $section,
             'packet' => $packet,
             'html' => $html,
+            'history' => $history,
         ]);
     }
 
@@ -65,6 +79,10 @@ class SyllabusController extends Controller
     {
         $packet = $data->buildPacketForSection($section);
         $name = $this->fileBase($packet) . '.json';
+
+        // Log as SUCCESS (no file saved)
+        $syllabus = $this->getOrCreateSyllabus($section);
+        $this->recordRender($syllabus->id, $section, 'json', null, 'SUCCESS', null);
 
         return response()->streamDownload(function () use ($packet) {
             echo json_encode($packet, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
@@ -76,6 +94,9 @@ class SyllabusController extends Controller
         $packet = $data->buildPacketForSection($section);
         $html = $this->renderHtmlPreview($packet, $data);
         $name = $this->fileBase($packet) . '.html';
+
+        $syllabus = $this->getOrCreateSyllabus($section);
+        $this->recordRender($syllabus->id, $section, 'html', null, 'SUCCESS', null);
 
         return response()->streamDownload(function () use ($html) {
             echo $html;
@@ -98,8 +119,18 @@ class SyllabusController extends Controller
         $outDir = storage_path('app/aop/syllabi/generated');
         $outPath = $outDir . '/' . $base . '.docx';
 
-        $repl = $this->buildReplacements($packet, $data);
-        $docx->render($templatePath, $repl, $outPath);
+        $syllabus = $this->getOrCreateSyllabus($section);
+
+        try {
+            $repl = $this->buildReplacements($packet, $data);
+            $docx->render($templatePath, $repl, $outPath);
+
+            $this->recordRender($syllabus->id, $section, 'docx', $outPath, 'SUCCESS', null);
+            $this->pruneSuccessfulRenders($syllabus->id, $section, 'docx');
+        } catch (\Throwable $e) {
+            $this->recordRender($syllabus->id, $section, 'docx', null, 'ERROR', $e->getMessage());
+            throw $e;
+        }
 
         return response()->streamDownload(function () use ($outPath) {
             $fh = fopen($outPath, 'rb');
@@ -128,13 +159,22 @@ class SyllabusController extends Controller
         $docxPath = $outDir . '/' . $base . '.docx';
         $pdfPath = $outDir . '/' . $base . '.pdf';
 
-        $repl = $this->buildReplacements($packet, $data);
-        $docx->render($templatePath, $repl, $docxPath);
+        $syllabus = $this->getOrCreateSyllabus($section);
 
-        $actualPdf = $pdf->docxToPdf($docxPath, $outDir, $base);
-        if ($actualPdf !== $pdfPath) {
-            // normalize name
-            @copy($actualPdf, $pdfPath);
+        try {
+            $repl = $this->buildReplacements($packet, $data);
+            $docx->render($templatePath, $repl, $docxPath);
+
+            $actualPdf = $pdf->docxToPdf($docxPath, $outDir, $base);
+            if ($actualPdf !== $pdfPath) {
+                @copy($actualPdf, $pdfPath);
+            }
+
+            $this->recordRender($syllabus->id, $section, 'pdf', $pdfPath, 'SUCCESS', null);
+            $this->pruneSuccessfulRenders($syllabus->id, $section, 'pdf');
+        } catch (\Throwable $e) {
+            $this->recordRender($syllabus->id, $section, 'pdf', null, 'ERROR', $e->getMessage());
+            throw $e;
         }
 
         return response()->streamDownload(function () use ($pdfPath) {
@@ -146,14 +186,217 @@ class SyllabusController extends Controller
         ]);
     }
 
-    private function formatDeliveryMode(string $modality): string
+    private function getOrCreateSyllabus(Section $section): Syllabus
     {
-        return match ($modality) {
-            'IN_PERSON' => 'In Person',
-            'HYBRID' => 'Hybrid',
-            'ONLINE' => 'Online',
-            default => 'TBD',
-        };
+        /** @var Syllabus|null $syllabus */
+        $syllabus = Syllabus::query()->where('section_id', $section->id)->first();
+        if ($syllabus) {
+            return $syllabus;
+        }
+
+        return Syllabus::create([
+            'section_id' => $section->id,
+            'header_snapshot_json' => null,
+            'block_order_json' => null,
+        ]);
+    }
+
+    private function recordRender(
+        int $syllabusId,
+        Section $section,
+        string $format,
+        ?string $absolutePath,
+        string $status,
+        ?string $errorMessage
+    ): void {
+        $termId = $section->offering?->term_id;
+        $now = now();
+
+        $storagePath = null;
+        $size = null;
+        $sha1 = null;
+        $sha256 = null;
+
+        if ($absolutePath && is_file($absolutePath)) {
+            $rel = str_replace(storage_path('app') . '/', '', $absolutePath);
+            $storagePath = $rel;
+            $size = filesize($absolutePath) ?: null;
+            $sha1 = @sha1_file($absolutePath) ?: null;
+            $sha256 = @hash_file('sha256', $absolutePath) ?: null;
+        }
+
+        $row = [];
+
+        // Required legacy columns
+        if (Schema::hasColumn('syllabus_renders', 'syllabus_id')) {
+            $row['syllabus_id'] = $syllabusId;
+        }
+        if (Schema::hasColumn('syllabus_renders', 'format')) {
+            $row['format'] = $format;
+        }
+
+        // Legacy required path (NOT NULL)
+        if (Schema::hasColumn('syllabus_renders', 'path')) {
+            $row['path'] = $storagePath ?? '';
+        }
+
+        // Newer optional columns
+        if (Schema::hasColumn('syllabus_renders', 'term_id')) {
+            $row['term_id'] = $termId;
+        }
+        if (Schema::hasColumn('syllabus_renders', 'section_id')) {
+            $row['section_id'] = $section->id;
+        }
+        if (Schema::hasColumn('syllabus_renders', 'storage_path')) {
+            $row['storage_path'] = $storagePath;
+        }
+        if (Schema::hasColumn('syllabus_renders', 'file_size')) {
+            $row['file_size'] = $size;
+        }
+        if (Schema::hasColumn('syllabus_renders', 'sha1')) {
+            $row['sha1'] = $sha1;
+        }
+        if (Schema::hasColumn('syllabus_renders', 'completed_at')) {
+            $row['completed_at'] = $now;
+        }
+
+        // Legacy optional columns
+        if (Schema::hasColumn('syllabus_renders', 'sha256')) {
+            $row['sha256'] = $sha256;
+        }
+        if (Schema::hasColumn('syllabus_renders', 'rendered_at')) {
+            $row['rendered_at'] = $now;
+        }
+        if (Schema::hasColumn('syllabus_renders', 'status')) {
+            $row['status'] = $status;
+        }
+        if (Schema::hasColumn('syllabus_renders', 'error_message')) {
+            $row['error_message'] = $errorMessage;
+        }
+
+        // Timestamps
+        if (Schema::hasColumn('syllabus_renders', 'created_at')) {
+            $row['created_at'] = $now;
+        }
+        if (Schema::hasColumn('syllabus_renders', 'updated_at')) {
+            $row['updated_at'] = $now;
+        }
+
+        // Insert without Eloquent to avoid fillable/mass-assignment mismatches with legacy schema
+        DB::table('syllabus_renders')->insert($row);
+    }
+
+    private function pruneSuccessfulRenders(int $syllabusId, Section $section, string $format): void
+    {
+        // Keep the 2 most recent SUCCESS renders per (syllabus_id, format)
+        $q = SyllabusRender::query();
+
+        if (Schema::hasColumn('syllabus_renders', 'syllabus_id')) {
+            $q->where('syllabus_id', $syllabusId);
+        }
+        $q->where('format', $format);
+
+        if (Schema::hasColumn('syllabus_renders', 'status')) {
+            $q->where('status', 'SUCCESS');
+        }
+
+        // Prefer rendered_at/completed_at if present
+        if (Schema::hasColumn('syllabus_renders', 'rendered_at')) {
+            $q->orderByDesc('rendered_at');
+        } elseif (Schema::hasColumn('syllabus_renders', 'completed_at')) {
+            $q->orderByDesc('completed_at');
+        } else {
+            $q->orderByDesc('id');
+        }
+
+        $toKeep = $q->limit(2)->pluck('id')->all();
+
+        $delQ = SyllabusRender::query();
+        if (Schema::hasColumn('syllabus_renders', 'syllabus_id')) {
+            $delQ->where('syllabus_id', $syllabusId);
+        }
+        $delQ->where('format', $format);
+        if (Schema::hasColumn('syllabus_renders', 'status')) {
+            $delQ->where('status', 'SUCCESS');
+        }
+        if (!empty($toKeep)) {
+            $delQ->whereNotIn('id', $toKeep);
+        }
+
+        $old = $delQ->get();
+        foreach ($old as $r) {
+            // Best-effort delete file(s)
+            $p = null;
+            if (isset($r->storage_path) && $r->storage_path) {
+                $p = $r->storage_path;
+            } elseif (isset($r->path) && $r->path) {
+                $p = $r->path;
+            }
+            if ($p) {
+                Storage::disk('local')->delete($p);
+            }
+            $r->delete();
+        }
+    }
+
+    private function renderHistoryForSection(Section $section)
+    {
+        $syllabus = Syllabus::query()->where('section_id', $section->id)->first();
+        if (!$syllabus) {
+            return collect();
+        }
+
+        $q = SyllabusRender::query()->where('syllabus_id', $syllabus->id)->orderByDesc('id')->limit(50);
+        return $q->get();
+    }
+
+    private function latestSuccessfulRendersBySection(int $termId): array
+    {
+        // Return array keyed by "sectionId:format" => render row
+        // We’ll use whichever identifier columns exist.
+
+        // If section_id exists and is populated, use it.
+        if (Schema::hasColumn('syllabus_renders', 'section_id')) {
+            $q = SyllabusRender::query()
+                ->whereIn('format', ['docx', 'pdf'])
+                ->whereNotNull('section_id');
+
+            if (Schema::hasColumn('syllabus_renders', 'term_id')) {
+                $q->where('term_id', $termId);
+            }
+            if (Schema::hasColumn('syllabus_renders', 'status')) {
+                $q->where('status', 'SUCCESS');
+            }
+
+            $q->orderByDesc('id');
+
+            $rows = $q->get();
+            $out = [];
+            foreach ($rows as $r) {
+                $key = $r->section_id . ':' . $r->format;
+                if (!isset($out[$key])) {
+                    $out[$key] = $r;
+                }
+            }
+            return $out;
+        }
+
+        // Fallback: join through syllabi.section_id
+        $rows = SyllabusRender::query()
+            ->select('syllabus_renders.*', 'syllabi.section_id as section_id')
+            ->join('syllabi', 'syllabi.id', '=', 'syllabus_renders.syllabus_id')
+            ->whereIn('syllabus_renders.format', ['docx', 'pdf'])
+            ->orderByDesc('syllabus_renders.id')
+            ->get();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $key = $r->section_id . ':' . $r->format;
+            if (!isset($out[$key])) {
+                $out[$key] = $r;
+            }
+        }
+        return $out;
     }
 
     private function renderHtmlPreview(array $packet, SyllabusDataService $data): string
@@ -224,14 +467,21 @@ class SyllabusController extends Controller
         ];
     }
 
+    private function formatDeliveryMode(string $modality): string
+    {
+        return match ($modality) {
+            'IN_PERSON' => 'In Person',
+            'HYBRID' => 'Hybrid',
+            'ONLINE' => 'Online',
+            default => $modality !== '' ? $modality : 'TBD',
+        };
+    }
+
     private function fileBase(array $packet): string
     {
         $term = $packet['term']['code'] ?? 'TERM';
         $code = $packet['course']['code'] ?? 'COURSE';
         $sec = $packet['section']['code'] ?? '00';
-        $term = preg_replace('/[^A-Za-z0-9]+/', '', $term) ?? $term;
-        $code = preg_replace('/[^A-Za-z0-9]+/', '', $code) ?? $code;
-        $sec = preg_replace('/[^A-Za-z0-9]+/', '', $sec) ?? $sec;
-        return 'syllabus_' . strtolower($term) . '_' . strtolower($code) . '_' . strtolower($sec);
+        return 'syllabus_' . strtolower($term) . '_' . strtolower(str_replace([' ', '/'], ['-', '-'], $code)) . '_' . $sec;
     }
 }

@@ -93,6 +93,17 @@
                   <a class="btn" href="{{ route('aop.syllabi.downloadDocx', $s) }}">DOCX</a>
                   <a class="btn" href="{{ route('aop.syllabi.downloadPdf', $s) }}">PDF</a>
                 </div>
+
+                @php
+                  $kDocx = $s->id . ':docx';
+                  $kPdf = $s->id . ':pdf';
+                  $lastDocx = ($latestBySection ?? [])[$kDocx] ?? null;
+                  $lastPdf = ($latestBySection ?? [])[$kPdf] ?? null;
+                @endphp
+                <div class="muted" style="margin-top:8px; font-size:12px;">
+                  <div>Last DOCX: {{ ($lastDocx?->completed_at ?? $lastDocx?->created_at)?->format('Y-m-d H:i') ?? '—' }}</div>
+                  <div>Last PDF: {{ ($lastPdf?->completed_at ?? $lastPdf?->created_at)?->format('Y-m-d H:i') ?? '—' }}</div>
+                </div>
               </td>
             </tr>
           @endforeach
