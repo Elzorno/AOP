@@ -26,6 +26,11 @@
     </form>
   </div>
 
+  <div class="card" style="margin-bottom:14px;">
+    <h2>Clone Schedule Starting Point</h2>
+    <p>Use an existing term as the source for a new term. This copies offerings, sections, and meeting blocks. Instructor assignments are optional and are off by default. Locks, publications, office hours, syllabi, and render history are not copied.</p>
+  </div>
+
   <div class="card">
     <h2>All Terms</h2>
     <table>
@@ -54,7 +59,12 @@
             <td>{{ $t->weeks_in_term }}</td>
             <td>{{ $t->slot_minutes }}m</td>
             <td>{{ $t->buffer_minutes }}m</td>
-            <td><a class="btn link" href="{{ route('aop.terms.edit', $t) }}">Edit</a></td>
+            <td>
+              <div class="actions">
+                <a class="btn link" href="{{ route('aop.terms.edit', $t) }}">Edit</a>
+                <a class="btn link" href="{{ route('aop.terms.clone.create', $t) }}">Clone</a>
+              </div>
+            </td>
           </tr>
         @endforeach
       </tbody>

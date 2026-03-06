@@ -31,6 +31,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/terms', [TermController::class, 'index'])->name('terms.index');
         Route::get('/terms/create', [TermController::class, 'create'])->name('terms.create');
         Route::post('/terms', [TermController::class, 'store'])->name('terms.store');
+        Route::get('/terms/{sourceTerm}/clone', [TermController::class, 'cloneCreate'])->name('terms.clone.create');
+        Route::post('/terms/{sourceTerm}/clone', [TermController::class, 'cloneStore'])->name('terms.clone.store');
         Route::get('/terms/{term}/edit', [TermController::class, 'edit'])->name('terms.edit');
         Route::put('/terms/{term}', [TermController::class, 'update'])->name('terms.update');
         Route::post('/terms/active', [TermController::class, 'setActive'])->name('terms.setActive');
