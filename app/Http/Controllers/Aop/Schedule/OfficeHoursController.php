@@ -9,19 +9,28 @@ use App\Models\OfficeHourBlock;
 use App\Models\Term;
 use App\Services\ScheduleConflictService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class OfficeHoursController extends Controller
 {
+    private const ALLOWED_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
     private function activeTermOrFail(): Term
     {
         $term = Term::where('is_active', true)->first();
         abort_if(!$term, 400, 'No active term is set. Go to Terms and set an active term.');
+
         return $term;
     }
 
     private function lockFor(Term $term, Instructor $instructor): InstructorTermLock
     {
         return InstructorTermLock::for($term, $instructor);
+    }
+
+    private function ensureActiveInstructor(Instructor $instructor): void
+    {
+        abort_if(!$instructor->is_active, 404, 'Instructor not found.');
     }
 
     public function index()
@@ -37,8 +46,7 @@ class OfficeHoursController extends Controller
     public function show(Instructor $instructor)
     {
         $term = $this->activeTermOrFail();
-
-        abort_if(!$instructor->is_active, 404, 'Instructor not found.');
+        $this->ensureActiveInstructor($instructor);
 
         $lock = $this->lockFor($term, $instructor);
 
@@ -52,7 +60,7 @@ class OfficeHoursController extends Controller
             'instructor' => $instructor,
             'lock' => $lock,
             'blocks' => $blocks,
-            'days' => ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+            'days' => self::ALLOWED_DAYS,
         ]);
     }
 
@@ -65,32 +73,39 @@ class OfficeHoursController extends Controller
     public function store(Request $request, Instructor $instructor, ScheduleConflictService $conflicts)
     {
         $term = $this->activeTermOrFail();
+        $this->ensureActiveInstructor($instructor);
         $this->ensureUnlocked($term, $instructor);
 
         $data = $request->validate([
-            'days' => ['required','array','min:1'],
-            'days.*' => ['string'],
-            'starts_at' => ['required','date_format:H:i'],
-            'ends_at' => ['required','date_format:H:i'],
-            'notes' => ['nullable','string'],
+            'days' => ['required', 'array', 'min:1'],
+            'days.*' => ['string', Rule::in(self::ALLOWED_DAYS), 'distinct'],
+            'starts_at' => ['required', 'date_format:H:i'],
+            'ends_at' => ['required', 'date_format:H:i'],
+            'notes' => ['nullable', 'string'],
         ]);
 
         if ($data['ends_at'] <= $data['starts_at']) {
             return back()->withErrors(['ends_at' => 'End time must be after start time.'])->withInput();
         }
 
-        $days = array_values($data['days']);
+        $days = array_values(array_unique($data['days']));
 
-        $conf = $conflicts->instructorConflictsForOfficeHourBlock($term, $instructor->id, $days, $data['starts_at'], $data['ends_at']);
+        $conf = $conflicts->instructorConflictsForOfficeHourBlock(
+            $term,
+            $instructor->id,
+            $days,
+            $data['starts_at'],
+            $data['ends_at']
+        );
 
         $messages = [];
 
         if ($conf['office_hour_blocks']->count() > 0) {
-            $messages[] = 'Conflicts with existing office hours: ' . $conf['office_hour_blocks']->map(fn($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))->implode('; ');
+            $messages[] = 'Conflicts with existing office hours: ' . $conf['office_hour_blocks']->map(fn ($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))->implode('; ');
         }
 
         if ($conf['meeting_blocks']->count() > 0) {
-            $messages[] = 'Conflicts with class meeting blocks: ' . $conf['meeting_blocks']->map(fn($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
+            $messages[] = 'Conflicts with class meeting blocks: ' . $conf['meeting_blocks']->map(fn ($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
         }
 
         if (!empty($messages)) {
@@ -112,34 +127,42 @@ class OfficeHoursController extends Controller
     public function update(Request $request, Instructor $instructor, OfficeHourBlock $officeHourBlock, ScheduleConflictService $conflicts)
     {
         $term = $this->activeTermOrFail();
+        $this->ensureActiveInstructor($instructor);
         $this->ensureUnlocked($term, $instructor);
 
         abort_if($officeHourBlock->term_id !== $term->id || $officeHourBlock->instructor_id !== $instructor->id, 400, 'Office hour block not in active term/instructor.');
 
         $data = $request->validate([
-            'days' => ['required','array','min:1'],
-            'days.*' => ['string'],
-            'starts_at' => ['required','date_format:H:i'],
-            'ends_at' => ['required','date_format:H:i'],
-            'notes' => ['nullable','string'],
+            'days' => ['required', 'array', 'min:1'],
+            'days.*' => ['string', Rule::in(self::ALLOWED_DAYS), 'distinct'],
+            'starts_at' => ['required', 'date_format:H:i'],
+            'ends_at' => ['required', 'date_format:H:i'],
+            'notes' => ['nullable', 'string'],
         ]);
 
         if ($data['ends_at'] <= $data['starts_at']) {
             return back()->withErrors(['ends_at' => 'End time must be after start time.'])->withInput();
         }
 
-        $days = array_values($data['days']);
+        $days = array_values(array_unique($data['days']));
 
-        $conf = $conflicts->instructorConflictsForOfficeHourBlock($term, $instructor->id, $days, $data['starts_at'], $data['ends_at'], $officeHourBlock->id);
+        $conf = $conflicts->instructorConflictsForOfficeHourBlock(
+            $term,
+            $instructor->id,
+            $days,
+            $data['starts_at'],
+            $data['ends_at'],
+            $officeHourBlock->id
+        );
 
         $messages = [];
 
         if ($conf['office_hour_blocks']->count() > 0) {
-            $messages[] = 'Conflicts with existing office hours: ' . $conf['office_hour_blocks']->map(fn($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))->implode('; ');
+            $messages[] = 'Conflicts with existing office hours: ' . $conf['office_hour_blocks']->map(fn ($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))->implode('; ');
         }
 
         if ($conf['meeting_blocks']->count() > 0) {
-            $messages[] = 'Conflicts with class meeting blocks: ' . $conf['meeting_blocks']->map(fn($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
+            $messages[] = 'Conflicts with class meeting blocks: ' . $conf['meeting_blocks']->map(fn ($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
         }
 
         if (!empty($messages)) {
@@ -159,6 +182,7 @@ class OfficeHoursController extends Controller
     public function destroy(Request $request, Instructor $instructor, OfficeHourBlock $officeHourBlock)
     {
         $term = $this->activeTermOrFail();
+        $this->ensureActiveInstructor($instructor);
         $this->ensureUnlocked($term, $instructor);
 
         abort_if($officeHourBlock->term_id !== $term->id || $officeHourBlock->instructor_id !== $instructor->id, 400, 'Office hour block not in active term/instructor.');
@@ -171,6 +195,7 @@ class OfficeHoursController extends Controller
     public function lock(Request $request, Instructor $instructor)
     {
         $term = $this->activeTermOrFail();
+        $this->ensureActiveInstructor($instructor);
 
         $lock = $this->lockFor($term, $instructor);
         $lock->update([
@@ -185,6 +210,7 @@ class OfficeHoursController extends Controller
     public function unlock(Request $request, Instructor $instructor)
     {
         $term = $this->activeTermOrFail();
+        $this->ensureActiveInstructor($instructor);
 
         $lock = $this->lockFor($term, $instructor);
         $lock->update([

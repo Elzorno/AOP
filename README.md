@@ -1,59 +1,87 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Academic Ops Platform (AOP)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Academic Ops Platform is a Laravel-based internal scheduling and syllabus management application for academic operations.
 
-## About Laravel
+## Current release
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Release: `1.0.0`
+- Stack: Laravel 12, PHP 8.3, SQLite
+- Primary modules:
+  - Terms
+  - Instructors
+  - Rooms
+  - Catalog
+  - Schedule planning and readiness checks
+  - Public schedule publication snapshots
+  - Syllabi rendering and render history
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Core scheduling features
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Active-term scheduling workflow
+- Offerings, sections, and meeting blocks
+- Room and instructor conflict detection with configurable term buffer minutes
+- Instructor office-hours tracking and compliance checks
+- Readiness review for conflicts, instructional-minutes compliance, and office-hours compliance
+- Published public schedule snapshots with downloadable exports
+- Clone-last-year schedule workflow to seed a new term from an existing term
 
-## Learning Laravel
+## Security posture
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+Recent hardening includes:
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- self-registration disabled by default
+- schedule lock enforced server-side
+- publish requires a locked schedule
+- public published links use token-based access and throttling
+- stricter validation for schedule data entry
+- response security headers for deployed environments
+- SQLite foreign-key enforcement at runtime
 
-## Laravel Sponsors
+## Deployment notes
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+AOP is intended to run as an internal administrative application.
 
-### Premium Partners
+Minimum host expectations:
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+- PHP 8.3+
+- Composer
+- SQLite 3
+- Web server pointing to `public/`
+- writable `storage/` and `bootstrap/cache/`
 
-## Contributing
+For syllabus rendering, install:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- `pandoc` for DOCX generation
+- `wkhtmltopdf` for PDF generation
+- `libreoffice` as fallback conversion support
 
-## Code of Conduct
+See `docs/AOP_DEPLOY_CHECKLIST.md` for a clean production deployment workflow.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## First-time setup
 
-## Security Vulnerabilities
+```bash
+composer install --no-dev --optimize-autoloader
+cp .env.example .env
+php artisan key:generate
+mkdir -p database
+touch database/database.sqlite
+php artisan migrate --force
+php artisan db:seed --force
+php artisan optimize
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Then configure your first admin account using your preferred local admin/bootstrap process.
 
-## License
+## Post-deploy maintenance
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+php artisan optimize:clear
+php artisan migrate --force
+php artisan optimize
+```
+
+## Project continuity
+
+- `docs/AOP_PHASE_LOG.md` tracks phase-by-phase changes.
+- `docs/AOP_DECISIONS.md` captures product decisions.
+- `docs/AOP_RULES.md` captures scheduling rules and assumptions.

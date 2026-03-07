@@ -12,9 +12,13 @@ class ScheduleConflictService
     /**
      * Returns true if time ranges overlap (exclusive end).
      *
-     * If $bufferMinutes > 0, each range is expanded by that buffer on both sides
-     * before testing overlap. This enforces "no back-to-back" scheduling and
-     * matches term-level buffer_minutes behavior.
+     * If $bufferMinutes > 0, each range is extended forward by that buffer
+     * before testing overlap. This enforces a minimum gap between blocks while
+     * still allowing an exact gap equal to the configured buffer.
+     *
+     * Example with a 10-minute buffer:
+     * - 11:50 → 12:00 gap: allowed
+     * - 11:51 → 12:00 gap: conflict
      */
     public static function timesOverlap(string $startA, string $endA, string $startB, string $endB, int $bufferMinutes = 0): bool
     {
@@ -23,16 +27,10 @@ class ScheduleConflictService
         $b0 = self::toMinutes($startB);
         $b1 = self::toMinutes($endB);
 
-        $buf = max(0, (int)$bufferMinutes);
-        if ($buf > 0) {
-            $a0 = max(0, $a0 - $buf);
-            $a1 = min(24 * 60, $a1 + $buf);
-            $b0 = max(0, $b0 - $buf);
-            $b1 = min(24 * 60, $b1 + $buf);
-        }
+        $buf = max(0, (int) $bufferMinutes);
 
-        // [a0,a1) overlaps [b0,b1)
-        return ($a0 < $b1) && ($b0 < $a1);
+        // [a0, a1+buf) overlaps [b0, b1+buf)
+        return ($a0 < ($b1 + $buf)) && ($b0 < ($a1 + $buf));
     }
 
     public static function dayOverlap(array $daysA, array $daysB): bool

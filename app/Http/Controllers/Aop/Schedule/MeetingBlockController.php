@@ -2,15 +2,19 @@
 
 namespace App\Http\Controllers\Aop\Schedule;
 
+use App\Enums\MeetingBlockType;
 use App\Http\Controllers\Controller;
 use App\Models\MeetingBlock;
 use App\Models\Section;
 use App\Models\Term;
 use App\Services\ScheduleConflictService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class MeetingBlockController extends Controller
 {
+    private const ALLOWED_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
     private function activeTermOrFail(): Term
     {
         $term = Term::where('is_active', true)->first();
@@ -26,14 +30,20 @@ class MeetingBlockController extends Controller
         return $term;
     }
 
+    private function ensureScheduleUnlocked(Term $term): void
+    {
+        abort_if($term->schedule_locked, 403, 'Schedule is locked for the active term. Unlock it before making schedule changes.');
+    }
+
     public function store(Request $request, Section $section, ScheduleConflictService $conflicts)
     {
         $term = $this->ensureSectionInActiveTerm($section);
+        $this->ensureScheduleUnlocked($term);
 
         $data = $request->validate([
-            'type' => ['required','string'],
+            'type' => ['required', Rule::enum(MeetingBlockType::class)],
             'days' => ['required','array','min:1'],
-            'days.*' => ['string'],
+            'days.*' => ['string', Rule::in(self::ALLOWED_DAYS), 'distinct'],
             'starts_at' => ['required','date_format:H:i'],
             'ends_at' => ['required','date_format:H:i'],
             'room_id' => ['nullable','integer','exists:rooms,id'],
@@ -52,7 +62,7 @@ class MeetingBlockController extends Controller
             }
         }
 
-        $days = array_values($data['days']);
+        $days = array_values(array_unique($data['days']));
 
         // Room conflicts: class vs class only
         $roomConflicts = $conflicts->roomConflictsForMeetingBlock($term, (int)($data['room_id'] ?? 0), $days, $data['starts_at'], $data['ends_at']);
@@ -96,12 +106,13 @@ class MeetingBlockController extends Controller
     public function update(Request $request, Section $section, MeetingBlock $meetingBlock, ScheduleConflictService $conflicts)
     {
         $term = $this->ensureSectionInActiveTerm($section);
+        $this->ensureScheduleUnlocked($term);
         abort_if($meetingBlock->section_id !== $section->id, 400, 'Meeting block not in section.');
 
         $data = $request->validate([
-            'type' => ['required','string'],
+            'type' => ['required', Rule::enum(MeetingBlockType::class)],
             'days' => ['required','array','min:1'],
-            'days.*' => ['string'],
+            'days.*' => ['string', Rule::in(self::ALLOWED_DAYS), 'distinct'],
             'starts_at' => ['required','date_format:H:i'],
             'ends_at' => ['required','date_format:H:i'],
             'room_id' => ['nullable','integer','exists:rooms,id'],
@@ -120,7 +131,7 @@ class MeetingBlockController extends Controller
             }
         }
 
-        $days = array_values($data['days']);
+        $days = array_values(array_unique($data['days']));
 
         // Room conflicts: class vs class only
         $roomConflicts = $conflicts->roomConflictsForMeetingBlock($term, (int)($data['room_id'] ?? 0), $days, $data['starts_at'], $data['ends_at'], $meetingBlock->id);

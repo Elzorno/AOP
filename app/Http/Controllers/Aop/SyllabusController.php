@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Aop;
 use App\Http\Controllers\Controller;
 use App\Models\Section;
 use App\Models\Syllabus;
+use App\Models\SyllabusBlock;
 use App\Models\SyllabusRender;
 use App\Models\Term;
 use App\Services\DocxPdfConvertService;
@@ -18,6 +19,51 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SyllabusController extends Controller
 {
+    private function activeTermOrFail(): Term
+    {
+        $term = Term::where('is_active', true)->first();
+        abort_if(!$term, 400, 'No active term is set. Go to Terms and set an active term.');
+
+        return $term;
+    }
+
+    private function ensureSectionInActiveTerm(Section $section): Term
+    {
+        $term = $this->activeTermOrFail();
+        $section->loadMissing('offering');
+        abort_if(!$section->offering || $section->offering->term_id !== $term->id, 404, 'Section not found in active term.');
+
+        return $term;
+    }
+
+    private function syllabusBlocks()
+    {
+        return SyllabusBlock::query()
+            ->orderByRaw("CASE WHEN category IS NULL OR TRIM(category) = '' THEN 1 ELSE 0 END")
+            ->orderBy('category')
+            ->orderBy('id')
+            ->get();
+    }
+
+    private function validateBlock(Request $request): array
+    {
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'category' => ['nullable', 'string', 'max:255'],
+            'version' => ['nullable', 'string', 'max:255'],
+            'content_html' => ['nullable', 'string'],
+            'is_locked' => ['nullable', 'boolean'],
+        ]);
+
+        $validated['title'] = trim((string) ($validated['title'] ?? ''));
+        $validated['category'] = trim((string) ($validated['category'] ?? '')) ?: null;
+        $validated['version'] = trim((string) ($validated['version'] ?? '')) ?: null;
+        $validated['content_html'] = rtrim((string) ($validated['content_html'] ?? ''));
+        $validated['is_locked'] = $request->boolean('is_locked');
+
+        return $validated;
+    }
+
     public function index()
     {
         $term = Term::where('is_active', true)->first();
@@ -44,6 +90,7 @@ class SyllabusController extends Controller
             'sections' => $sections,
             'templateExists' => $templateExists,
             'latestBySection' => $latestBySection,
+            'blocks' => $this->syllabusBlocks(),
         ]);
     }
 
@@ -60,8 +107,52 @@ class SyllabusController extends Controller
         return redirect()->route('aop.syllabi.index')->with('status', 'Template uploaded.');
     }
 
+    public function createBlock()
+    {
+        return view('aop.syllabi.blocks.create');
+    }
+
+    public function storeBlock(Request $request)
+    {
+        $block = SyllabusBlock::create($this->validateBlock($request));
+
+        return redirect()->route('aop.syllabi.index')
+            ->with('status', 'Syllabus block “' . $block->title . '” created.');
+    }
+
+    public function editBlock(SyllabusBlock $block)
+    {
+        return view('aop.syllabi.blocks.edit', [
+            'block' => $block,
+        ]);
+    }
+
+    public function updateBlock(Request $request, SyllabusBlock $block)
+    {
+        $block->update($this->validateBlock($request));
+
+        return redirect()->route('aop.syllabi.index')
+            ->with('status', 'Syllabus block “' . $block->title . '” updated.');
+    }
+
+    public function destroyBlock(SyllabusBlock $block)
+    {
+        if ($block->is_locked) {
+            return redirect()->route('aop.syllabi.index')
+                ->with('status', 'Protected syllabus blocks must be unprotected before deletion.');
+        }
+
+        $title = $block->title;
+        $block->delete();
+
+        return redirect()->route('aop.syllabi.index')
+            ->with('status', 'Syllabus block “' . $title . '” deleted.');
+    }
+
     public function show(Section $section, SyllabusDataService $data)
     {
+        $this->ensureSectionInActiveTerm($section);
+
         $packet = $data->buildPacketForSection($section);
         $html = $this->renderHtmlPreview($packet, $data);
 
@@ -72,11 +163,14 @@ class SyllabusController extends Controller
             'packet' => $packet,
             'html' => $html,
             'history' => $history,
+            'blocks' => collect($packet['blocks'] ?? []),
         ]);
     }
 
     public function downloadJson(Section $section, SyllabusDataService $data): StreamedResponse
     {
+        $this->ensureSectionInActiveTerm($section);
+
         $packet = $data->buildPacketForSection($section);
         $name = $this->fileBase($packet) . '.json';
 
@@ -91,6 +185,8 @@ class SyllabusController extends Controller
 
     public function downloadHtml(Section $section, SyllabusDataService $data): StreamedResponse
     {
+        $this->ensureSectionInActiveTerm($section);
+
         $packet = $data->buildPacketForSection($section);
         $html = $this->renderHtmlPreview($packet, $data);
         $name = $this->fileBase($packet) . '.html';
@@ -108,6 +204,8 @@ class SyllabusController extends Controller
         SyllabusDataService $data,
         DocxTemplateService $docx
     ): StreamedResponse {
+        $this->ensureSectionInActiveTerm($section);
+
         $packet = $data->buildPacketForSection($section);
         $base = $this->fileBase($packet);
 
@@ -147,6 +245,8 @@ class SyllabusController extends Controller
         DocxTemplateService $docx,
         DocxPdfConvertService $pdf
     ): StreamedResponse {
+        $this->ensureSectionInActiveTerm($section);
+
         $packet = $data->buildPacketForSection($section);
         $base = $this->fileBase($packet);
 
@@ -425,8 +525,69 @@ class SyllabusController extends Controller
             . '<h2>Course Description</h2><p>' . nl2br($escape($repl['COURSE_DESCRIPTION'])) . '</p>'
             . '<h2>Course Objectives</h2><p>' . nl2br($escape($repl['COURSE_OBJECTIVES'])) . '</p>'
             . '<h2>Required Materials</h2><p>' . nl2br($escape($repl['REQUIRED_MATERIALS'])) . '</p>'
+            . $this->renderCustomBlocksHtml($packet['blocks'] ?? [])
             . '<p class="muted">Template-driven DOCX/PDF output is available via the download buttons.</p>'
             . '</body></html>';
+    }
+
+    private function renderCustomBlocksHtml(array $blocks): string
+    {
+        if (count($blocks) === 0) {
+            return '';
+        }
+
+        $escape = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
+        $html = '<h2>Shared Syllabus Blocks</h2>';
+
+        foreach ($blocks as $block) {
+            $title = trim((string) ($block['title'] ?? ''));
+            $category = trim((string) ($block['category'] ?? ''));
+            $content = trim((string) ($block['content'] ?? ''));
+
+            if ($title !== '') {
+                $html .= '<h3>' . $escape($title) . '</h3>';
+            }
+
+            if ($category !== '') {
+                $html .= '<div class="muted">' . $escape($category) . '</div>';
+            }
+
+            $html .= '<p>' . nl2br($escape($content !== '' ? $content : 'TBD')) . '</p>';
+        }
+
+        return $html;
+    }
+
+    private function renderCustomBlocksText(array $blocks): string
+    {
+        if (count($blocks) === 0) {
+            return '';
+        }
+
+        $chunks = [];
+        foreach ($blocks as $block) {
+            $title = trim((string) ($block['title'] ?? ''));
+            $category = trim((string) ($block['category'] ?? ''));
+            $content = trim((string) ($block['content'] ?? ''));
+
+            $parts = [];
+            if ($title !== '') {
+                $parts[] = $title;
+            }
+            if ($category !== '') {
+                $parts[] = '[' . $category . ']';
+            }
+            if ($content !== '') {
+                $parts[] = $content;
+            }
+
+            $line = implode("\n", $parts);
+            if ($line !== '') {
+                $chunks[] = $line;
+            }
+        }
+
+        return implode("\n\n", $chunks);
     }
 
     private function buildReplacements(array $packet, SyllabusDataService $data): array
@@ -464,6 +625,7 @@ class SyllabusController extends Controller
             'COURSE_DESCRIPTION' => ($packet['course']['description'] ?? '') !== '' ? $packet['course']['description'] : 'TBD',
             'COURSE_OBJECTIVES' => ($packet['course']['objectives'] ?? '') !== '' ? $packet['course']['objectives'] : 'TBD',
             'REQUIRED_MATERIALS' => ($packet['course']['required_materials'] ?? '') !== '' ? $packet['course']['required_materials'] : 'TBD',
+            'CUSTOM_BLOCKS' => $this->renderCustomBlocksText($packet['blocks'] ?? []),
         ];
     }
 

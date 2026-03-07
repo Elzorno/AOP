@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\Term;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,8 +17,13 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
+        $activeTerm = Term::query()->where('is_active', true)->first();
+
         return view('profile.edit', [
             'user' => $request->user(),
+            'activeTermLabel' => $activeTerm
+                ? 'Active Term: ' . $activeTerm->code . ' — ' . $activeTerm->name
+                : 'No active term selected',
         ]);
     }
 

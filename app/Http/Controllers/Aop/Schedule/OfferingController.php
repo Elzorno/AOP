@@ -42,9 +42,15 @@ class OfferingController extends Controller
         ]);
     }
 
+    private function ensureScheduleUnlocked(Term $term): void
+    {
+        abort_if($term->schedule_locked, 403, 'Schedule is locked for the active term. Unlock it before making schedule changes.');
+    }
+
     public function store(Request $request)
     {
         $term = $this->activeTermOrFail();
+        $this->ensureScheduleUnlocked($term);
 
         $data = $request->validate([
             'catalog_course_id' => ['required','integer','exists:catalog_courses,id'],

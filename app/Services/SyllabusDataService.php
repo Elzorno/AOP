@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\OfficeHourBlock;
 use App\Models\Section;
+use App\Models\SyllabusBlock;
 use App\Models\Term;
 
 class SyllabusDataService
@@ -87,6 +88,7 @@ class SyllabusDataService
             ],
             'office_hours' => $officeHours,
             'meeting_blocks' => $meetingBlocks,
+            'blocks' => $this->buildGlobalBlocks(),
         ];
     }
 
@@ -136,6 +138,25 @@ class SyllabusDataService
             'location' => $room !== '' ? $room : 'TBD',
             'delivery_mode' => 'TBD',
         ];
+    }
+
+    private function buildGlobalBlocks(): array
+    {
+        return SyllabusBlock::query()
+            ->orderByRaw("CASE WHEN category IS NULL OR TRIM(category) = '' THEN 1 ELSE 0 END")
+            ->orderBy('category')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (SyllabusBlock $block) => [
+                'id' => $block->id,
+                'title' => (string) $block->title,
+                'category' => $block->category ? (string) $block->category : '',
+                'content' => trim((string) ($block->content_html ?? '')),
+                'version' => $block->version ? (string) $block->version : '',
+                'is_locked' => (bool) $block->is_locked,
+            ])
+            ->values()
+            ->all();
     }
 
     private function daysToString(array $days): string

@@ -26,7 +26,7 @@
     <h2>Template</h2>
     <p class="muted">DOCX and PDF are generated from a DOCX template. Upload a new template to change formatting.</p>
 
-    <div style="margin-top:10px; display:flex; gap:12px; align-items:center;">
+    <div style="margin-top:10px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
       <div>
         @if($templateExists)
           <span class="badge">Template: Installed</span>
@@ -35,7 +35,7 @@
         @endif
       </div>
 
-      <form method="POST" action="{{ route('aop.syllabi.template.upload') }}" enctype="multipart/form-data" style="display:flex; gap:10px; align-items:center; margin:0;">
+      <form method="POST" action="{{ route('aop.syllabi.template.upload') }}" enctype="multipart/form-data" style="display:flex; gap:10px; align-items:center; margin:0; flex-wrap:wrap;">
         @csrf
         <input type="file" name="template" accept=".docx" required>
         <button class="btn" type="submit">Upload Template</button>
@@ -49,6 +49,74 @@
     <div class="muted" style="margin-top:10px; font-size:12px;">
       Tip: Install LibreOffice in the LXC for PDF conversion: <code>apt-get install -y libreoffice</code>
     </div>
+  </div>
+
+  <div style="height:14px;"></div>
+
+  <div class="card">
+    <div class="row" style="margin-bottom:10px; align-items:flex-start;">
+      <div>
+        <h2>Syllabus Blocks</h2>
+        <p class="muted" style="margin-top:6px; max-width:850px;">
+          Shared syllabus blocks are now editable here. They flow into the JSON packet and HTML preview for every syllabus.
+          For this pass the editor is plain-text first; template-specific formatting can be refined next.
+        </p>
+      </div>
+      <div class="actions">
+        <a class="btn" href="{{ route('aop.syllabi.blocks.create') }}">New Block</a>
+      </div>
+    </div>
+
+    @if(($blocks ?? collect())->count() === 0)
+      <p class="muted">No syllabus blocks have been created yet.</p>
+    @else
+      <table style="margin-top:8px;">
+        <thead>
+          <tr>
+            <th style="width:220px;">Block</th>
+            <th style="width:150px;">Category</th>
+            <th>Content Preview</th>
+            <th style="width:120px;">Status</th>
+            <th style="width:170px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($blocks as $block)
+            @php($preview = \Illuminate\Support\Str::limit(trim((string) ($block->content_html ?? '')), 180))
+            <tr>
+              <td>
+                <strong>{{ $block->title }}</strong>
+                @if($block->version)
+                  <div class="muted">Version: {{ $block->version }}</div>
+                @endif
+                <div class="muted">Updated {{ $block->updated_at?->format('Y-m-d H:i') }}</div>
+              </td>
+              <td>{{ $block->category ?: '—' }}</td>
+              <td style="white-space:pre-wrap;">{{ $preview !== '' ? $preview : '—' }}</td>
+              <td>
+                @if($block->is_locked)
+                  <span class="badge" style="background:#fff3cd; color:#7a5b00;">Protected</span>
+                @else
+                  <span class="badge">Editable</span>
+                @endif
+              </td>
+              <td>
+                <div class="actions" style="gap:8px; flex-wrap:wrap;">
+                  <a class="btn secondary" href="{{ route('aop.syllabi.blocks.edit', $block) }}">Edit</a>
+                  @if(!$block->is_locked)
+                    <form method="POST" action="{{ route('aop.syllabi.blocks.destroy', $block) }}" style="display:inline; margin:0;" onsubmit="return confirm('Delete this syllabus block?');">
+                      @csrf
+                      @method('DELETE')
+                      <button class="btn secondary" type="submit">Delete</button>
+                    </form>
+                  @endif
+                </div>
+              </td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+    @endif
   </div>
 
   <div style="height:14px;"></div>

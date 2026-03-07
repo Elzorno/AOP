@@ -58,6 +58,7 @@ class ScheduleGridController extends Controller
             ->get();
 
         $events = [];
+        $classStyle = $this->buildClassEventStyle($instructor->color_hex_css);
 
         foreach ($meetingBlocks as $mb) {
             $course = $mb->section->offering->catalogCourse;
@@ -72,6 +73,7 @@ class ScheduleGridController extends Controller
                 'ends_at' => $this->normalizeTime($mb->ends_at),
                 'label' => $label,
                 'notes' => $mb->notes,
+                'style' => $classStyle,
             ];
         }
 
@@ -88,6 +90,7 @@ class ScheduleGridController extends Controller
                 'ends_at' => $this->normalizeTime($ob->ends_at),
                 'label' => $label,
                 'notes' => null,
+                'style' => [],
             ];
         }
 
@@ -122,7 +125,8 @@ class ScheduleGridController extends Controller
 
         foreach ($meetingBlocks as $mb) {
             $course = $mb->section->offering->catalogCourse;
-            $instructorName = $mb->section->instructor?->name ?? 'TBD';
+            $instructor = $mb->section->instructor;
+            $instructorName = $instructor?->name ?? 'TBD';
             $typeLabel = $this->formatMeetingBlockType($mb->type);
             $label = sprintf('%s %s (%s) — %s', $course->code, $mb->section->section_code, $typeLabel, $instructorName);
 
@@ -133,6 +137,7 @@ class ScheduleGridController extends Controller
                 'ends_at' => $this->normalizeTime($mb->ends_at),
                 'label' => $label,
                 'notes' => $mb->notes,
+                'style' => $this->buildClassEventStyle($instructor?->color_hex_css),
             ];
         }
 
@@ -160,6 +165,57 @@ class ScheduleGridController extends Controller
             return $type;
         }
         return 'OTHER';
+    }
+
+    /**
+     * @return array{accent?:string,bg?:string,border?:string}
+     */
+    private function buildClassEventStyle(?string $rawColor): array
+    {
+        $hex = Instructor::normalizeColorHex($rawColor);
+
+        if (!$hex) {
+            return [];
+        }
+
+        $rgb = $this->hexToRgb($hex);
+        if (!$rgb) {
+            return [];
+        }
+
+        [$r, $g, $b] = $rgb;
+
+        return [
+            'accent' => $hex,
+            'bg' => sprintf('rgba(%d, %d, %d, 0.14)', $r, $g, $b),
+            'border' => sprintf('rgba(%d, %d, %d, 0.42)', $r, $g, $b),
+        ];
+    }
+
+    /**
+     * @return array{0:int,1:int,2:int}|null
+     */
+    private function hexToRgb(string $hex): ?array
+    {
+        $hex = ltrim($hex, '#');
+
+        if (strlen($hex) === 3) {
+            $hex = preg_replace('/(.)/', '$1$1', $hex);
+        }
+
+        if (strlen($hex) === 8) {
+            $hex = substr($hex, 0, 6);
+        }
+
+        if (strlen($hex) !== 6) {
+            return null;
+        }
+
+        return [
+            hexdec(substr($hex, 0, 2)),
+            hexdec(substr($hex, 2, 2)),
+            hexdec(substr($hex, 4, 2)),
+        ];
     }
 
     /**
@@ -207,11 +263,11 @@ class ScheduleGridController extends Controller
             $eventStart = $this->timeToMinutes($event['starts_at']);
             $eventEnd = $this->timeToMinutes($event['ends_at']);
 
-            $startIdx = (int)(($eventStart - $startMin) / $slotMinutes);
-            $endIdx = (int)(($eventEnd - $startMin) / $slotMinutes);
+            $startIdx = (int) floor(($eventStart - $startMin) / $slotMinutes);
+            $endIdx = (int) ceil(($eventEnd - $startMin) / $slotMinutes);
 
             $startIdx = max(0, min($slots - 1, $startIdx));
-            $endIdx = max(0, min($slots, $endIdx));
+            $endIdx = max($startIdx + 1, min($slots, $endIdx));
 
             $rowspan = max(1, $endIdx - $startIdx);
 

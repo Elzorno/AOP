@@ -67,8 +67,8 @@ class ScheduleReadinessController extends Controller
             ->orderBy('starts_at')
             ->get();
 
-        $roomConflicts = $this->computeRoomConflicts($meetingBlocks);
-        $instructorConflicts = $this->computeInstructorConflicts($meetingBlocks, $officeBlocks);
+        $roomConflicts = $this->computeRoomConflicts($term, $meetingBlocks);
+        $instructorConflicts = $this->computeInstructorConflicts($term, $meetingBlocks, $officeBlocks);
 
         $officeHoursCompliance = $this->computeOfficeHoursCompliance($term, $officeBlocks);
         $officeHoursFailing = collect($officeHoursCompliance)
@@ -271,7 +271,7 @@ class ScheduleReadinessController extends Controller
         }
     }
 
-    private function computeRoomConflicts($meetingBlocks)
+    private function computeRoomConflicts(Term $term, $meetingBlocks)
     {
         $conflicts = [];
         $byRoom = $meetingBlocks->whereNotNull('room_id')->groupBy('room_id');
@@ -284,7 +284,7 @@ class ScheduleReadinessController extends Controller
                     $a = $list[$i];
                     $b = $list[$j];
                     if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) continue;
-                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at)) continue;
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) continue;
 
                     $conflicts[] = [
                         'room' => $a->room,
@@ -298,7 +298,7 @@ class ScheduleReadinessController extends Controller
         return $conflicts;
     }
 
-    private function computeInstructorConflicts($meetingBlocks, $officeBlocks)
+    private function computeInstructorConflicts(Term $term, $meetingBlocks, $officeBlocks)
     {
         $conflicts = [];
 
@@ -324,7 +324,7 @@ class ScheduleReadinessController extends Controller
                     $a = $classList[$i];
                     $b = $classList[$j];
                     if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) continue;
-                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at)) continue;
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) continue;
                     $conflicts[] = [
                         'instructor' => $a->section->instructor,
                         'type' => 'CLASS vs CLASS',
@@ -343,7 +343,7 @@ class ScheduleReadinessController extends Controller
                     $a = $officeList[$i];
                     $b = $officeList[$j];
                     if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) continue;
-                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at)) continue;
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) continue;
                     $conflicts[] = [
                         'instructor' => $a->instructor,
                         'type' => 'OFFICE vs OFFICE',
@@ -359,7 +359,7 @@ class ScheduleReadinessController extends Controller
             foreach ($classList as $c) {
                 foreach ($officeList as $o) {
                     if (!ScheduleConflictService::dayOverlap($c->days_json ?? [], $o->days_json ?? [])) continue;
-                    if (!ScheduleConflictService::timesOverlap($c->starts_at, $c->ends_at, $o->starts_at, $o->ends_at)) continue;
+                    if (!ScheduleConflictService::timesOverlap($c->starts_at, $c->ends_at, $o->starts_at, $o->ends_at, (int) ($term->buffer_minutes ?? 0))) continue;
                     $conflicts[] = [
                         'instructor' => $c->section->instructor,
                         'type' => 'CLASS vs OFFICE',

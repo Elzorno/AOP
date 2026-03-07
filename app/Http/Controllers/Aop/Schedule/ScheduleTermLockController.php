@@ -122,7 +122,7 @@ class ScheduleTermLockController extends Controller
                     $a = $list[$i];
                     $b = $list[$j];
                     if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) continue;
-                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at)) continue;
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) continue;
                     $pairs++;
                 }
             }
@@ -157,7 +157,7 @@ class ScheduleTermLockController extends Controller
                     $a = $classList[$i];
                     $b = $classList[$j];
                     if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) continue;
-                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at)) continue;
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) continue;
                     $pairs++;
                 }
             }
@@ -170,7 +170,7 @@ class ScheduleTermLockController extends Controller
                     $a = $officeList[$i];
                     $b = $officeList[$j];
                     if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) continue;
-                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at)) continue;
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) continue;
                     $pairs++;
                 }
             }
@@ -179,7 +179,7 @@ class ScheduleTermLockController extends Controller
             foreach ($classList as $c) {
                 foreach ($officeList as $o) {
                     if (!ScheduleConflictService::dayOverlap($c->days_json ?? [], $o->days_json ?? [])) continue;
-                    if (!ScheduleConflictService::timesOverlap($c->starts_at, $c->ends_at, $o->starts_at, $o->ends_at)) continue;
+                    if (!ScheduleConflictService::timesOverlap($c->starts_at, $c->ends_at, $o->starts_at, $o->ends_at, (int) ($term->buffer_minutes ?? 0))) continue;
                     $pairs++;
                 }
             }
@@ -195,7 +195,7 @@ class ScheduleTermLockController extends Controller
                     $a = $list[$i];
                     $b = $list[$j];
                     if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) continue;
-                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at)) continue;
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) continue;
                     $pairs++;
                 }
             }

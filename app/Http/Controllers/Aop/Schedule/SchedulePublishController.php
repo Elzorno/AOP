@@ -56,6 +56,8 @@ class SchedulePublishController extends Controller
             'notes' => ['nullable', 'string', 'max:5000'],
         ]);
 
+        abort_unless($term->schedule_locked, 403, 'Schedule must be locked before publishing a snapshot.');
+
         $nextVersion = (int) (SchedulePublication::where('term_id', $term->id)->max('version') ?? 0) + 1;
         $base = sprintf('aop/published/%s/v%d', $term->code, $nextVersion);
 
@@ -112,7 +114,7 @@ class SchedulePublishController extends Controller
         $this->createZipFromDir($base . '/rooms', $base . '/rooms.zip');
 
         // Token for public view (Phase 9)
-        $token = bin2hex(random_bytes(16));
+        $token = bin2hex(random_bytes(32));
 
         // Persist publication record
         SchedulePublication::create([

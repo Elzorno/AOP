@@ -3,7 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name', 'AOP') }}</title>
+    <meta name="robots" content="noindex,nofollow">
+    <title>{{ config('app.name', 'Academic Ops Platform') }}</title>
 
     <style>
         :root { --bg:#f7f7f8; --card:#ffffff; --text:#111827; --muted:#6b7280; --border:#e5e7eb; --brand:#111827; --link:#2563eb; }

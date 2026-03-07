@@ -10,6 +10,7 @@
     </div>
     <div class="actions">
       <a class="btn secondary" href="{{ route('aop.syllabi.index') }}">Back to Syllabi</a>
+      <a class="btn secondary" href="{{ route('aop.syllabi.blocks.create') }}">New Block</a>
       <a class="btn" href="{{ route('aop.syllabi.downloadDocx', $section) }}">DOCX</a>
       <a class="btn" href="{{ route('aop.syllabi.downloadPdf', $section) }}">PDF</a>
     </div>
@@ -18,10 +19,52 @@
   <div class="card">
     <p class="muted">
       This is a lightweight HTML preview. The official formatting comes from the DOCX template used for DOCX/PDF output.
+      Shared syllabus blocks are included in this preview and in the JSON packet.
     </p>
     <div style="margin-top:12px;">
       <iframe srcdoc="{{ e($html) }}" style="width:100%; height:900px; border:1px solid #ddd; border-radius:10px;"></iframe>
     </div>
+  </div>
+
+  <div style="height:14px;"></div>
+
+  <div class="card">
+    <div class="row" style="margin-bottom:10px;">
+      <div>
+        <h2>Shared Syllabus Blocks</h2>
+        <p class="muted" style="margin-top:6px;">These blocks are shared across all syllabi until per-section customization is added.</p>
+      </div>
+      <div class="actions">
+        <a class="btn secondary" href="{{ route('aop.syllabi.index') }}">Manage Blocks</a>
+      </div>
+    </div>
+
+    @if(($blocks ?? collect())->count() === 0)
+      <p class="muted">No shared syllabus blocks have been created yet.</p>
+    @else
+      @foreach($blocks as $block)
+        <div style="padding:12px 0; {{ !$loop->last ? 'border-bottom:1px solid #eee;' : '' }}">
+          <div class="row" style="align-items:flex-start; gap:10px;">
+            <div>
+              <strong>{{ $block['title'] ?: 'Untitled Block' }}</strong>
+              <div class="muted">
+                {{ $block['category'] ?: 'Uncategorized' }}
+                @if(!empty($block['version']))
+                  • Version {{ $block['version'] }}
+                @endif
+                @if(!empty($block['is_locked']))
+                  • Protected
+                @endif
+              </div>
+            </div>
+            <div class="actions">
+              <a class="btn secondary" href="{{ route('aop.syllabi.blocks.edit', $block['id']) }}">Edit</a>
+            </div>
+          </div>
+          <div style="margin-top:8px; white-space:pre-wrap;">{{ $block['content'] !== '' ? $block['content'] : '—' }}</div>
+        </div>
+      @endforeach
+    @endif
   </div>
 
   <div style="height:14px;"></div>

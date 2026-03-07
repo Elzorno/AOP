@@ -2,15 +2,52 @@
   <x-slot:title>Instructor Grid</x-slot:title>
 
   <style>
-    .sched-grid { width:100%; border-collapse:collapse; table-layout:fixed; }
+    .sched-grid {
+      --slot-height: 42px;
+      --slot-border: 1px;
+      width:100%;
+      border-collapse:collapse;
+      table-layout:fixed;
+    }
     .sched-grid th, .sched-grid td { border:1px solid var(--border); padding:8px; }
     .sched-grid th { background:#fafafa; position:sticky; top:0; z-index:2; }
     .time-col { width:84px; background:#fafafa; position:sticky; left:0; z-index:1; }
-    .slot { height:42px; }
-    .event { border:1px solid var(--border); border-radius:10px; padding:6px 8px; margin:4px 0; background:white; }
-    .event small { display:block; color:var(--muted); margin-top:2px; }
-    .event.office { background:#f8fafc; }
-    .event.class { background:#ffffff; }
+    .slot { height:var(--slot-height); }
+    .slot--filled { padding:4px !important; vertical-align:top; }
+    .slot-stack {
+      position:relative;
+      height:var(--slot-fill-height);
+      min-height:var(--slot-fill-height);
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .slot-stack--single {
+      display:block;
+    }
+    .event {
+      border:1px solid var(--event-border, var(--border));
+      border-radius:10px;
+      padding:6px 8px;
+      margin:0;
+      background:var(--event-bg, white);
+      box-shadow: inset 4px 0 0 var(--event-accent, transparent);
+      display:flex;
+      flex:1 1 0;
+      min-height:0;
+      flex-direction:column;
+      justify-content:space-between;
+    }
+    .event--single {
+      position:absolute;
+      left:0;
+      right:0;
+      top:var(--event-top, 0px);
+      height:var(--event-height, 100%);
+    }
+    .event small { display:block; color:var(--muted); margin-top:6px; }
+    .event.office { background:#f8fafc; box-shadow:none; border-color:var(--border); }
+    .event.class { background:var(--event-bg, #ffffff); }
     .muted { color:var(--muted); font-size:12px; }
 
     @media print {
@@ -42,6 +79,10 @@
     @php
       $slots = $grid['slots'];
       $slotMinutes = $grid['slot_minutes'];
+      $slotHeightPx = 42;
+      $slotBorderPx = 1;
+      $baseCellPadYPx = 8;
+      $filledCellPadYPx = 4;
       [$sh,$sm] = array_map('intval', explode(':', $start));
       $startTotal = $sh*60 + $sm;
 
@@ -49,6 +90,42 @@
         $h = intdiv($minutes, 60);
         $m = $minutes % 60;
         return sprintf('%02d:%02d', $h, $m);
+      };
+
+      $timeToMinutes = function(string $hhmm) {
+        [$h, $m] = array_map('intval', explode(':', $hhmm));
+        return ($h * 60) + $m;
+      };
+
+      $fullCellHeightPx = function(int $rowspan) use ($slotHeightPx, $slotBorderPx, $baseCellPadYPx, $filledCellPadYPx) {
+        return max(
+          1,
+          (($slotHeightPx + ($baseCellPadYPx * 2)) * $rowspan)
+            + ($slotBorderPx * max(0, $rowspan - 1))
+            - ($filledCellPadYPx * 2)
+        );
+      };
+
+      $singleEventLayout = function(array $event, string $cellStart, int $rowspan) use ($timeToMinutes, $slotMinutes, $fullCellHeightPx) {
+        $reservedMinutes = max($slotMinutes, $rowspan * $slotMinutes);
+        $eventStart = $timeToMinutes($event['starts_at']);
+        $eventEnd = $timeToMinutes($event['ends_at']);
+        $cellStartMinutes = $timeToMinutes($cellStart);
+
+        $offsetMinutes = max(0, min($reservedMinutes, $eventStart - $cellStartMinutes));
+        $durationMinutes = max(1, $eventEnd - $eventStart);
+        $durationMinutes = min($durationMinutes, max(1, $reservedMinutes - $offsetMinutes));
+
+        $fullHeightPx = $fullCellHeightPx($rowspan);
+        $topPx = $fullHeightPx * ($offsetMinutes / $reservedMinutes);
+        $heightPx = max(24, $fullHeightPx * ($durationMinutes / $reservedMinutes));
+        $heightPx = min($fullHeightPx - $topPx, $heightPx);
+
+        return [
+          'stack_height' => sprintf('%.3Fpx', $fullHeightPx),
+          'top' => sprintf('%.3Fpx', $topPx),
+          'height' => sprintf('%.3Fpx', $heightPx),
+        ];
       };
 
       $dayLabel = function(string $d) {
@@ -84,17 +161,48 @@
                 @endif
 
                 @if (is_array($cell) && ($cell['type'] ?? null) === 'cell')
-                  <td class="slot" rowspan="{{ $cell['rowspan'] }}">
-                    @foreach ($cell['events'] as $ev)
-                      @php
-                        $klass = $ev['kind'] === 'office' ? 'office' : 'class';
-                        $timeRange = $ev['starts_at'] . '–' . $ev['ends_at'];
-                      @endphp
-                      <div class="event {{ $klass }}">
-                        <div style="font-weight:600;">{{ $ev['label'] }}</div>
-                        <small>{{ $timeRange }}</small>
-                      </div>
-                    @endforeach
+                  @php
+                    $rowspan = max(1, (int) ($cell['rowspan'] ?? 1));
+                    $eventsInCell = $cell['events'] ?? [];
+                    $isSingleEvent = count($eventsInCell) === 1;
+                    $singleLayout = $isSingleEvent ? $singleEventLayout($eventsInCell[0], $rowTime, $rowspan) : null;
+                    $fillHeight = $isSingleEvent
+                      ? $singleLayout['stack_height']
+                      : sprintf('%.3Fpx', $fullCellHeightPx($rowspan));
+                  @endphp
+                  <td class="slot slot--filled" rowspan="{{ $rowspan }}">
+                    <div class="slot-stack @if($isSingleEvent) slot-stack--single @endif" style="--slot-fill-height: {{ $fillHeight }};">
+                      @foreach ($eventsInCell as $ev)
+                        @php
+                          $klass = $ev['kind'] === 'office' ? 'office' : 'class';
+                          $timeRange = $ev['starts_at'] . '–' . $ev['ends_at'];
+                          $styleParts = [];
+
+                          if ($klass === 'class') {
+                            if (!empty($ev['style']['accent'])) {
+                              $styleParts[] = '--event-accent:' . $ev['style']['accent'];
+                            }
+                            if (!empty($ev['style']['bg'])) {
+                              $styleParts[] = '--event-bg:' . $ev['style']['bg'];
+                            }
+                            if (!empty($ev['style']['border'])) {
+                              $styleParts[] = '--event-border:' . $ev['style']['border'];
+                            }
+                          }
+
+                          if ($isSingleEvent && $singleLayout) {
+                            $styleParts[] = '--event-top:' . $singleLayout['top'];
+                            $styleParts[] = '--event-height:' . $singleLayout['height'];
+                          }
+
+                          $inlineStyle = implode(';', $styleParts);
+                        @endphp
+                        <div class="event {{ $klass }} @if($isSingleEvent) event--single @endif" @if($inlineStyle !== '') style="{{ $inlineStyle }}" @endif>
+                          <div style="font-weight:600;">{{ $ev['label'] }}</div>
+                          <small>{{ $timeRange }}</small>
+                        </div>
+                      @endforeach
+                    </div>
                   </td>
                 @else
                   <td class="slot"></td>

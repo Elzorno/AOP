@@ -17,10 +17,31 @@ use App\Http\Controllers\Aop\Schedule\SchedulePublishController;
 use App\Http\Controllers\Aop\Schedule\ScheduleReadinessController;
 use App\Http\Controllers\Aop\Schedule\ScheduleTermLockController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Public\SchedulePublicController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return auth()->check()
+        ? redirect()->route('dashboard')
+        : redirect()->route('login');
+});
+
+Route::prefix('/public/schedule')->name('public.schedule.')->middleware('throttle:30,1')->group(function () {
+    Route::get('/{termCode}/{version}/{token}', [SchedulePublicController::class, 'show'])
+        ->whereNumber('version')
+        ->name('show');
+
+    Route::get('/{termCode}/{version}/{token}/download/term', [SchedulePublicController::class, 'downloadTerm'])
+        ->whereNumber('version')
+        ->name('download.term');
+
+    Route::get('/{termCode}/{version}/{token}/download/instructors', [SchedulePublicController::class, 'downloadInstructorsZip'])
+        ->whereNumber('version')
+        ->name('download.instructors');
+
+    Route::get('/{termCode}/{version}/{token}/download/rooms', [SchedulePublicController::class, 'downloadRoomsZip'])
+        ->whereNumber('version')
+        ->name('download.rooms');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -112,6 +133,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Syllabi
         Route::get('/syllabi', [SyllabusController::class, 'index'])->name('syllabi.index');
         Route::post('/syllabi/template', [SyllabusController::class, 'uploadTemplate'])->name('syllabi.template.upload');
+        Route::get('/syllabi/blocks/create', [SyllabusController::class, 'createBlock'])->name('syllabi.blocks.create');
+        Route::post('/syllabi/blocks', [SyllabusController::class, 'storeBlock'])->name('syllabi.blocks.store');
+        Route::get('/syllabi/blocks/{block}/edit', [SyllabusController::class, 'editBlock'])->name('syllabi.blocks.edit');
+        Route::put('/syllabi/blocks/{block}', [SyllabusController::class, 'updateBlock'])->name('syllabi.blocks.update');
+        Route::delete('/syllabi/blocks/{block}', [SyllabusController::class, 'destroyBlock'])->name('syllabi.blocks.destroy');
         Route::get('/syllabi/sections/{section}', [SyllabusController::class, 'show'])->name('syllabi.show');
         Route::get('/syllabi/sections/{section}/download/html', [SyllabusController::class, 'downloadHtml'])->name('syllabi.downloadHtml');
         Route::get('/syllabi/sections/{section}/download/json', [SyllabusController::class, 'downloadJson'])->name('syllabi.downloadJson');

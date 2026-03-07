@@ -26,8 +26,10 @@ class InstructorController extends Controller
             'name' => ['required','string','max:255'],
             'email' => ['nullable','email','max:255'],
             'is_full_time' => ['nullable','boolean'],
-            'color_hex' => ['nullable','string','max:12'],
+            'color_hex' => ['nullable','regex:/^#?(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/'],
             'is_active' => ['nullable','boolean'],
+        ], [
+            'color_hex.regex' => 'Color must be a valid 3, 6, or 8 digit hex value, with or without a leading #.',
         ]);
 
         $data['is_full_time'] = (bool)($data['is_full_time'] ?? false);
@@ -49,8 +51,10 @@ class InstructorController extends Controller
             'name' => ['required','string','max:255'],
             'email' => ['nullable','email','max:255'],
             'is_full_time' => ['nullable','boolean'],
-            'color_hex' => ['nullable','string','max:12'],
+            'color_hex' => ['nullable','regex:/^#?(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/'],
             'is_active' => ['nullable','boolean'],
+        ], [
+            'color_hex.regex' => 'Color must be a valid 3, 6, or 8 digit hex value, with or without a leading #.',
         ]);
 
         $data['is_full_time'] = (bool)($data['is_full_time'] ?? false);

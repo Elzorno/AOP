@@ -10,17 +10,17 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SchedulePublicController extends Controller
 {
-    public function show(string $termCode, ?int $version = null, string $token = '')
+    public function show(string $termCode, int $version, string $token)
     {
         $term = Term::where('code', $termCode)->first();
         abort_if(!$term, 404);
 
         $publication = SchedulePublication::where('term_id', $term->id)
-            ->when($version !== null, fn($q) => $q->where('version', $version), fn($q) => $q->orderByDesc('version'))
+            ->where('version', $version)
             ->first();
 
         abort_if(!$publication, 404);
-        abort_if(!$publication->public_token || $publication->public_token !== $token, 404);
+        abort_if(!$this->tokenMatches($publication->public_token, $token), 404);
 
         return view('public.schedule.show', [
             'term' => $term,
@@ -58,9 +58,18 @@ class SchedulePublicController extends Controller
 
         $publication = SchedulePublication::where('term_id', $term->id)->where('version', $version)->first();
         abort_if(!$publication, 404);
-        abort_if(!$publication->public_token || $publication->public_token !== $token, 404);
+        abort_if(!$this->tokenMatches($publication->public_token, $token), 404);
 
         return $publication;
+    }
+
+    private function tokenMatches(?string $storedToken, string $providedToken): bool
+    {
+        if (!is_string($storedToken) || $storedToken === '' || $providedToken === '') {
+            return false;
+        }
+
+        return hash_equals($storedToken, $providedToken);
     }
 
     private function downloadLocalFile(string $storagePath, string $downloadName): StreamedResponse
