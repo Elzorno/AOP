@@ -61,7 +61,7 @@
               <a class="btn secondary" href="{{ route('aop.syllabi.blocks.edit', $block['id']) }}">Edit</a>
             </div>
           </div>
-          <div style="margin-top:8px; white-space:pre-wrap;">{{ $block['content'] !== '' ? $block['content'] : '—' }}</div>
+          <div class="markdown-body" style="margin-top:8px;">{!! $block['content_rendered'] ?? '<p>—</p>' !!}</div>
         </div>
       @endforeach
     @endif

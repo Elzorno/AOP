@@ -58,8 +58,8 @@
       <div>
         <h2>Syllabus Blocks</h2>
         <p class="muted" style="margin-top:6px; max-width:850px;">
-          Shared syllabus blocks are now editable here. They flow into the JSON packet and HTML preview for every syllabus.
-          For this pass the editor is plain-text first; template-specific formatting can be refined next.
+          Shared syllabus blocks are editable here. They flow into the JSON packet and HTML preview for every syllabus.
+          Block content is stored as Markdown and rendered safely for preview.
         </p>
       </div>
       <div class="actions">
@@ -82,7 +82,6 @@
         </thead>
         <tbody>
           @foreach($blocks as $block)
-            @php($preview = \Illuminate\Support\Str::limit(trim((string) ($block->content_html ?? '')), 180))
             <tr>
               <td>
                 <strong>{{ $block->title }}</strong>
@@ -92,7 +91,10 @@
                 <div class="muted">Updated {{ $block->updated_at?->format('Y-m-d H:i') }}</div>
               </td>
               <td>{{ $block->category ?: '—' }}</td>
-              <td style="white-space:pre-wrap;">{{ $preview !== '' ? $preview : '—' }}</td>
+              <td>
+                <div class="markdown-body markdown-preview compact">{!! $block->content_rendered !!}</div>
+                <div class="muted" style="margin-top:8px; font-size:12px;">{{ $block->content_preview_text }}</div>
+              </td>
               <td>
                 @if($block->is_locked)
                   <span class="badge" style="background:#fff3cd; color:#7a5b00;">Protected</span>
@@ -163,14 +165,15 @@
                 </div>
 
                 @php
-                  $kDocx = $s->id . ':docx';
-                  $kPdf = $s->id . ':pdf';
-                  $lastDocx = ($latestBySection ?? [])[$kDocx] ?? null;
-                  $lastPdf = ($latestBySection ?? [])[$kPdf] ?? null;
+                  $renderMap = $latestBySection ?? [];
+                  $docxRender = $renderMap[$s->id . ':docx'] ?? null;
+                  $pdfRender = $renderMap[$s->id . ':pdf'] ?? null;
+                  $docxAt = ($docxRender?->completed_at ?? $docxRender?->created_at);
+                  $pdfAt = ($pdfRender?->completed_at ?? $pdfRender?->created_at);
                 @endphp
                 <div class="muted" style="margin-top:8px; font-size:12px;">
-                  <div>Last DOCX: {{ ($lastDocx?->completed_at ?? $lastDocx?->created_at)?->format('Y-m-d H:i') ?? '—' }}</div>
-                  <div>Last PDF: {{ ($lastPdf?->completed_at ?? $lastPdf?->created_at)?->format('Y-m-d H:i') ?? '—' }}</div>
+                  <div>Last DOCX: {{ $docxAt?->format('Y-m-d H:i') ?? '—' }}</div>
+                  <div>Last PDF: {{ $pdfAt?->format('Y-m-d H:i') ?? '—' }}</div>
                 </div>
               </td>
             </tr>

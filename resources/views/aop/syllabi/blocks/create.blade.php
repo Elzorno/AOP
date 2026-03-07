@@ -4,7 +4,7 @@
   <div class="row" style="margin-bottom:14px;">
     <div>
       <h1>New Syllabus Block</h1>
-      <p class="muted" style="margin-top:6px;">Create a shared syllabus block that can be reused across all section syllabi.</p>
+      <p class="muted" style="margin-top:6px;">Create a shared syllabus block that can be reused across all section syllabi. The editor stores Markdown so previews and exports stay consistent.</p>
     </div>
     <div class="actions">
       <a class="btn secondary" href="{{ route('aop.syllabi.index') }}">Back</a>

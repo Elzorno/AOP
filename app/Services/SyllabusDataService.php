@@ -6,6 +6,7 @@ use App\Models\OfficeHourBlock;
 use App\Models\Section;
 use App\Models\SyllabusBlock;
 use App\Models\Term;
+use Illuminate\Support\Str;
 
 class SyllabusDataService
 {
@@ -147,16 +148,50 @@ class SyllabusDataService
             ->orderBy('category')
             ->orderBy('id')
             ->get()
-            ->map(fn (SyllabusBlock $block) => [
-                'id' => $block->id,
-                'title' => (string) $block->title,
-                'category' => $block->category ? (string) $block->category : '',
-                'content' => trim((string) ($block->content_html ?? '')),
-                'version' => $block->version ? (string) $block->version : '',
-                'is_locked' => (bool) $block->is_locked,
-            ])
+            ->map(function (SyllabusBlock $block): array {
+                $markdown = $this->normalizeMarkdown((string) ($block->content_html ?? ''));
+
+                return [
+                    'id' => $block->id,
+                    'title' => (string) $block->title,
+                    'category' => $block->category ? (string) $block->category : '',
+                    'content' => $markdown,
+                    'content_rendered' => $this->renderMarkdownHtml($markdown),
+                    'content_preview_text' => $this->markdownToPreviewText($markdown, 180),
+                    'version' => $block->version ? (string) $block->version : '',
+                    'is_locked' => (bool) $block->is_locked,
+                ];
+            })
             ->values()
             ->all();
+    }
+
+    private function normalizeMarkdown(string $content): string
+    {
+        $content = str_replace(["\r\n", "\r"], "\n", $content);
+
+        return rtrim($content);
+    }
+
+    private function renderMarkdownHtml(string $markdown): string
+    {
+        if ($markdown === '') {
+            return '<p>—</p>';
+        }
+
+        return Str::markdown($markdown, [
+            'html_input' => 'strip',
+            'allow_unsafe_links' => false,
+        ]);
+    }
+
+    private function markdownToPreviewText(string $markdown, int $limit = 180): string
+    {
+        $rendered = strip_tags($this->renderMarkdownHtml($markdown));
+        $rendered = preg_replace('/\s+/u', ' ', $rendered ?? '');
+        $rendered = trim((string) $rendered);
+
+        return $rendered !== '' ? Str::limit($rendered, $limit) : '—';
     }
 
     private function daysToString(array $days): string

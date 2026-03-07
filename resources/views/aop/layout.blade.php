@@ -43,6 +43,21 @@
     .split { display:flex; gap:12px; flex-wrap:wrap; }
     .split > * { flex:1 1 260px; }
     .field-error { color:#991b1b; font-size:12px; margin-top:4px; }
+    .markdown-body { color:var(--text); line-height:1.6; }
+    .markdown-body > :first-child { margin-top:0; }
+    .markdown-body > :last-child { margin-bottom:0; }
+    .markdown-body p { color:var(--text); }
+    .markdown-body ul, .markdown-body ol { padding-left:22px; color:var(--text); }
+    .markdown-body li + li { margin-top:4px; }
+    .markdown-body blockquote { margin:10px 0; padding:8px 12px; border-left:4px solid var(--border); background:#f9fafb; color:var(--text); border-radius:8px; }
+    .markdown-body code { background:#f3f4f6; border:1px solid #e5e7eb; padding:2px 6px; border-radius:6px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:13px; }
+    .markdown-body pre { background:#0f172a; color:#e5e7eb; padding:12px; border-radius:10px; overflow:auto; }
+    .markdown-body pre code { background:transparent; border:0; color:inherit; padding:0; }
+    .markdown-preview.compact { max-height:150px; overflow:auto; font-size:14px; }
+    .markdown-preview.compact p, .markdown-preview.compact ul, .markdown-preview.compact ol, .markdown-preview.compact pre { margin:0 0 8px 0; }
+    .toast-editor-shell { margin-top:10px; }
+    .toastui-editor-defaultUI { border-radius:12px; overflow:hidden; border-color:var(--border) !important; }
+    .toastui-editor-defaultUI-toolbar { border-top-left-radius:12px; border-top-right-radius:12px; }
   </style>
 </head>
 <body>

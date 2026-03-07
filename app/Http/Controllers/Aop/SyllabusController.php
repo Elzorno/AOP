@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SyllabusController extends Controller
@@ -42,7 +43,13 @@ class SyllabusController extends Controller
             ->orderByRaw("CASE WHEN category IS NULL OR TRIM(category) = '' THEN 1 ELSE 0 END")
             ->orderBy('category')
             ->orderBy('id')
-            ->get();
+            ->get()
+            ->each(function (SyllabusBlock $block): void {
+                $markdown = $this->normalizeMarkdown((string) ($block->content_html ?? ''));
+                $block->setAttribute('content_markdown', $markdown);
+                $block->setAttribute('content_rendered', $this->renderMarkdownHtml($markdown));
+                $block->setAttribute('content_preview_text', $this->markdownToPreviewText($markdown, 180));
+            });
     }
 
     private function validateBlock(Request $request): array
@@ -58,10 +65,39 @@ class SyllabusController extends Controller
         $validated['title'] = trim((string) ($validated['title'] ?? ''));
         $validated['category'] = trim((string) ($validated['category'] ?? '')) ?: null;
         $validated['version'] = trim((string) ($validated['version'] ?? '')) ?: null;
-        $validated['content_html'] = rtrim((string) ($validated['content_html'] ?? ''));
+        $validated['content_html'] = $this->normalizeMarkdown((string) ($validated['content_html'] ?? ''));
         $validated['is_locked'] = $request->boolean('is_locked');
 
         return $validated;
+    }
+
+    private function normalizeMarkdown(string $content): string
+    {
+        $content = str_replace(["\r\n", "\r"], "\n", $content);
+
+        return rtrim($content);
+    }
+
+    private function renderMarkdownHtml(string $markdown): string
+    {
+        $markdown = $this->normalizeMarkdown($markdown);
+        if ($markdown === '') {
+            return '<p>—</p>';
+        }
+
+        return Str::markdown($markdown, [
+            'html_input' => 'strip',
+            'allow_unsafe_links' => false,
+        ]);
+    }
+
+    private function markdownToPreviewText(string $markdown, int $limit = 180): string
+    {
+        $rendered = strip_tags($this->renderMarkdownHtml($markdown));
+        $rendered = preg_replace('/\s+/u', ' ', $rendered ?? '');
+        $rendered = trim((string) $rendered);
+
+        return $rendered !== '' ? Str::limit($rendered, $limit) : '—';
     }
 
     public function index()
@@ -506,7 +542,7 @@ class SyllabusController extends Controller
         $escape = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 
         return '<!doctype html><html><head><meta charset="utf-8"><title>Syllabus</title>'
-            . '<style>body{font-family:Arial,Helvetica,sans-serif;max-width:850px;margin:24px auto;line-height:1.35} h1{margin-bottom:0} .muted{color:#666} .box{border:1px solid #ddd;padding:12px;border-radius:10px;margin:12px 0} table{width:100%;border-collapse:collapse} td{padding:6px 8px;vertical-align:top;border-bottom:1px solid #eee}</style>'
+            . '<style>body{font-family:Arial,Helvetica,sans-serif;max-width:850px;margin:24px auto;line-height:1.35} h1{margin-bottom:0} .muted{color:#666} .box{border:1px solid #ddd;padding:12px;border-radius:10px;margin:12px 0} table{width:100%;border-collapse:collapse} td{padding:6px 8px;vertical-align:top;border-bottom:1px solid #eee} .markdown-body{line-height:1.55} .markdown-body p:first-child{margin-top:0} .markdown-body p:last-child{margin-bottom:0} .markdown-body ul,.markdown-body ol{padding-left:22px} .markdown-body code{background:#f3f4f6;padding:2px 6px;border-radius:6px} .markdown-body pre{background:#0f172a;color:#e5e7eb;padding:12px;border-radius:10px;overflow:auto}</style>'
             . '</head><body>'
             . '<h1>' . $escape($repl['COURSE_CODE'] . ' - ' . $repl['COURSE_TITLE']) . '</h1>'
             . '<div class="muted">' . $escape($repl['DEPARTMENT_LINE']) . '</div>'
@@ -542,17 +578,20 @@ class SyllabusController extends Controller
         foreach ($blocks as $block) {
             $title = trim((string) ($block['title'] ?? ''));
             $category = trim((string) ($block['category'] ?? ''));
-            $content = trim((string) ($block['content'] ?? ''));
+            $content = $this->normalizeMarkdown((string) ($block['content'] ?? ''));
+
+            $html .= '<div style="border:1px solid #ddd;padding:12px;border-radius:10px;margin:12px 0;">';
 
             if ($title !== '') {
-                $html .= '<h3>' . $escape($title) . '</h3>';
+                $html .= '<h3 style="margin:0 0 6px 0;">' . $escape($title) . '</h3>';
             }
 
             if ($category !== '') {
-                $html .= '<div class="muted">' . $escape($category) . '</div>';
+                $html .= '<div class="muted" style="margin-bottom:8px;">' . $escape($category) . '</div>';
             }
 
-            $html .= '<p>' . nl2br($escape($content !== '' ? $content : 'TBD')) . '</p>';
+            $html .= '<div class="markdown-body">' . $this->renderMarkdownHtml($content) . '</div>';
+            $html .= '</div>';
         }
 
         return $html;
