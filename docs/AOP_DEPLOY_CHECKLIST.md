@@ -8,8 +8,8 @@ Install and confirm:
 - Composer
 - SQLite 3
 - `pdo_sqlite` PHP extension
-- `mbstring`, `xml`, `ctype`, `json`, `tokenizer` PHP extensions
-- `pandoc`, `wkhtmltopdf`, and `libreoffice` if syllabi DOCX/PDF exports are required
+- `mbstring`, `xml`, `ctype`, `json`, `tokenizer`, and `zip` PHP extensions
+- `libreoffice` if syllabus PDF exports are required
 
 ## 2. Application files
 

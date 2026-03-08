@@ -1,4 +1,4 @@
-<x-aop-layout>
+<x-aop-layout :activeTermLabel="$term ? 'Active Term: '.$term->code.' — '.$term->name : 'No active term selected'">
   <x-slot:title>Syllabus Preview</x-slot:title>
 
   <div class="row" style="margin-bottom:14px;">
@@ -11,6 +11,8 @@
     <div class="actions">
       <a class="btn secondary" href="{{ route('aop.syllabi.index') }}">Back to Syllabi</a>
       <a class="btn secondary" href="{{ route('aop.syllabi.blocks.create') }}">New Block</a>
+      <a class="btn secondary" href="{{ route('aop.syllabi.downloadHtml', $section) }}">HTML</a>
+      <a class="btn secondary" href="{{ route('aop.syllabi.downloadJson', $section) }}">JSON</a>
       <a class="btn" href="{{ route('aop.syllabi.downloadDocx', $section) }}">DOCX</a>
       <a class="btn" href="{{ route('aop.syllabi.downloadPdf', $section) }}">PDF</a>
     </div>
@@ -18,11 +20,11 @@
 
   <div class="card">
     <p class="muted">
-      This is a lightweight HTML preview. The official formatting comes from the DOCX template used for DOCX/PDF output.
-      Shared syllabus blocks are included in this preview and in the JSON packet.
+      This preview is now document-style instead of the earlier lightweight placeholder view.
+      It mirrors the syllabus packet fields and shared-block rendering more closely, while DOCX/PDF still follow the uploaded DOCX template.
     </p>
     <div style="margin-top:12px;">
-      <iframe srcdoc="{{ e($html) }}" style="width:100%; height:900px; border:1px solid #ddd; border-radius:10px;"></iframe>
+      <iframe srcdoc="{{ e($html) }}" style="width:100%; height:1100px; border:1px solid #ddd; border-radius:10px;"></iframe>
     </div>
   </div>
 

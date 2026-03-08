@@ -78,6 +78,14 @@ class SyllabusController extends Controller
         return rtrim($content);
     }
 
+    private function normalizeMultilineText(string $content): string
+    {
+        $content = str_replace(["\r\n", "\r"], "\n", $content);
+        $content = preg_replace("/\n{3,}/", "\n\n", $content) ?? $content;
+
+        return trim($content);
+    }
+
     private function renderMarkdownHtml(string $markdown): string
     {
         $markdown = $this->normalizeMarkdown($markdown);
@@ -108,14 +116,13 @@ class SyllabusController extends Controller
         if ($term) {
             $sections = Section::query()
                 ->with(['offering.catalogCourse', 'instructor'])
-                ->whereHas('offering', fn($q) => $q->where('term_id', $term->id))
+                ->whereHas('offering', fn ($q) => $q->where('term_id', $term->id))
                 ->orderBy('id')
                 ->get();
         }
 
         $templateExists = Storage::disk('local')->exists('aop/syllabi/templates/default.docx');
 
-        // Latest successful docx/pdf per section (best-effort; supports both legacy and newer schema)
         $latestBySection = [];
         if ($term) {
             $latestBySection = $this->latestSuccessfulRendersBySection($term->id);
@@ -187,15 +194,15 @@ class SyllabusController extends Controller
 
     public function show(Section $section, SyllabusDataService $data)
     {
-        $this->ensureSectionInActiveTerm($section);
+        $term = $this->ensureSectionInActiveTerm($section);
 
         $packet = $data->buildPacketForSection($section);
         $html = $this->renderHtmlPreview($packet, $data);
-
         $history = $this->renderHistoryForSection($section);
 
         return view('aop.syllabi.show', [
             'section' => $section,
+            'term' => $term,
             'packet' => $packet,
             'html' => $html,
             'history' => $history,
@@ -210,7 +217,6 @@ class SyllabusController extends Controller
         $packet = $data->buildPacketForSection($section);
         $name = $this->fileBase($packet) . '.json';
 
-        // Log as SUCCESS (no file saved)
         $syllabus = $this->getOrCreateSyllabus($section);
         $this->recordRender($syllabus->id, $section, 'json', null, 'SUCCESS', null);
 
@@ -363,7 +369,6 @@ class SyllabusController extends Controller
 
         $row = [];
 
-        // Required legacy columns
         if (Schema::hasColumn('syllabus_renders', 'syllabus_id')) {
             $row['syllabus_id'] = $syllabusId;
         }
@@ -371,12 +376,10 @@ class SyllabusController extends Controller
             $row['format'] = $format;
         }
 
-        // Legacy required path (NOT NULL)
         if (Schema::hasColumn('syllabus_renders', 'path')) {
             $row['path'] = $storagePath ?? '';
         }
 
-        // Newer optional columns
         if (Schema::hasColumn('syllabus_renders', 'term_id')) {
             $row['term_id'] = $termId;
         }
@@ -396,7 +399,6 @@ class SyllabusController extends Controller
             $row['completed_at'] = $now;
         }
 
-        // Legacy optional columns
         if (Schema::hasColumn('syllabus_renders', 'sha256')) {
             $row['sha256'] = $sha256;
         }
@@ -410,7 +412,6 @@ class SyllabusController extends Controller
             $row['error_message'] = $errorMessage;
         }
 
-        // Timestamps
         if (Schema::hasColumn('syllabus_renders', 'created_at')) {
             $row['created_at'] = $now;
         }
@@ -418,13 +419,11 @@ class SyllabusController extends Controller
             $row['updated_at'] = $now;
         }
 
-        // Insert without Eloquent to avoid fillable/mass-assignment mismatches with legacy schema
         DB::table('syllabus_renders')->insert($row);
     }
 
     private function pruneSuccessfulRenders(int $syllabusId, Section $section, string $format): void
     {
-        // Keep the 2 most recent SUCCESS renders per (syllabus_id, format)
         $q = SyllabusRender::query();
 
         if (Schema::hasColumn('syllabus_renders', 'syllabus_id')) {
@@ -436,7 +435,6 @@ class SyllabusController extends Controller
             $q->where('status', 'SUCCESS');
         }
 
-        // Prefer rendered_at/completed_at if present
         if (Schema::hasColumn('syllabus_renders', 'rendered_at')) {
             $q->orderByDesc('rendered_at');
         } elseif (Schema::hasColumn('syllabus_renders', 'completed_at')) {
@@ -461,7 +459,6 @@ class SyllabusController extends Controller
 
         $old = $delQ->get();
         foreach ($old as $r) {
-            // Best-effort delete file(s)
             $p = null;
             if (isset($r->storage_path) && $r->storage_path) {
                 $p = $r->storage_path;
@@ -482,16 +479,15 @@ class SyllabusController extends Controller
             return collect();
         }
 
-        $q = SyllabusRender::query()->where('syllabus_id', $syllabus->id)->orderByDesc('id')->limit(50);
-        return $q->get();
+        return SyllabusRender::query()
+            ->where('syllabus_id', $syllabus->id)
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get();
     }
 
     private function latestSuccessfulRendersBySection(int $termId): array
     {
-        // Return array keyed by "sectionId:format" => render row
-        // We’ll use whichever identifier columns exist.
-
-        // If section_id exists and is populated, use it.
         if (Schema::hasColumn('syllabus_renders', 'section_id')) {
             $q = SyllabusRender::query()
                 ->whereIn('format', ['docx', 'pdf'])
@@ -514,10 +510,10 @@ class SyllabusController extends Controller
                     $out[$key] = $r;
                 }
             }
+
             return $out;
         }
 
-        // Fallback: join through syllabi.section_id
         $rows = SyllabusRender::query()
             ->select('syllabus_renders.*', 'syllabi.section_id as section_id')
             ->join('syllabi', 'syllabi.id', '=', 'syllabus_renders.syllabus_id')
@@ -532,69 +528,178 @@ class SyllabusController extends Controller
                 $out[$key] = $r;
             }
         }
+
         return $out;
     }
 
     private function renderHtmlPreview(array $packet, SyllabusDataService $data): string
     {
-        $repl = $this->buildReplacements($packet, $data);
-
-        $escape = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
-
-        return '<!doctype html><html><head><meta charset="utf-8"><title>Syllabus</title>'
-            . '<style>body{font-family:Arial,Helvetica,sans-serif;max-width:850px;margin:24px auto;line-height:1.35} h1{margin-bottom:0} .muted{color:#666} .box{border:1px solid #ddd;padding:12px;border-radius:10px;margin:12px 0} table{width:100%;border-collapse:collapse} td{padding:6px 8px;vertical-align:top;border-bottom:1px solid #eee} .markdown-body{line-height:1.55} .markdown-body p:first-child{margin-top:0} .markdown-body p:last-child{margin-bottom:0} .markdown-body ul,.markdown-body ol{padding-left:22px} .markdown-body code{background:#f3f4f6;padding:2px 6px;border-radius:6px} .markdown-body pre{background:#0f172a;color:#e5e7eb;padding:12px;border-radius:10px;overflow:auto}</style>'
-            . '</head><body>'
-            . '<h1>' . $escape($repl['COURSE_CODE'] . ' - ' . $repl['COURSE_TITLE']) . '</h1>'
-            . '<div class="muted">' . $escape($repl['DEPARTMENT_LINE']) . '</div>'
-            . '<div class="muted">' . $escape($repl['INSTRUCTOR_NAME']) . ' — ' . $escape($repl['INSTRUCTOR_EMAIL']) . '</div>'
-            . '<div class="muted">' . $escape($repl['SYLLABUS_DATE']) . '</div>'
-            . '<h2>Meeting Information</h2>'
-            . '<div class="box"><table>'
-            . '<tr><td><strong>Credit Hours</strong></td><td>' . $escape($repl['CREDIT_HOURS']) . '</td></tr>'
-            . '<tr><td><strong>Delivery Mode</strong></td><td>' . $escape($repl['DELIVERY_MODE']) . '</td></tr>'
-            . '<tr><td><strong>Location</strong></td><td>' . $escape($repl['LOCATION']) . '</td></tr>'
-            . '<tr><td><strong>Meeting Days</strong></td><td>' . $escape($repl['MEETING_DAYS']) . '</td></tr>'
-            . '<tr><td><strong>Meeting Time</strong></td><td>' . $escape($repl['MEETING_TIME']) . '</td></tr>'
-            . '<tr><td><strong>Corequisites</strong></td><td>' . $escape($repl['COREQUISITES']) . '</td></tr>'
-            . '<tr><td><strong>Office Hours</strong></td><td>' . $escape($repl['OFFICE_HOURS']) . '</td></tr>'
-            . '</table></div>'
-            . '<h2>Course Description</h2><p>' . nl2br($escape($repl['COURSE_DESCRIPTION'])) . '</p>'
-            . '<h2>Course Objectives</h2><p>' . nl2br($escape($repl['COURSE_OBJECTIVES'])) . '</p>'
-            . '<h2>Required Materials</h2><p>' . nl2br($escape($repl['REQUIRED_MATERIALS'])) . '</p>'
-            . $this->renderCustomBlocksHtml($packet['blocks'] ?? [])
-            . '<p class="muted">Template-driven DOCX/PDF output is available via the download buttons.</p>'
-            . '</body></html>';
+        return view('aop.syllabi.preview', $this->buildPreviewViewData($packet, $data))->render();
     }
 
-    private function renderCustomBlocksHtml(array $blocks): string
+    private function buildPreviewViewData(array $packet, SyllabusDataService $data): array
     {
-        if (count($blocks) === 0) {
-            return '';
-        }
+        $replacements = $this->buildReplacements($packet, $data);
+        $meetingRows = $this->meetingRows($packet['meeting_blocks'] ?? []);
+        $officeHourRows = $this->officeHourRows($packet['office_hours'] ?? []);
 
-        $escape = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
-        $html = '<h2>Shared Syllabus Blocks</h2>';
+        $locationLines = $this->uniqueNonEmpty(array_map(fn (array $row) => $row['room'], $meetingRows));
+        $daysTimesLines = array_map(fn (array $row) => $row['days_times_line'], $meetingRows);
+        $termLine = trim(($packet['term']['code'] ?? '') . (($packet['term']['name'] ?? '') !== '' ? ' — ' . $packet['term']['name'] : ''));
 
-        foreach ($blocks as $block) {
-            $title = trim((string) ($block['title'] ?? ''));
-            $category = trim((string) ($block['category'] ?? ''));
-            $content = $this->normalizeMarkdown((string) ($block['content'] ?? ''));
+        return [
+            'packet' => $packet,
+            'replacements' => $replacements,
+            'meetingRows' => $meetingRows,
+            'officeHourRows' => $officeHourRows,
+            'locationLines' => $locationLines !== [] ? $locationLines : ['TBD'],
+            'daysTimesLines' => $daysTimesLines !== [] ? $daysTimesLines : ['TBD'],
+            'termLine' => $termLine !== '' ? $termLine : 'TBD',
+            'generatedDate' => $replacements['SYLLABUS_DATE'] ?: now()->toDateString(),
+            'departmentLine' => $replacements['DEPARTMENT_LINE'] ?: 'Academic Ops Platform Syllabus Preview',
+        ];
+    }
 
-            $html .= '<div style="border:1px solid #ddd;padding:12px;border-radius:10px;margin:12px 0;">';
+    private function meetingRows(array $meetingBlocks): array
+    {
+        $rows = [];
 
-            if ($title !== '') {
-                $html .= '<h3 style="margin:0 0 6px 0;">' . $escape($title) . '</h3>';
+        foreach ($meetingBlocks as $block) {
+            $type = $this->formatMeetingType((string) ($block['type'] ?? ''));
+            $days = $this->daysToString((array) ($block['days'] ?? []));
+            $start = trim((string) ($block['start'] ?? ''));
+            $end = trim((string) ($block['end'] ?? ''));
+            $time = trim($start . (($start !== '' || $end !== '') ? '–' : '') . $end, '– ');
+            $room = trim((string) ($block['room'] ?? ''));
+            $notes = trim((string) ($block['notes'] ?? ''));
+
+            $summaryParts = [];
+            if ($type !== '') {
+                $summaryParts[] = $type;
+            }
+            $daysTime = trim($days . ($days !== '' && $time !== '' ? ' ' : '') . $time);
+            if ($daysTime !== '') {
+                $summaryParts[] = $daysTime;
+            }
+            if ($room !== '') {
+                $summaryParts[] = $room;
             }
 
-            if ($category !== '') {
-                $html .= '<div class="muted" style="margin-bottom:8px;">' . $escape($category) . '</div>';
+            $summary = implode(' — ', $summaryParts);
+            if ($summary === '') {
+                $summary = 'TBD';
+            }
+            if ($notes !== '') {
+                $summary .= ' (' . $notes . ')';
             }
 
-            $html .= '<div class="markdown-body">' . $this->renderMarkdownHtml($content) . '</div>';
-            $html .= '</div>';
+            $rows[] = [
+                'type' => $type !== '' ? $type : 'Meeting',
+                'days' => $days,
+                'time' => $time,
+                'room' => $room,
+                'notes' => $notes,
+                'summary' => $summary,
+                'days_times_line' => trim($days . ($days !== '' && $time !== '' ? ' ' : '') . $time) ?: 'TBD',
+            ];
         }
 
-        return $html;
+        return $rows;
+    }
+
+    private function officeHourRows(array $officeHours): array
+    {
+        $rows = [];
+
+        foreach ($officeHours as $block) {
+            $days = $this->daysToString((array) ($block['days'] ?? []));
+            $start = trim((string) ($block['start'] ?? ''));
+            $end = trim((string) ($block['end'] ?? ''));
+            $time = trim($start . (($start !== '' || $end !== '') ? '–' : '') . $end, '– ');
+            $notes = trim((string) ($block['notes'] ?? ''));
+
+            $summary = trim($days . ($days !== '' && $time !== '' ? ' ' : '') . $time);
+            if ($summary === '') {
+                $summary = 'TBD';
+            }
+            if ($notes !== '') {
+                $summary .= ' (' . $notes . ')';
+            }
+
+            $rows[] = [
+                'days' => $days,
+                'time' => $time,
+                'notes' => $notes,
+                'summary' => $summary,
+            ];
+        }
+
+        return $rows;
+    }
+
+    private function buildReplacements(array $packet, SyllabusDataService $data): array
+    {
+        $meeting = $data->formatMeetingInfo($packet['meeting_blocks'] ?? []);
+        $meetingRows = $this->meetingRows($packet['meeting_blocks'] ?? []);
+        $officeHourRows = $this->officeHourRows($packet['office_hours'] ?? []);
+
+        $credits = $packet['course']['credits_text'] ?? '';
+        if ($credits === '' && ($packet['course']['credits_min'] ?? null) !== null) {
+            $min = $packet['course']['credits_min'];
+            $max = $packet['course']['credits_max'];
+            $credits = ($max !== null && $max != $min) ? ($min . '-' . $max) : (string) $min;
+        }
+
+        $uniqueRooms = $this->uniqueNonEmpty(array_map(fn (array $row) => $row['room'], $meetingRows));
+        $meetingDays = $this->uniqueNonEmpty(array_map(fn (array $row) => $row['days'], $meetingRows));
+        $meetingTimes = $this->uniqueNonEmpty(array_map(fn (array $row) => $row['time'], $meetingRows));
+        $meetingLines = $this->uniqueNonEmpty(array_map(fn (array $row) => $row['summary'], $meetingRows));
+        $officeHourLines = $this->uniqueNonEmpty(array_map(fn (array $row) => $row['summary'], $officeHourRows));
+
+        return [
+            'COURSE_CODE' => $packet['course']['code'] ?? '',
+            'COURSE_TITLE' => $packet['course']['title'] ?? '',
+            'TERM_CODE' => $packet['term']['code'] ?? '',
+            'TERM_NAME' => $packet['term']['name'] ?? '',
+            'SECTION_CODE' => $packet['section']['code'] ?? '',
+            'DEPARTMENT_LINE' => ($packet['course']['department'] ?? '') !== ''
+                ? $packet['course']['department']
+                : 'Department of Engineering Technologies – Information Security/Cyber Security',
+
+            'INSTRUCTOR_NAME' => $packet['instructor']['name'] ?? '',
+            'INSTRUCTOR_EMAIL' => $packet['instructor']['email'] ?? '',
+
+            'SYLLABUS_DATE' => now()->toDateString(),
+
+            'CREDIT_HOURS' => $credits !== '' ? $credits : 'TBD',
+            'DELIVERY_MODE' => $this->formatDeliveryMode($packet['section']['modality'] ?? ''),
+            'LOCATION' => $uniqueRooms !== [] ? implode('; ', $uniqueRooms) : (($meeting['location'] ?? '') !== '' ? $meeting['location'] : 'TBD'),
+            'MEETING_DAYS' => $meetingDays !== [] ? implode('; ', $meetingDays) : (($meeting['days'] ?? '') !== '' ? $meeting['days'] : 'TBD'),
+            'MEETING_TIME' => $meetingTimes !== [] ? implode('; ', $meetingTimes) : (($meeting['time'] ?? '') !== '' ? $meeting['time'] : 'TBD'),
+            'MEETING_LINES' => $meetingLines !== [] ? implode("\n", $meetingLines) : 'TBD',
+
+            'PREREQUISITES' => ($packet['course']['prerequisites'] ?? '') !== '' ? $packet['course']['prerequisites'] : 'none',
+            'COREQUISITES' => ($packet['course']['corequisites'] ?? '') !== '' ? $packet['course']['corequisites'] : 'none',
+            'OFFICE_HOURS' => $data->formatOfficeHoursLine($packet['office_hours'] ?? []),
+            'OFFICE_HOURS_LINES' => $officeHourLines !== [] ? implode("\n", $officeHourLines) : 'TBD',
+
+            'COURSE_DESCRIPTION' => ($packet['course']['description'] ?? '') !== ''
+                ? $this->normalizeMultilineText((string) $packet['course']['description'])
+                : 'TBD',
+            'COURSE_OBJECTIVES' => ($packet['course']['objectives'] ?? '') !== ''
+                ? $this->normalizeMultilineText((string) $packet['course']['objectives'])
+                : 'TBD',
+            'REQUIRED_MATERIALS' => ($packet['course']['required_materials'] ?? '') !== ''
+                ? $this->normalizeMultilineText((string) $packet['course']['required_materials'])
+                : 'TBD',
+            'COURSE_NOTES' => ($packet['course']['notes'] ?? '') !== ''
+                ? $this->normalizeMultilineText((string) $packet['course']['notes'])
+                : '',
+            'SECTION_NOTES' => ($packet['section']['notes'] ?? '') !== ''
+                ? $this->normalizeMultilineText((string) $packet['section']['notes'])
+                : '',
+            'CUSTOM_BLOCKS' => $this->renderCustomBlocksText($packet['blocks'] ?? []),
+        ];
     }
 
     private function renderCustomBlocksText(array $blocks): string
@@ -607,7 +712,7 @@ class SyllabusController extends Controller
         foreach ($blocks as $block) {
             $title = trim((string) ($block['title'] ?? ''));
             $category = trim((string) ($block['category'] ?? ''));
-            $content = trim((string) ($block['content'] ?? ''));
+            $content = $this->markdownToStructuredText((string) ($block['content'] ?? ''));
 
             $parts = [];
             if ($title !== '') {
@@ -629,43 +734,69 @@ class SyllabusController extends Controller
         return implode("\n\n", $chunks);
     }
 
-    private function buildReplacements(array $packet, SyllabusDataService $data): array
+    private function markdownToStructuredText(string $markdown): string
     {
-        $meeting = $data->formatMeetingInfo($packet['meeting_blocks'] ?? []);
-
-        $credits = $packet['course']['credits_text'] ?? '';
-        if ($credits === '' && ($packet['course']['credits_min'] ?? null) !== null) {
-            $min = $packet['course']['credits_min'];
-            $max = $packet['course']['credits_max'];
-            $credits = ($max !== null && $max != $min) ? ($min . '-' . $max) : (string)$min;
+        $markdown = $this->normalizeMarkdown($markdown);
+        if ($markdown === '') {
+            return '';
         }
 
-        return [
-            'COURSE_CODE' => $packet['course']['code'] ?? '',
-            'COURSE_TITLE' => $packet['course']['title'] ?? '',
-            'DEPARTMENT_LINE' => ($packet['course']['department'] ?? '') !== ''
-                ? ($packet['course']['department'])
-                : 'Department of Engineering Technologies – Information Security/Cyber Security',
+        $markdown = preg_replace('/\[(.*?)\]\((.*?)\)/', '$1 ($2)', $markdown) ?? $markdown;
+        $markdown = preg_replace('/^```[^\n]*\n?/m', '', $markdown) ?? $markdown;
+        $markdown = preg_replace('/\n```$/m', '', $markdown) ?? $markdown;
+        $markdown = preg_replace('/`([^`]+)`/', '$1', $markdown) ?? $markdown;
+        $markdown = preg_replace('/(\*\*|__)(.*?)\1/', '$2', $markdown) ?? $markdown;
+        $markdown = preg_replace('/(\*|_)(.*?)\1/', '$2', $markdown) ?? $markdown;
+        $markdown = strip_tags($markdown);
 
-            'INSTRUCTOR_NAME' => $packet['instructor']['name'] ?? '',
-            'INSTRUCTOR_EMAIL' => $packet['instructor']['email'] ?? '',
+        $out = [];
+        foreach (preg_split('/\n/', $markdown) ?: [] as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '') {
+                $out[] = '';
+                continue;
+            }
 
-            'SYLLABUS_DATE' => now()->toDateString(),
+            if (preg_match('/^(#{1,6})\s*(.+)$/', $trimmed, $m)) {
+                $out[] = trim($m[2]);
+                $out[] = '';
+                continue;
+            }
 
-            'CREDIT_HOURS' => $credits !== '' ? $credits : 'TBD',
-            'DELIVERY_MODE' => $this->formatDeliveryMode($packet['section']['modality'] ?? ''),
-            'LOCATION' => $meeting['location'] ?? 'TBD',
-            'MEETING_DAYS' => $meeting['days'] ?? 'TBD',
-            'MEETING_TIME' => $meeting['time'] ?? 'TBD',
+            if (preg_match('/^[-*+]\s+(.+)$/', $trimmed, $m)) {
+                $out[] = '• ' . trim($m[1]);
+                continue;
+            }
 
-            'COREQUISITES' => ($packet['course']['corequisites'] ?? '') !== '' ? $packet['course']['corequisites'] : 'none',
-            'OFFICE_HOURS' => $data->formatOfficeHoursLine($packet['office_hours'] ?? []),
+            if (preg_match('/^(\d+)[\.)]\s+(.+)$/', $trimmed, $m)) {
+                $out[] = $m[1] . '. ' . trim($m[2]);
+                continue;
+            }
 
-            'COURSE_DESCRIPTION' => ($packet['course']['description'] ?? '') !== '' ? $packet['course']['description'] : 'TBD',
-            'COURSE_OBJECTIVES' => ($packet['course']['objectives'] ?? '') !== '' ? $packet['course']['objectives'] : 'TBD',
-            'REQUIRED_MATERIALS' => ($packet['course']['required_materials'] ?? '') !== '' ? $packet['course']['required_materials'] : 'TBD',
-            'CUSTOM_BLOCKS' => $this->renderCustomBlocksText($packet['blocks'] ?? []),
-        ];
+            if (preg_match('/^>\s?(.+)$/', $trimmed, $m)) {
+                $out[] = 'Note: ' . trim($m[1]);
+                continue;
+            }
+
+            if (str_starts_with($trimmed, '|') && str_ends_with($trimmed, '|')) {
+                $cells = array_values(array_filter(array_map(
+                    fn (string $cell) => trim($cell),
+                    explode('|', trim($trimmed, '| '))
+                ), fn (string $cell) => $cell !== ''));
+
+                if ($cells !== []) {
+                    $out[] = implode(' | ', $cells);
+                    continue;
+                }
+            }
+
+            $out[] = $trimmed;
+        }
+
+        $text = implode("\n", $out);
+        $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
+
+        return trim($text);
     }
 
     private function formatDeliveryMode(string $modality): string
@@ -678,11 +809,50 @@ class SyllabusController extends Controller
         };
     }
 
+    private function formatMeetingType(string $type): string
+    {
+        $type = trim($type);
+        if ($type === '') {
+            return '';
+        }
+
+        $type = str_replace('_', ' ', strtolower($type));
+
+        return Str::title($type);
+    }
+
+    private function daysToString(array $days): string
+    {
+        $order = ['Mon' => 1, 'Tue' => 2, 'Wed' => 3, 'Thu' => 4, 'Fri' => 5, 'Sat' => 6, 'Sun' => 7];
+        $days = array_values(array_filter($days, fn ($day) => is_string($day) && trim($day) !== ''));
+        usort($days, fn ($a, $b) => ($order[$a] ?? 99) <=> ($order[$b] ?? 99));
+
+        return implode(', ', $days);
+    }
+
+    private function uniqueNonEmpty(array $values): array
+    {
+        $clean = [];
+
+        foreach ($values as $value) {
+            $value = trim((string) $value);
+            if ($value === '') {
+                continue;
+            }
+            if (!in_array($value, $clean, true)) {
+                $clean[] = $value;
+            }
+        }
+
+        return $clean;
+    }
+
     private function fileBase(array $packet): string
     {
         $term = $packet['term']['code'] ?? 'TERM';
         $code = $packet['course']['code'] ?? 'COURSE';
         $sec = $packet['section']['code'] ?? '00';
+
         return 'syllabus_' . strtolower($term) . '_' . strtolower(str_replace([' ', '/'], ['-', '-'], $code)) . '_' . $sec;
     }
 }

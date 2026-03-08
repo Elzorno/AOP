@@ -30,13 +30,6 @@ class DocxTemplateService
             throw new \RuntimeException('Unable to open DOCX template as ZIP.');
         }
 
-        // Escape replacements for XML.
-        $safe = [];
-        foreach ($replacements as $k => $v) {
-            $safe[$k] = $this->xmlEscape((string)$v);
-        }
-
-        // Replace tokens in all word/*.xml parts.
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $stat = $zip->statIndex($i);
             $name = $stat['name'] ?? '';
@@ -50,8 +43,8 @@ class DocxTemplateService
             }
 
             $updated = $xml;
-            foreach ($safe as $token => $value) {
-                $updated = str_replace('{{' . $token . '}}', $value, $updated);
+            foreach ($replacements as $token => $value) {
+                $updated = $this->replaceTokenInXml($updated, (string) $token, (string) $value);
             }
 
             if ($updated !== $xml) {
@@ -62,7 +55,6 @@ class DocxTemplateService
 
         $zip->close();
 
-        // Ensure output dir
         $outDir = dirname($outputPath);
         if (!is_dir($outDir) && !@mkdir($outDir, 0755, true) && !is_dir($outDir)) {
             throw new \RuntimeException('Unable to create output directory: ' . $outDir);
@@ -70,9 +62,39 @@ class DocxTemplateService
 
         copy($workDocx, $outputPath);
 
-        // cleanup
         @unlink($workDocx);
         @rmdir($tmp);
+    }
+
+    private function replaceTokenInXml(string $xml, string $token, string $value): string
+    {
+        $placeholder = '{{' . $token . '}}';
+        if (!str_contains($xml, $placeholder)) {
+            return $xml;
+        }
+
+        return str_replace($placeholder, $this->wordXmlText($value), $xml);
+    }
+
+    private function wordXmlText(string $value): string
+    {
+        $value = str_replace(["\r\n", "\r"], "\n", $value);
+        if ($value === '') {
+            return '';
+        }
+
+        $lines = explode("\n", $value);
+        $escapedLines = array_map(fn (string $line) => $this->wordXmlLine($line), $lines);
+
+        return implode('</w:t><w:br/><w:t xml:space="preserve">', $escapedLines);
+    }
+
+    private function wordXmlLine(string $line): string
+    {
+        $parts = explode("\t", $line);
+        $escaped = array_map(fn (string $part) => $this->xmlEscape($part), $parts);
+
+        return implode('</w:t><w:tab/><w:t xml:space="preserve">', $escaped);
     }
 
     private function xmlEscape(string $s): string

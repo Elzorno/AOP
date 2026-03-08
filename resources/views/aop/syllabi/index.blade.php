@@ -1,4 +1,4 @@
-<x-aop-layout>
+<x-aop-layout :activeTermLabel="$term ? 'Active Term: '.$term->code.' — '.$term->name : 'No active term selected'">
   <x-slot:title>Syllabi</x-slot:title>
 
   <div class="row" style="margin-bottom:14px;">
@@ -24,7 +24,7 @@
 
   <div class="card">
     <h2>Template</h2>
-    <p class="muted">DOCX and PDF are generated from a DOCX template. Upload a new template to change formatting.</p>
+    <p class="muted">DOCX files are generated from the uploaded DOCX template, and PDFs are produced by converting that rendered DOCX through LibreOffice.</p>
 
     <div style="margin-top:10px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
       <div>
@@ -58,7 +58,7 @@
       <div>
         <h2>Syllabus Blocks</h2>
         <p class="muted" style="margin-top:6px; max-width:850px;">
-          Shared syllabus blocks are editable here. They flow into the JSON packet and HTML preview for every syllabus.
+          Shared syllabus blocks are editable here. They flow into the JSON packet, browser preview, and template replacement data for every syllabus.
           Block content is stored as Markdown and rendered safely for preview.
         </p>
       </div>

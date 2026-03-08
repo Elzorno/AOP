@@ -31,7 +31,7 @@ This file tracks what each phase changed so the project remains understandable w
 ## Phase 19
 - Added “Clone Term Schedule” workflow so an existing term can be copied into a clean new term as a starting point.
 - Clones offerings, sections, and meeting blocks, with instructor assignments optional and off by default.
-- Prevents cloning into non-empty targets and ensures the new term starts unlocked/unpublished.
+- Prevents cloning into non-empty targets and ensures the new term starts locked/unpublished = false.
 
 ## Phase 20
 - Security hardening and bug-fix pass based on full-app audit.
@@ -78,3 +78,21 @@ This file tracks what each phase changed so the project remains understandable w
 - Implemented create/edit/delete management for syllabus blocks using the existing `syllabus_blocks` table.
 - Included shared blocks in each syllabus JSON packet and in the HTML preview so block content can be verified before DOCX/PDF formatting refinements.
 - Added a `CUSTOM_BLOCKS` replacement value so a future DOCX template pass can place shared block content intentionally.
+
+## Phase 24.1
+- Fixed the Syllabi index crash caused by an undefined render-history variable.
+
+## Phase 24.2
+- Fixed mangled Blade rendering on the Syllabi index where raw template code was appearing in the browser.
+
+## Phase 25
+- Replaced the plain textarea block editor with the CDN-based Toast UI Markdown editor.
+- Kept Markdown storage in the existing `content_html` field for schema compatibility.
+- Preserved a textarea fallback if the CDN editor fails to load.
+- Confirmed Markdown block previews render cleanly in the Syllabi list and section preview.
+
+## Phase 26
+- Upgraded the browser syllabus preview to a more document-style layout with a structured header table and cleaner section formatting.
+- Added richer replacement tokens and better multi-line handling so DOCX/PDF exports preserve line breaks more reliably.
+- Improved `CUSTOM_BLOCKS` plain-text formatting for DOCX template placement by converting Markdown into structured readable text.
+- Updated deployment docs to reflect the current DOCX-template plus LibreOffice-based export pipeline.

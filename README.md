@@ -51,9 +51,8 @@ Minimum host expectations:
 
 For syllabus rendering, install:
 
-- `pandoc` for DOCX generation
-- `wkhtmltopdf` for PDF generation
-- `libreoffice` as fallback conversion support
+- `libreoffice` for PDF conversion from the rendered DOCX template
+- PHP `ZipArchive` support so the app can populate DOCX template placeholders
 
 See `docs/AOP_DEPLOY_CHECKLIST.md` for a clean production deployment workflow.
 
