@@ -311,10 +311,27 @@
         @endif
       </section>
 
-      @if(($packet['blocks'] ?? []) !== [])
+      @if(($structuredSections ?? []) !== [])
+        @foreach($structuredSections as $structured)
+          <section class="section">
+            <h2>{{ $structured['title'] ?? 'Untitled Section' }}</h2>
+            @if(!empty($structured['description']))
+              <div class="minor" style="margin-bottom:8px;">{{ $structured['description'] }}</div>
+            @endif
+
+            @if(trim((string) ($structured['content'] ?? '')) !== '')
+              <div class="markdown-body">{!! $structured['content_rendered'] ?? '<p>—</p>' !!}</div>
+            @else
+              <div class="body-copy muted-empty">Content has not been entered for this section yet.</div>
+            @endif
+          </section>
+        @endforeach
+      @endif
+
+      @if(($legacyBlocks ?? []) !== [])
         <section class="section">
-          <h2>Shared Syllabus Blocks</h2>
-          @foreach(($packet['blocks'] ?? []) as $block)
+          <h2>Additional Shared Blocks</h2>
+          @foreach($legacyBlocks as $block)
             <div class="block">
               <h3>{{ $block['title'] ?: 'Untitled Block' }}</h3>
               <div class="block-meta">

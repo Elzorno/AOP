@@ -19,6 +19,18 @@ class Syllabus extends Model
         'block_order_json' => 'array',
     ];
 
-    public function section(): BelongsTo { return $this->belongsTo(Section::class); }
-    public function renders(): HasMany { return $this->hasMany(SyllabusRender::class); }
+    public function section(): BelongsTo
+    {
+        return $this->belongsTo(Section::class);
+    }
+
+    public function renders(): HasMany
+    {
+        return $this->hasMany(SyllabusRender::class);
+    }
+
+    public function sectionItems(): HasMany
+    {
+        return $this->hasMany(SyllabusSectionItem::class);
+    }
 }

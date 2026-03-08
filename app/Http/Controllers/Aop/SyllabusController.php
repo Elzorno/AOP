@@ -7,6 +7,8 @@ use App\Models\Section;
 use App\Models\Syllabus;
 use App\Models\SyllabusBlock;
 use App\Models\SyllabusRender;
+use App\Models\SyllabusSectionDefinition;
+use App\Models\SyllabusSectionItem;
 use App\Models\Term;
 use App\Services\DocxPdfConvertService;
 use App\Services\DocxTemplateService;
@@ -50,6 +52,85 @@ class SyllabusController extends Controller
                 $block->setAttribute('content_rendered', $this->renderMarkdownHtml($markdown));
                 $block->setAttribute('content_preview_text', $this->markdownToPreviewText($markdown, 180));
             });
+    }
+
+    private function syllabusStructureDefinitions()
+    {
+        if (!Schema::hasTable('syllabus_section_definitions')) {
+            return collect();
+        }
+
+        return SyllabusSectionDefinition::query()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->each(function (SyllabusSectionDefinition $definition): void {
+                $markdown = $this->normalizeMarkdown((string) ($definition->default_content ?? ''));
+                $definition->setAttribute('default_content', $markdown);
+                $definition->setAttribute('content_rendered', $this->renderMarkdownHtml($markdown));
+                $definition->setAttribute('content_preview_text', $markdown !== ''
+                    ? $this->markdownToPreviewText($markdown, 180)
+                    : 'No default content entered yet.');
+            });
+    }
+
+    private function assertSyllabusStructureEnabled(): void
+    {
+        abort_if(
+            !Schema::hasTable('syllabus_section_definitions') || !Schema::hasTable('syllabus_section_items'),
+            400,
+            'Syllabus structure tables are not available yet. Run migrations first.'
+        );
+    }
+
+    private function validateDefinition(Request $request, ?SyllabusSectionDefinition $definition = null): array
+    {
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:120'],
+            'category' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'default_content' => ['nullable', 'string'],
+            'scope' => ['required', 'in:global,syllabus'],
+            'is_required' => ['nullable', 'boolean'],
+            'is_active' => ['nullable', 'boolean'],
+            'is_locked' => ['nullable', 'boolean'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:10000'],
+        ]);
+
+        $validated['title'] = trim((string) ($validated['title'] ?? ''));
+        $validated['slug'] = $this->uniqueDefinitionSlug((string) ($validated['slug'] ?: $validated['title']), $definition?->id);
+        $validated['category'] = trim((string) ($validated['category'] ?? '')) ?: null;
+        $validated['description'] = $this->normalizeMultilineText((string) ($validated['description'] ?? '')) ?: null;
+        $validated['default_content'] = $this->normalizeMarkdown((string) ($validated['default_content'] ?? ''));
+        $validated['scope'] = (string) ($validated['scope'] ?? 'global');
+        $validated['is_required'] = $request->boolean('is_required');
+        $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['is_locked'] = $request->boolean('is_locked');
+        $validated['sort_order'] = (int) ($validated['sort_order'] ?? 0);
+
+        return $validated;
+    }
+
+    private function uniqueDefinitionSlug(string $value, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($value);
+        if ($base === '') {
+            $base = 'section';
+        }
+
+        $slug = $base;
+        $suffix = 2;
+
+        while (SyllabusSectionDefinition::query()
+            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->where('slug', $slug)
+            ->exists()) {
+            $slug = $base . '-' . $suffix;
+            $suffix++;
+        }
+
+        return $slug;
     }
 
     private function validateBlock(Request $request): array
@@ -133,6 +214,7 @@ class SyllabusController extends Controller
             'sections' => $sections,
             'templateExists' => $templateExists,
             'latestBySection' => $latestBySection,
+            'definitions' => $this->syllabusStructureDefinitions(),
             'blocks' => $this->syllabusBlocks(),
         ]);
     }
@@ -192,6 +274,126 @@ class SyllabusController extends Controller
             ->with('status', 'Syllabus block “' . $title . '” deleted.');
     }
 
+    public function createDefinition()
+    {
+        $this->assertSyllabusStructureEnabled();
+
+        return view('aop.syllabi.structure.create');
+    }
+
+    public function storeDefinition(Request $request)
+    {
+        $this->assertSyllabusStructureEnabled();
+
+        $definition = SyllabusSectionDefinition::create($this->validateDefinition($request));
+
+        return redirect()->route('aop.syllabi.index')
+            ->with('status', 'Syllabus structure section “' . $definition->title . '” created.');
+    }
+
+    public function editDefinition(SyllabusSectionDefinition $definition)
+    {
+        $this->assertSyllabusStructureEnabled();
+
+        return view('aop.syllabi.structure.edit', [
+            'definition' => $definition,
+        ]);
+    }
+
+    public function updateDefinition(Request $request, SyllabusSectionDefinition $definition)
+    {
+        $this->assertSyllabusStructureEnabled();
+
+        $definition->update($this->validateDefinition($request, $definition));
+
+        return redirect()->route('aop.syllabi.index')
+            ->with('status', 'Syllabus structure section “' . $definition->title . '” updated.');
+    }
+
+    public function destroyDefinition(SyllabusSectionDefinition $definition)
+    {
+        $this->assertSyllabusStructureEnabled();
+
+        if ($definition->is_locked) {
+            return redirect()->route('aop.syllabi.index')
+                ->with('status', 'Protected syllabus structure sections must be unprotected before deletion.');
+        }
+
+        $title = $definition->title;
+        $definition->delete();
+
+        return redirect()->route('aop.syllabi.index')
+            ->with('status', 'Syllabus structure section “' . $title . '” deleted.');
+    }
+
+    public function editSectionStructure(Section $section, SyllabusSectionDefinition $definition)
+    {
+        $term = $this->ensureSectionInActiveTerm($section);
+        $this->assertSyllabusStructureEnabled();
+
+        abort_if($definition->scope !== 'syllabus', 404, 'This syllabus section is managed globally.');
+
+        $syllabus = $this->getOrCreateSyllabus($section);
+        $item = SyllabusSectionItem::query()->firstOrCreate(
+            [
+                'syllabus_id' => $syllabus->id,
+                'syllabus_section_definition_id' => $definition->id,
+            ],
+            [
+                'title_override' => null,
+                'content_markdown' => null,
+                'is_enabled' => true,
+                'sort_order' => $definition->sort_order,
+            ]
+        );
+
+        return view('aop.syllabi.structure.section-edit', [
+            'term' => $term,
+            'section' => $section,
+            'definition' => $definition,
+            'item' => $item,
+        ]);
+    }
+
+    public function updateSectionStructure(Request $request, Section $section, SyllabusSectionDefinition $definition)
+    {
+        $this->ensureSectionInActiveTerm($section);
+        $this->assertSyllabusStructureEnabled();
+
+        abort_if($definition->scope !== 'syllabus', 404, 'This syllabus section is managed globally.');
+
+        $validated = $request->validate([
+            'title_override' => ['nullable', 'string', 'max:255'],
+            'content_markdown' => ['nullable', 'string'],
+            'is_enabled' => ['nullable', 'boolean'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:10000'],
+        ]);
+
+        $syllabus = $this->getOrCreateSyllabus($section);
+        $item = SyllabusSectionItem::query()->firstOrCreate(
+            [
+                'syllabus_id' => $syllabus->id,
+                'syllabus_section_definition_id' => $definition->id,
+            ],
+            [
+                'title_override' => null,
+                'content_markdown' => null,
+                'is_enabled' => true,
+                'sort_order' => $definition->sort_order,
+            ]
+        );
+
+        $item->update([
+            'title_override' => trim((string) ($validated['title_override'] ?? '')) ?: null,
+            'content_markdown' => $this->normalizeMarkdown((string) ($validated['content_markdown'] ?? '')) ?: null,
+            'is_enabled' => $definition->is_required ? true : $request->boolean('is_enabled', true),
+            'sort_order' => (int) ($validated['sort_order'] ?? $definition->sort_order ?? 0),
+        ]);
+
+        return redirect()->route('aop.syllabi.show', $section)
+            ->with('status', 'Per-syllabus content updated for “' . $definition->title . '”.');
+    }
+
     public function show(Section $section, SyllabusDataService $data)
     {
         $term = $this->ensureSectionInActiveTerm($section);
@@ -206,6 +408,7 @@ class SyllabusController extends Controller
             'packet' => $packet,
             'html' => $html,
             'history' => $history,
+            'structuredSections' => collect($packet['syllabus_sections'] ?? []),
             'blocks' => collect($packet['blocks'] ?? []),
         ]);
     }
@@ -557,6 +760,8 @@ class SyllabusController extends Controller
             'termLine' => $termLine !== '' ? $termLine : 'TBD',
             'generatedDate' => $replacements['SYLLABUS_DATE'] ?: now()->toDateString(),
             'departmentLine' => $replacements['DEPARTMENT_LINE'] ?: 'Academic Ops Platform Syllabus Preview',
+            'structuredSections' => $this->visibleStructuredSections($packet['syllabus_sections'] ?? []),
+            'legacyBlocks' => $packet['blocks'] ?? [],
         ];
     }
 
@@ -650,6 +855,18 @@ class SyllabusController extends Controller
             $credits = ($max !== null && $max != $min) ? ($min . '-' . $max) : (string) $min;
         }
 
+        $visibleStructuredSections = $this->visibleStructuredSections($packet['syllabus_sections'] ?? []);
+        $structuredSectionsText = $this->renderStructuredSectionsText($visibleStructuredSections);
+        $legacyBlocksText = $this->renderLegacyBlocksText($packet['blocks'] ?? []);
+        $customBlocksText = trim(implode("
+
+", array_filter([
+            $structuredSectionsText,
+            $legacyBlocksText !== '' ? 'Additional Shared Blocks' . "
+
+" . $legacyBlocksText : '',
+        ])));
+
         $uniqueRooms = $this->uniqueNonEmpty(array_map(fn (array $row) => $row['room'], $meetingRows));
         $meetingDays = $this->uniqueNonEmpty(array_map(fn (array $row) => $row['days'], $meetingRows));
         $meetingTimes = $this->uniqueNonEmpty(array_map(fn (array $row) => $row['time'], $meetingRows));
@@ -676,12 +893,14 @@ class SyllabusController extends Controller
             'LOCATION' => $uniqueRooms !== [] ? implode('; ', $uniqueRooms) : (($meeting['location'] ?? '') !== '' ? $meeting['location'] : 'TBD'),
             'MEETING_DAYS' => $meetingDays !== [] ? implode('; ', $meetingDays) : (($meeting['days'] ?? '') !== '' ? $meeting['days'] : 'TBD'),
             'MEETING_TIME' => $meetingTimes !== [] ? implode('; ', $meetingTimes) : (($meeting['time'] ?? '') !== '' ? $meeting['time'] : 'TBD'),
-            'MEETING_LINES' => $meetingLines !== [] ? implode("\n", $meetingLines) : 'TBD',
+            'MEETING_LINES' => $meetingLines !== [] ? implode("
+", $meetingLines) : 'TBD',
 
             'PREREQUISITES' => ($packet['course']['prerequisites'] ?? '') !== '' ? $packet['course']['prerequisites'] : 'none',
             'COREQUISITES' => ($packet['course']['corequisites'] ?? '') !== '' ? $packet['course']['corequisites'] : 'none',
             'OFFICE_HOURS' => $data->formatOfficeHoursLine($packet['office_hours'] ?? []),
-            'OFFICE_HOURS_LINES' => $officeHourLines !== [] ? implode("\n", $officeHourLines) : 'TBD',
+            'OFFICE_HOURS_LINES' => $officeHourLines !== [] ? implode("
+", $officeHourLines) : 'TBD',
 
             'COURSE_DESCRIPTION' => ($packet['course']['description'] ?? '') !== ''
                 ? $this->normalizeMultilineText((string) $packet['course']['description'])
@@ -698,11 +917,65 @@ class SyllabusController extends Controller
             'SECTION_NOTES' => ($packet['section']['notes'] ?? '') !== ''
                 ? $this->normalizeMultilineText((string) $packet['section']['notes'])
                 : '',
-            'CUSTOM_BLOCKS' => $this->renderCustomBlocksText($packet['blocks'] ?? []),
+            'STRUCTURED_SECTIONS' => $structuredSectionsText,
+            'LEGACY_BLOCKS' => $legacyBlocksText,
+            'CUSTOM_BLOCKS' => $customBlocksText,
         ];
     }
 
-    private function renderCustomBlocksText(array $blocks): string
+    private function visibleStructuredSections(array $sections): array
+    {
+        $visible = [];
+
+        foreach ($sections as $section) {
+            $isVisible = (bool) ($section['is_required'] ?? false) || (bool) ($section['is_enabled'] ?? true);
+            if ($isVisible) {
+                $visible[] = $section;
+            }
+        }
+
+        usort($visible, function (array $a, array $b): int {
+            return (($a['sort_order'] ?? 0) <=> ($b['sort_order'] ?? 0)) ?: (($a['id'] ?? 0) <=> ($b['id'] ?? 0));
+        });
+
+        return $visible;
+    }
+
+    private function renderStructuredSectionsText(array $sections): string
+    {
+        if (count($sections) === 0) {
+            return '';
+        }
+
+        $chunks = [];
+        foreach ($sections as $section) {
+            $title = trim((string) ($section['title'] ?? ''));
+            $content = $this->markdownToStructuredText((string) ($section['content'] ?? ''));
+
+            if ($title === '' && $content === '') {
+                continue;
+            }
+
+            $parts = [];
+            if ($title !== '') {
+                $parts[] = $title;
+            }
+            if ($content !== '') {
+                $parts[] = $content;
+            } elseif ($title !== '') {
+                $parts[] = 'TBD';
+            }
+
+            $chunks[] = implode("
+", $parts);
+        }
+
+        return implode("
+
+", $chunks);
+    }
+
+    private function renderLegacyBlocksText(array $blocks): string
     {
         if (count($blocks) === 0) {
             return '';
@@ -725,13 +998,16 @@ class SyllabusController extends Controller
                 $parts[] = $content;
             }
 
-            $line = implode("\n", $parts);
+            $line = implode("
+", $parts);
             if ($line !== '') {
                 $chunks[] = $line;
             }
         }
 
-        return implode("\n\n", $chunks);
+        return implode("
+
+", $chunks);
     }
 
     private function markdownToStructuredText(string $markdown): string

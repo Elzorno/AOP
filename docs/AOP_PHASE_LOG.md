@@ -96,3 +96,12 @@ This file tracks what each phase changed so the project remains understandable w
 - Added richer replacement tokens and better multi-line handling so DOCX/PDF exports preserve line breaks more reliably.
 - Improved `CUSTOM_BLOCKS` plain-text formatting for DOCX template placement by converting Markdown into structured readable text.
 - Updated deployment docs to reflect the current DOCX-template plus LibreOffice-based export pipeline.
+
+
+## Phase 27
+- Added a syllabus structure builder with ordered section definitions stored separately from legacy shared blocks.
+- Each structure section can now be marked as global (same content for every syllabus) or per-syllabus (starter content plus per-section overrides).
+- Added required/active/protected flags and explicit sort ordering for syllabus sections.
+- Added per-syllabus editing from the syllabus preview page for sections whose content is allowed to vary by section.
+- Updated the browser preview and JSON packet to render the structured syllabus sections before legacy shared blocks.
+- Added `STRUCTURED_SECTIONS` and `LEGACY_BLOCKS` replacement values while keeping `CUSTOM_BLOCKS` compatible for DOCX/PDF template work.

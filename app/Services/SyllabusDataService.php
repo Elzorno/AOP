@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Models\OfficeHourBlock;
 use App\Models\Section;
+use App\Models\Syllabus;
 use App\Models\SyllabusBlock;
+use App\Models\SyllabusSectionDefinition;
 use App\Models\Term;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class SyllabusDataService
@@ -89,6 +92,7 @@ class SyllabusDataService
             ],
             'office_hours' => $officeHours,
             'meeting_blocks' => $meetingBlocks,
+            'syllabus_sections' => $this->buildStructuredSections($section),
             'blocks' => $this->buildGlobalBlocks(),
         ];
     }
@@ -139,6 +143,70 @@ class SyllabusDataService
             'location' => $room !== '' ? $room : 'TBD',
             'delivery_mode' => 'TBD',
         ];
+    }
+
+
+    private function buildStructuredSections(Section $section): array
+    {
+        if (!Schema::hasTable('syllabus_section_definitions')) {
+            return [];
+        }
+
+        $definitions = SyllabusSectionDefinition::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        if ($definitions->count() === 0) {
+            return [];
+        }
+
+        /** @var Syllabus|null $syllabus */
+        $syllabus = $section->relationLoaded('syllabus')
+            ? $section->syllabus
+            : Syllabus::query()->with('sectionItems')->where('section_id', $section->id)->first();
+
+        $items = collect(optional($syllabus)->sectionItems ?? [])->keyBy('syllabus_section_definition_id');
+
+        return $definitions
+            ->map(function (SyllabusSectionDefinition $definition) use ($items): array {
+                $item = $items->get($definition->id);
+
+                $title = trim((string) ($item?->title_override ?: $definition->title));
+                $content = $definition->scope === 'global'
+                    ? (string) ($definition->default_content ?? '')
+                    : (string) (($item?->content_markdown !== null && trim((string) $item?->content_markdown) !== '')
+                        ? $item?->content_markdown
+                        : ($definition->default_content ?? ''));
+
+                $content = $this->normalizeMarkdown($content);
+                $isEnabled = $definition->is_required ? true : (bool) ($item?->is_enabled ?? true);
+
+                return [
+                    'id' => $definition->id,
+                    'title' => $title !== '' ? $title : (string) $definition->title,
+                    'slug' => (string) $definition->slug,
+                    'category' => $definition->category ? (string) $definition->category : '',
+                    'description' => $definition->description ? (string) $definition->description : '',
+                    'scope' => (string) $definition->scope,
+                    'content' => $content,
+                    'content_rendered' => $this->renderMarkdownHtml($content),
+                    'content_preview_text' => $content !== ''
+                        ? $this->markdownToPreviewText($content, 180)
+                        : 'No content entered yet.',
+                    'is_required' => (bool) $definition->is_required,
+                    'is_active' => (bool) $definition->is_active,
+                    'is_enabled' => $isEnabled,
+                    'is_locked' => (bool) $definition->is_locked,
+                    'sort_order' => (int) ($item?->sort_order ?? $definition->sort_order ?? 0),
+                    'can_edit_per_syllabus' => $definition->scope === 'syllabus',
+                    'item_id' => $item?->id,
+                ];
+            })
+            ->sortBy([['sort_order', 'asc'], ['id', 'asc']])
+            ->values()
+            ->all();
     }
 
     private function buildGlobalBlocks(): array

@@ -56,10 +56,99 @@
   <div class="card">
     <div class="row" style="margin-bottom:10px; align-items:flex-start;">
       <div>
-        <h2>Syllabus Blocks</h2>
+        <h2>Syllabus Structure Builder</h2>
+        <p class="muted" style="margin-top:6px; max-width:900px;">
+          Define the sections that make up a syllabus and decide whether each section is global for every syllabus or editable per section syllabus.
+          Global sections share the same content everywhere; per-syllabus sections use a shared starter template but can be customized from each syllabus preview.
+        </p>
+      </div>
+      <div class="actions">
+        <a class="btn" href="{{ route('aop.syllabi.structure.create') }}">New Structure Section</a>
+      </div>
+    </div>
+
+    @if(($definitions ?? collect())->count() === 0)
+      <p class="muted">No syllabus structure sections have been created yet.</p>
+    @else
+      <table style="margin-top:8px;">
+        <thead>
+          <tr>
+            <th style="width:240px;">Section</th>
+            <th style="width:130px;">Scope</th>
+            <th style="width:90px;">Order</th>
+            <th>Default Content Preview</th>
+            <th style="width:150px;">Status</th>
+            <th style="width:180px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($definitions as $definition)
+            <tr>
+              <td>
+                <strong>{{ $definition->title }}</strong>
+                <div class="muted">Slug: {{ $definition->slug }}</div>
+                @if($definition->category)
+                  <div class="muted">Category: {{ $definition->category }}</div>
+                @endif
+                @if($definition->description)
+                  <div class="muted" style="margin-top:4px;">{{ $definition->description }}</div>
+                @endif
+              </td>
+              <td>
+                <span class="badge">{{ $definition->scope === 'syllabus' ? 'Per-Syllabus' : 'Global' }}</span>
+              </td>
+              <td>{{ $definition->sort_order }}</td>
+              <td>
+                <div class="markdown-body markdown-preview compact">{!! $definition->content_rendered !!}</div>
+                <div class="muted" style="margin-top:8px; font-size:12px;">{{ $definition->content_preview_text }}</div>
+              </td>
+              <td>
+                <div style="display:grid; gap:6px;">
+                  @if($definition->is_required)
+                    <span class="badge" style="background:#e8f0ff; color:#1e40af;">Required</span>
+                  @else
+                    <span class="badge">Optional</span>
+                  @endif
+
+                  @if($definition->is_active)
+                    <span class="badge" style="background:#e6ffed; color:#0b6b2f;">Active</span>
+                  @else
+                    <span class="badge" style="background:#ffe8e8; color:#8a0a0a;">Inactive</span>
+                  @endif
+
+                  @if($definition->is_locked)
+                    <span class="badge" style="background:#fff3cd; color:#7a5b00;">Protected</span>
+                  @endif
+                </div>
+              </td>
+              <td>
+                <div class="actions" style="gap:8px; flex-wrap:wrap;">
+                  <a class="btn secondary" href="{{ route('aop.syllabi.structure.edit', $definition) }}">Edit</a>
+                  @if(!$definition->is_locked)
+                    <form method="POST" action="{{ route('aop.syllabi.structure.destroy', $definition) }}" style="display:inline; margin:0;" onsubmit="return confirm('Delete this syllabus structure section?');">
+                      @csrf
+                      @method('DELETE')
+                      <button class="btn secondary" type="submit">Delete</button>
+                    </form>
+                  @endif
+                </div>
+              </td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+    @endif
+  </div>
+
+  <div style="height:14px;"></div>
+
+  <div class="card">
+    <div class="row" style="margin-bottom:10px; align-items:flex-start;">
+      <div>
+        <h2>Legacy Shared Syllabus Blocks</h2>
         <p class="muted" style="margin-top:6px; max-width:850px;">
-          Shared syllabus blocks are editable here. They flow into the JSON packet, browser preview, and template replacement data for every syllabus.
-          Block content is stored as Markdown and rendered safely for preview.
+          These shared blocks remain available and still flow into JSON, preview, and export replacement data.
+          The new structure builder should be used for intentional section ordering and global-versus-per-syllabus control.
         </p>
       </div>
       <div class="actions">

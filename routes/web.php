@@ -133,12 +133,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Syllabi
         Route::get('/syllabi', [SyllabusController::class, 'index'])->name('syllabi.index');
         Route::post('/syllabi/template', [SyllabusController::class, 'uploadTemplate'])->name('syllabi.template.upload');
+        Route::get('/syllabi/structure/create', [SyllabusController::class, 'createDefinition'])->name('syllabi.structure.create');
+        Route::post('/syllabi/structure', [SyllabusController::class, 'storeDefinition'])->name('syllabi.structure.store');
+        Route::get('/syllabi/structure/{definition}/edit', [SyllabusController::class, 'editDefinition'])->name('syllabi.structure.edit');
+        Route::put('/syllabi/structure/{definition}', [SyllabusController::class, 'updateDefinition'])->name('syllabi.structure.update');
+        Route::delete('/syllabi/structure/{definition}', [SyllabusController::class, 'destroyDefinition'])->name('syllabi.structure.destroy');
         Route::get('/syllabi/blocks/create', [SyllabusController::class, 'createBlock'])->name('syllabi.blocks.create');
         Route::post('/syllabi/blocks', [SyllabusController::class, 'storeBlock'])->name('syllabi.blocks.store');
         Route::get('/syllabi/blocks/{block}/edit', [SyllabusController::class, 'editBlock'])->name('syllabi.blocks.edit');
         Route::put('/syllabi/blocks/{block}', [SyllabusController::class, 'updateBlock'])->name('syllabi.blocks.update');
         Route::delete('/syllabi/blocks/{block}', [SyllabusController::class, 'destroyBlock'])->name('syllabi.blocks.destroy');
         Route::get('/syllabi/sections/{section}', [SyllabusController::class, 'show'])->name('syllabi.show');
+        Route::get('/syllabi/sections/{section}/structure/{definition}/edit', [SyllabusController::class, 'editSectionStructure'])->name('syllabi.structure.section.edit');
+        Route::put('/syllabi/sections/{section}/structure/{definition}', [SyllabusController::class, 'updateSectionStructure'])->name('syllabi.structure.section.update');
         Route::get('/syllabi/sections/{section}/download/html', [SyllabusController::class, 'downloadHtml'])->name('syllabi.downloadHtml');
         Route::get('/syllabi/sections/{section}/download/json', [SyllabusController::class, 'downloadJson'])->name('syllabi.downloadJson');
         Route::get('/syllabi/sections/{section}/download/docx', [SyllabusController::class, 'downloadDocx'])->name('syllabi.downloadDocx');
