@@ -51,8 +51,13 @@ Minimum host expectations:
 
 For syllabus rendering, install:
 
-- `libreoffice` for PDF conversion from the rendered DOCX template
-- PHP `ZipArchive` support so the app can populate DOCX template placeholders
+- `pandoc` and/or `libreoffice` if you want HTML-aligned DOCX/PDF syllabus exports
+- PHP `ZipArchive` support if you want template-based DOCX placeholder replacement
+
+Syllabus export mode is controlled by `AOP_SYLLABUS_EXPORT_ENGINE`:
+- `auto` = prefer HTML-aligned export, then fall back to the uploaded DOCX template if needed
+- `html` = require the HTML-aligned renderer path
+- `template` = require the uploaded DOCX template path
 
 Structured syllabus sections also expose slug-based and order-based DOCX placeholder tokens. See `docs/SYLLABUS_TEMPLATE_TOKENS.md` for the current token model.
 

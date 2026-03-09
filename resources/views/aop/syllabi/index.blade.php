@@ -24,9 +24,12 @@
 
   <div class="card">
     <h2>Template</h2>
-    <p class="muted">DOCX files are generated from the uploaded DOCX template, and PDFs are produced by converting that rendered DOCX through LibreOffice.</p>
+    <p class="muted">AOP can now prefer HTML-aligned syllabus exports so DOCX/PDF output tracks the cleaner in-app layout more closely. Template-based export remains available for compatibility and fallback.</p>
 
     <div style="margin-top:10px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+      <div>
+        <span class="badge">Export Mode: {{ strtoupper($exportEngine ?? 'AUTO') }}</span>
+      </div>
       <div>
         @if($templateExists)
           <span class="badge">Template: Installed</span>
@@ -47,7 +50,8 @@
     @enderror
 
     <div class="muted" style="margin-top:10px; font-size:12px;">
-      Tip: Install LibreOffice in the LXC for PDF conversion: <code>apt-get install -y libreoffice</code>
+      In <code>AOP_SYLLABUS_EXPORT_ENGINE=auto</code>, AOP tries HTML-aligned DOCX/PDF export first and falls back to the uploaded DOCX template when needed.
+      Install <code>pandoc</code> and/or <code>libreoffice</code> for the broadest export support.
     </div>
   </div>
 

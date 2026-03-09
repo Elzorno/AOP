@@ -113,3 +113,10 @@ This file tracks what each phase changed so the project remains understandable w
 - Added indexed structured section placeholders such as `STRUCTURED_SECTION_01_TITLE` and `STRUCTURED_SECTION_01_CONTENT` for templates that follow visible syllabus order.
 - Added indexed legacy-block placeholders to support transition-period template placement without losing the old block system.
 - Added in-app template token reference guidance on the syllabus preview page and documented the token model in `docs/SYLLABUS_TEMPLATE_TOKENS.md`.
+
+## Phase 29
+- Added configurable syllabus export engine support through `AOP_SYLLABUS_EXPORT_ENGINE` with `auto`, `html`, and `template` modes.
+- In `auto` mode, DOCX/PDF export now prefers the cleaner HTML syllabus layout first so exported files can track the in-app preview more closely.
+- Kept the uploaded DOCX template path as a compatibility fallback instead of removing the existing token-based workflow.
+- Updated syllabus preview/header output with an explicit university line and more export-friendly print styling for HTML-driven renderers.
+- Updated deployment docs and syllabi UI messaging to explain the new export behavior.

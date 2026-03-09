@@ -26,8 +26,12 @@
 
   <div class="card">
     <p class="muted">
-      This preview uses the newer document-style HTML layout. The structured sections below are what now control the intentional syllabus order,
-      while DOCX/PDF still follow the uploaded DOCX template and replacement tokens.
+      This preview uses the cleaner document-style HTML layout. With <code>AOP_SYLLABUS_EXPORT_ENGINE={{ $exportEngine ?? "auto" }}</code>, AOP can use this HTML as the preferred DOCX/PDF export source so rendered files stay closer to what you see here.
+      @if($templateExists)
+        The uploaded DOCX template remains available as a compatibility fallback.
+      @else
+        No DOCX template fallback is currently installed.
+      @endif
     </p>
     <div style="margin-top:12px;">
       <iframe srcdoc="{{ e($html) }}" style="width:100%; height:1100px; border:1px solid #ddd; border-radius:10px;"></iframe>

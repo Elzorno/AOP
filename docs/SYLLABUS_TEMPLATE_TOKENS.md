@@ -6,10 +6,12 @@ AOP populates uploaded DOCX templates by replacing `{{TOKEN_NAME}}` placeholders
 
 Typical always-available placeholders include:
 
+- `{{UNIVERSITY_NAME}}`
 - `{{COURSE_CODE}}`
 - `{{COURSE_TITLE}}`
 - `{{TERM_CODE}}`
 - `{{TERM_NAME}}`
+- `{{TERM_LINE}}`
 - `{{SECTION_CODE}}`
 - `{{INSTRUCTOR_NAME}}`
 - `{{INSTRUCTOR_EMAIL}}`
