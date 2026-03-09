@@ -114,9 +114,9 @@ This file tracks what each phase changed so the project remains understandable w
 - Added indexed legacy-block placeholders to support transition-period template placement without losing the old block system.
 - Added in-app template token reference guidance on the syllabus preview page and documented the token model in `docs/SYLLABUS_TEMPLATE_TOKENS.md`.
 
-## Phase 29
-- Added configurable syllabus export engine support through `AOP_SYLLABUS_EXPORT_ENGINE` with `auto`, `html`, and `template` modes.
-- In `auto` mode, DOCX/PDF export now prefers the cleaner HTML syllabus layout first so exported files can track the in-app preview more closely.
-- Kept the uploaded DOCX template path as a compatibility fallback instead of removing the existing token-based workflow.
-- Updated syllabus preview/header output with an explicit university line and more export-friendly print styling for HTML-driven renderers.
-- Updated deployment docs and syllabi UI messaging to explain the new export behavior.
+
+## Phase 30
+- Added a dedicated Core Syllabus Content editor for the fixed top syllabus sections: Course Description, Course Objectives, and Required Materials.
+- Added optional per-syllabus override fields on `syllabi` so those fixed sections can differ for one section without changing the shared catalog course.
+- Updated syllabus preview data so each core field clearly reports whether it is currently using the catalog default or a syllabus-specific override.
+- Updated the syllabus preview UI with direct edit links and clearer source/status messaging so it is obvious where per-syllabus content is edited.

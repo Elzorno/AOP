@@ -28,6 +28,19 @@ class SyllabusDataService
         $course = $section->offering?->catalogCourse;
         $instructor = $section->instructor;
 
+        /** @var Syllabus|null $syllabus */
+        $syllabus = $section->relationLoaded('syllabus')
+            ? $section->syllabus
+            : Syllabus::query()->with('sectionItems')->where('section_id', $section->id)->first();
+
+        $descriptionOverride = $syllabus?->course_description_override;
+        $objectivesOverride = $syllabus?->course_objectives_override;
+        $materialsOverride = $syllabus?->required_materials_override;
+
+        $hasDescriptionOverride = $this->hasMeaningfulText($descriptionOverride);
+        $hasObjectivesOverride = $this->hasMeaningfulText($objectivesOverride);
+        $hasMaterialsOverride = $this->hasMeaningfulText($materialsOverride);
+
         $officeHours = [];
         if ($term && $instructor) {
             $officeHours = OfficeHourBlock::query()
@@ -64,11 +77,12 @@ class SyllabusDataService
                 'name' => $term?->name ?? '',
             ],
             'course' => [
+                'id' => $course?->id,
                 'code' => $course?->code ?? '',
                 'title' => $course?->title ?? '',
                 'department' => $course?->department ?? '',
-                'objectives' => $course?->objectives ?? '',
-                'required_materials' => $course?->required_materials ?? '',
+                'objectives' => $hasObjectivesOverride ? (string) $objectivesOverride : ($course?->objectives ?? ''),
+                'required_materials' => $hasMaterialsOverride ? (string) $materialsOverride : ($course?->required_materials ?? ''),
                 'credits_text' => $course?->credits_text ?? '',
                 'credits_min' => $course?->credits_min,
                 'credits_max' => $course?->credits_max,
@@ -76,8 +90,17 @@ class SyllabusDataService
                 'course_lab_fee' => $course?->course_lab_fee,
                 'prerequisites' => $course?->prereq_text ?? '',
                 'corequisites' => $course?->coreq_text ?? '',
-                'description' => $course?->description ?? '',
+                'description' => $hasDescriptionOverride ? (string) $descriptionOverride : ($course?->description ?? ''),
                 'notes' => $course?->notes ?? '',
+                'description_source' => $hasDescriptionOverride ? 'syllabus' : 'catalog',
+                'objectives_source' => $hasObjectivesOverride ? 'syllabus' : 'catalog',
+                'required_materials_source' => $hasMaterialsOverride ? 'syllabus' : 'catalog',
+                'description_override' => $descriptionOverride,
+                'objectives_override' => $objectivesOverride,
+                'required_materials_override' => $materialsOverride,
+                'description_catalog' => $course?->description ?? '',
+                'objectives_catalog' => $course?->objectives ?? '',
+                'required_materials_catalog' => $course?->required_materials ?? '',
             ],
             'section' => [
                 'code' => $section->section_code,
@@ -145,6 +168,11 @@ class SyllabusDataService
         ];
     }
 
+
+    private function hasMeaningfulText(?string $value): bool
+    {
+        return is_string($value) && trim($value) !== '';
+    }
 
     private function buildStructuredSections(Section $section): array
     {

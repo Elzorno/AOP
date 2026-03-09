@@ -1,6 +1,33 @@
 <x-aop-layout :activeTermLabel="$term ? 'Active Term: '.$term->code.' — '.$term->name : 'No active term selected'">
   <x-slot:title>Syllabus Preview</x-slot:title>
 
+  @php
+    $catalogCourseId = $packet['course']['id'] ?? null;
+    $coreContentRows = [
+      [
+        'label' => 'Course Description',
+        'source' => $packet['course']['description_source'] ?? 'catalog',
+        'current' => $packet['course']['description'] ?? '',
+        'catalog' => $packet['course']['description_catalog'] ?? '',
+        'override' => $packet['course']['description_override'] ?? null,
+      ],
+      [
+        'label' => 'Course Objectives',
+        'source' => $packet['course']['objectives_source'] ?? 'catalog',
+        'current' => $packet['course']['objectives'] ?? '',
+        'catalog' => $packet['course']['objectives_catalog'] ?? '',
+        'override' => $packet['course']['objectives_override'] ?? null,
+      ],
+      [
+        'label' => 'Required Materials',
+        'source' => $packet['course']['required_materials_source'] ?? 'catalog',
+        'current' => $packet['course']['required_materials'] ?? '',
+        'catalog' => $packet['course']['required_materials_catalog'] ?? '',
+        'override' => $packet['course']['required_materials_override'] ?? null,
+      ],
+    ];
+  @endphp
+
   <div class="row" style="margin-bottom:14px;">
     <div>
       <h1>Syllabus Preview</h1>
@@ -10,6 +37,10 @@
     </div>
     <div class="actions">
       <a class="btn secondary" href="{{ route('aop.syllabi.index') }}">Back to Syllabi</a>
+      <a class="btn secondary" href="{{ route('aop.syllabi.core.edit', $section) }}">Edit Core Content</a>
+      @if($catalogCourseId)
+        <a class="btn secondary" href="{{ route('aop.catalog.edit', $catalogCourseId) }}">Edit Catalog Course</a>
+      @endif
       <a class="btn secondary" href="{{ route('aop.syllabi.structure.create') }}">New Structure Section</a>
       <a class="btn secondary" href="{{ route('aop.syllabi.downloadHtml', $section) }}">HTML</a>
       <a class="btn secondary" href="{{ route('aop.syllabi.downloadJson', $section) }}">JSON</a>
@@ -26,12 +57,8 @@
 
   <div class="card">
     <p class="muted">
-      This preview uses the cleaner document-style HTML layout. With <code>AOP_SYLLABUS_EXPORT_ENGINE={{ $exportEngine ?? "auto" }}</code>, AOP can use this HTML as the preferred DOCX/PDF export source so rendered files stay closer to what you see here.
-      @if($templateExists)
-        The uploaded DOCX template remains available as a compatibility fallback.
-      @else
-        No DOCX template fallback is currently installed.
-      @endif
+      This preview uses the newer document-style HTML layout. The fixed top sections now have a dedicated edit screen,
+      and the structured sections below still control the intentional syllabus order.
     </p>
     <div style="margin-top:12px;">
       <iframe srcdoc="{{ e($html) }}" style="width:100%; height:1100px; border:1px solid #ddd; border-radius:10px;"></iframe>
@@ -43,9 +70,68 @@
   <div class="card">
     <div class="row" style="margin-bottom:10px; align-items:flex-start;">
       <div>
+        <h2>Core Course Content</h2>
+        <p class="muted" style="margin-top:6px; max-width:980px;">
+          The fixed top sections in the syllabus layout — Course Description, Course Objectives, and Required Materials —
+          are edited here. Each field can either use the shared catalog value or a per-syllabus override for this specific section.
+        </p>
+      </div>
+      <div class="actions">
+        <a class="btn secondary" href="{{ route('aop.syllabi.core.edit', $section) }}">Edit This Syllabus</a>
+        @if($catalogCourseId)
+          <a class="btn secondary" href="{{ route('aop.catalog.edit', $catalogCourseId) }}">Edit Catalog Defaults</a>
+        @endif
+      </div>
+    </div>
+
+    <table style="margin-top:8px;">
+      <thead>
+        <tr>
+          <th style="width:220px;">Field</th>
+          <th style="width:180px;">Current Source</th>
+          <th>Current Value Preview</th>
+        </tr>
+      </thead>
+      <tbody>
+        @foreach($coreContentRows as $row)
+          @php
+            $currentValue = trim((string) ($row['current'] ?? ''));
+            $catalogValue = trim((string) ($row['catalog'] ?? ''));
+            $source = $row['source'] ?? 'catalog';
+          @endphp
+          <tr>
+            <td>
+              <strong>{{ $row['label'] }}</strong>
+              @if($source === 'syllabus')
+                <div class="muted" style="margin-top:4px;">This syllabus currently overrides the catalog value.</div>
+              @else
+                <div class="muted" style="margin-top:4px;">Using the shared catalog default.</div>
+              @endif
+            </td>
+            <td>
+              @if($source === 'syllabus')
+                <span class="badge" style="background:#e8f0ff; color:#1e40af;">Per-Syllabus Override</span>
+              @elseif($catalogValue !== '')
+                <span class="badge" style="background:#eef6ff; color:#1f4d8f;">Catalog Default</span>
+              @else
+                <span class="badge" style="background:#ffe8e8; color:#8a0a0a;">Missing</span>
+              @endif
+            </td>
+            <td class="muted" style="white-space:pre-wrap;">{{ $currentValue !== '' ? \Illuminate\Support\Str::limit($currentValue, 280) : 'TBD' }}</td>
+          </tr>
+        @endforeach
+      </tbody>
+    </table>
+  </div>
+
+  <div style="height:14px;"></div>
+
+  <div class="card">
+    <div class="row" style="margin-bottom:10px; align-items:flex-start;">
+      <div>
         <h2>Syllabus Structure</h2>
         <p class="muted" style="margin-top:6px; max-width:900px;">
-          These are the sections currently assembled into this syllabus. Global sections are managed from the Syllabi page.
+          These are the structured sections assembled into this syllabus after the fixed top content. Global sections are managed from the Syllabi page.
           Per-syllabus sections can be edited here for this specific section only.
         </p>
       </div>

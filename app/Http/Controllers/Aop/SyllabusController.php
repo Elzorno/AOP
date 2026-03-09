@@ -13,7 +13,6 @@ use App\Models\Term;
 use App\Services\DocxPdfConvertService;
 use App\Services\DocxTemplateService;
 use App\Services\SyllabusDataService;
-use App\Services\SyllabusRenderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -217,7 +216,6 @@ class SyllabusController extends Controller
             'latestBySection' => $latestBySection,
             'definitions' => $this->syllabusStructureDefinitions(),
             'blocks' => $this->syllabusBlocks(),
-            'exportEngine' => $this->configuredSyllabusExportEngine(),
         ]);
     }
 
@@ -415,8 +413,6 @@ class SyllabusController extends Controller
             'blocks' => collect($packet['blocks'] ?? []),
             'exportReplacements' => $exportReplacements,
             'templateTokenRows' => $this->buildTemplateTokenRows($packet, $exportReplacements),
-            'exportEngine' => $this->configuredSyllabusExportEngine(),
-            'templateExists' => $this->availableTemplatePath() !== null,
         ]);
     }
 
@@ -441,7 +437,7 @@ class SyllabusController extends Controller
         $this->ensureSectionInActiveTerm($section);
 
         $packet = $data->buildPacketForSection($section);
-        $html = $this->renderHtmlPreview($packet, $data, true);
+        $html = $this->renderHtmlPreview($packet, $data);
         $name = $this->fileBase($packet) . '.html';
 
         $syllabus = $this->getOrCreateSyllabus($section);
@@ -455,20 +451,26 @@ class SyllabusController extends Controller
     public function downloadDocx(
         Section $section,
         SyllabusDataService $data,
-        DocxTemplateService $docx,
-        SyllabusRenderService $renderer
+        DocxTemplateService $docx
     ): StreamedResponse {
         $this->ensureSectionInActiveTerm($section);
 
         $packet = $data->buildPacketForSection($section);
         $base = $this->fileBase($packet);
+
+        $templatePath = storage_path('app/aop/syllabi/templates/default.docx');
+        if (!is_file($templatePath)) {
+            abort(500, 'Syllabus template not found. Upload a template on the Syllabi page.');
+        }
+
         $outDir = storage_path('app/aop/syllabi/generated');
+        $outPath = $outDir . '/' . $base . '.docx';
 
         $syllabus = $this->getOrCreateSyllabus($section);
 
         try {
-            $result = $this->renderDocxExport($packet, $data, $base, $outDir, $docx, $renderer);
-            $outPath = $result['path'];
+            $repl = $this->buildReplacements($packet, $data);
+            $docx->render($templatePath, $repl, $outPath);
 
             $this->recordRender($syllabus->id, $section, 'docx', $outPath, 'SUCCESS', null);
             $this->pruneSuccessfulRenders($syllabus->id, $section, 'docx');
@@ -490,20 +492,32 @@ class SyllabusController extends Controller
         Section $section,
         SyllabusDataService $data,
         DocxTemplateService $docx,
-        DocxPdfConvertService $pdf,
-        SyllabusRenderService $renderer
+        DocxPdfConvertService $pdf
     ): StreamedResponse {
         $this->ensureSectionInActiveTerm($section);
 
         $packet = $data->buildPacketForSection($section);
         $base = $this->fileBase($packet);
+
+        $templatePath = storage_path('app/aop/syllabi/templates/default.docx');
+        if (!is_file($templatePath)) {
+            abort(500, 'Syllabus template not found. Upload a template on the Syllabi page.');
+        }
+
         $outDir = storage_path('app/aop/syllabi/generated');
+        $docxPath = $outDir . '/' . $base . '.docx';
+        $pdfPath = $outDir . '/' . $base . '.pdf';
 
         $syllabus = $this->getOrCreateSyllabus($section);
 
         try {
-            $result = $this->renderPdfExport($packet, $data, $base, $outDir, $docx, $pdf, $renderer);
-            $pdfPath = $result['path'];
+            $repl = $this->buildReplacements($packet, $data);
+            $docx->render($templatePath, $repl, $docxPath);
+
+            $actualPdf = $pdf->docxToPdf($docxPath, $outDir, $base);
+            if ($actualPdf !== $pdfPath) {
+                @copy($actualPdf, $pdfPath);
+            }
 
             $this->recordRender($syllabus->id, $section, 'pdf', $pdfPath, 'SUCCESS', null);
             $this->pruneSuccessfulRenders($syllabus->id, $section, 'pdf');
@@ -725,128 +739,12 @@ class SyllabusController extends Controller
         return $out;
     }
 
-    private function configuredSyllabusExportEngine(): string
+    private function renderHtmlPreview(array $packet, SyllabusDataService $data): string
     {
-        $engine = strtolower(trim((string) env('AOP_SYLLABUS_EXPORT_ENGINE', 'auto')));
-
-        return in_array($engine, ['auto', 'template', 'html'], true) ? $engine : 'auto';
+        return view('aop.syllabi.preview', $this->buildPreviewViewData($packet, $data))->render();
     }
 
-    private function availableTemplatePath(): ?string
-    {
-        $templatePath = storage_path('app/aop/syllabi/templates/default.docx');
-
-        return is_file($templatePath) ? $templatePath : null;
-    }
-
-    private function renderDocxExport(
-        array $packet,
-        SyllabusDataService $data,
-        string $base,
-        string $outDir,
-        DocxTemplateService $docx,
-        SyllabusRenderService $renderer
-    ): array {
-        $engine = $this->configuredSyllabusExportEngine();
-        $templatePath = $this->availableTemplatePath();
-        $outPath = $outDir . '/' . $base . '.docx';
-
-        if ($engine === 'template') {
-            if (!$templatePath) {
-                throw new \RuntimeException('Syllabus template not found. Upload a template on the Syllabi page or switch AOP_SYLLABUS_EXPORT_ENGINE to auto/html.');
-            }
-
-            $repl = $this->buildReplacements($packet, $data);
-            $docx->render($templatePath, $repl, $outPath);
-
-            return ['path' => $outPath, 'engine' => 'template'];
-        }
-
-        $html = $this->renderHtmlPreview($packet, $data, true);
-
-        try {
-            $renderedPath = $renderer->renderHtmlTo($html, 'docx', $outDir, $base);
-
-            return ['path' => $renderedPath, 'engine' => 'html'];
-        } catch (\Throwable $htmlError) {
-            if ($engine === 'html') {
-                throw new \RuntimeException('HTML-aligned DOCX export failed: ' . $htmlError->getMessage(), 0, $htmlError);
-            }
-
-            if (!$templatePath) {
-                throw new \RuntimeException('HTML-aligned DOCX export failed: ' . $htmlError->getMessage() . ' No DOCX template is installed for fallback.', 0, $htmlError);
-            }
-
-            $repl = $this->buildReplacements($packet, $data);
-            $docx->render($templatePath, $repl, $outPath);
-
-            return ['path' => $outPath, 'engine' => 'template'];
-        }
-    }
-
-    private function renderPdfExport(
-        array $packet,
-        SyllabusDataService $data,
-        string $base,
-        string $outDir,
-        DocxTemplateService $docx,
-        DocxPdfConvertService $pdf,
-        SyllabusRenderService $renderer
-    ): array {
-        $engine = $this->configuredSyllabusExportEngine();
-        $templatePath = $this->availableTemplatePath();
-        $docxPath = $outDir . '/' . $base . '.docx';
-        $pdfPath = $outDir . '/' . $base . '.pdf';
-
-        if ($engine === 'template') {
-            if (!$templatePath) {
-                throw new \RuntimeException('Syllabus template not found. Upload a template on the Syllabi page or switch AOP_SYLLABUS_EXPORT_ENGINE to auto/html.');
-            }
-
-            $repl = $this->buildReplacements($packet, $data);
-            $docx->render($templatePath, $repl, $docxPath);
-
-            $actualPdf = $pdf->docxToPdf($docxPath, $outDir, $base);
-            if ($actualPdf !== $pdfPath) {
-                @copy($actualPdf, $pdfPath);
-            }
-
-            return ['path' => $pdfPath, 'engine' => 'template'];
-        }
-
-        $html = $this->renderHtmlPreview($packet, $data, true);
-
-        try {
-            $renderedPath = $renderer->renderHtmlTo($html, 'pdf', $outDir, $base);
-
-            return ['path' => $renderedPath, 'engine' => 'html'];
-        } catch (\Throwable $htmlError) {
-            if ($engine === 'html') {
-                throw new \RuntimeException('HTML-aligned PDF export failed: ' . $htmlError->getMessage(), 0, $htmlError);
-            }
-
-            if (!$templatePath) {
-                throw new \RuntimeException('HTML-aligned PDF export failed: ' . $htmlError->getMessage() . ' No DOCX template is installed for fallback.', 0, $htmlError);
-            }
-
-            $repl = $this->buildReplacements($packet, $data);
-            $docx->render($templatePath, $repl, $docxPath);
-
-            $actualPdf = $pdf->docxToPdf($docxPath, $outDir, $base);
-            if ($actualPdf !== $pdfPath) {
-                @copy($actualPdf, $pdfPath);
-            }
-
-            return ['path' => $pdfPath, 'engine' => 'template'];
-        }
-    }
-
-    private function renderHtmlPreview(array $packet, SyllabusDataService $data, bool $exportMode = false): string
-    {
-        return view('aop.syllabi.preview', $this->buildPreviewViewData($packet, $data, $exportMode))->render();
-    }
-
-    private function buildPreviewViewData(array $packet, SyllabusDataService $data, bool $exportMode = false): array
+    private function buildPreviewViewData(array $packet, SyllabusDataService $data): array
     {
         $replacements = $this->buildReplacements($packet, $data);
         $meetingRows = $this->meetingRows($packet['meeting_blocks'] ?? []);
@@ -856,6 +754,10 @@ class SyllabusController extends Controller
         $daysTimesLines = array_map(fn (array $row) => $row['days_times_line'], $meetingRows);
         $termLine = trim(($packet['term']['code'] ?? '') . (($packet['term']['name'] ?? '') !== '' ? ' — ' . $packet['term']['name'] : ''));
 
+        $generatedDate = trim((string) ($replacements['SYLLABUS_DATE'] ?? ''));
+        $universityLine = trim((string) ($replacements['UNIVERSITY_NAME'] ?? ''));
+        $departmentLine = trim((string) ($replacements['DEPARTMENT_LINE'] ?? ''));
+
         return [
             'packet' => $packet,
             'replacements' => $replacements,
@@ -864,12 +766,11 @@ class SyllabusController extends Controller
             'locationLines' => $locationLines !== [] ? $locationLines : ['TBD'],
             'daysTimesLines' => $daysTimesLines !== [] ? $daysTimesLines : ['TBD'],
             'termLine' => $termLine !== '' ? $termLine : 'TBD',
-            'generatedDate' => $replacements['SYLLABUS_DATE'] ?: now()->toDateString(),
-            'universityLine' => $replacements['UNIVERSITY_NAME'] ?: 'Shawnee State University',
-            'departmentLine' => $replacements['DEPARTMENT_LINE'] ?: 'Academic Ops Platform Syllabus Preview',
+            'generatedDate' => $generatedDate !== '' ? $generatedDate : now()->toDateString(),
+            'universityLine' => $universityLine !== '' ? $universityLine : 'Shawnee State University',
+            'departmentLine' => $departmentLine !== '' ? $departmentLine : 'Academic Ops Platform Syllabus Preview',
             'structuredSections' => $this->visibleStructuredSections($packet['syllabus_sections'] ?? []),
             'legacyBlocks' => $packet['blocks'] ?? [],
-            'exportMode' => $exportMode,
         ];
     }
 
@@ -983,12 +884,10 @@ class SyllabusController extends Controller
         $officeHourLines = $this->uniqueNonEmpty(array_map(fn (array $row) => $row['summary'], $officeHourRows));
 
         $replacements = [
-            'UNIVERSITY_NAME' => 'Shawnee State University',
             'COURSE_CODE' => $packet['course']['code'] ?? '',
             'COURSE_TITLE' => $packet['course']['title'] ?? '',
             'TERM_CODE' => $packet['term']['code'] ?? '',
             'TERM_NAME' => $packet['term']['name'] ?? '',
-            'TERM_LINE' => trim(($packet['term']['code'] ?? '') . (($packet['term']['name'] ?? '') !== '' ? ' — ' . ($packet['term']['name'] ?? '') : '')),
             'SECTION_CODE' => $packet['section']['code'] ?? '',
             'DEPARTMENT_LINE' => ($packet['course']['department'] ?? '') !== ''
                 ? $packet['course']['department']
@@ -1212,11 +1111,6 @@ class SyllabusController extends Controller
     private function buildTemplateTokenRows(array $packet, array $replacements): array
     {
         $rows = [
-            [
-                'placeholder' => '{{UNIVERSITY_NAME}} / {{DEPARTMENT_LINE}}',
-                'description' => 'Institution and department lines used in the syllabus header.',
-                'value' => trim(($replacements['UNIVERSITY_NAME'] ?? '') . ' / ' . ($replacements['DEPARTMENT_LINE'] ?? ''), ' /'),
-            ],
             [
                 'placeholder' => '{{COURSE_CODE}}',
                 'description' => 'Course code.',

@@ -12,6 +12,9 @@ class Syllabus extends Model
         'section_id',
         'header_snapshot_json',
         'block_order_json',
+        'course_description_override',
+        'course_objectives_override',
+        'required_materials_override',
     ];
 
     protected $casts = [

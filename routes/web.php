@@ -144,6 +144,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/syllabi/blocks/{block}', [SyllabusController::class, 'updateBlock'])->name('syllabi.blocks.update');
         Route::delete('/syllabi/blocks/{block}', [SyllabusController::class, 'destroyBlock'])->name('syllabi.blocks.destroy');
         Route::get('/syllabi/sections/{section}', [SyllabusController::class, 'show'])->name('syllabi.show');
+        Route::get('/syllabi/sections/{section}/core-content/edit', [SyllabusController::class, 'editCoreContent'])->name('syllabi.core.edit');
+        Route::put('/syllabi/sections/{section}/core-content', [SyllabusController::class, 'updateCoreContent'])->name('syllabi.core.update');
         Route::get('/syllabi/sections/{section}/structure/{definition}/edit', [SyllabusController::class, 'editSectionStructure'])->name('syllabi.structure.section.edit');
         Route::put('/syllabi/sections/{section}/structure/{definition}', [SyllabusController::class, 'updateSectionStructure'])->name('syllabi.structure.section.update');
         Route::get('/syllabi/sections/{section}/download/html', [SyllabusController::class, 'downloadHtml'])->name('syllabi.downloadHtml');
