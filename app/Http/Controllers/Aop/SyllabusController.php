@@ -401,6 +401,7 @@ class SyllabusController extends Controller
         $packet = $data->buildPacketForSection($section);
         $html = $this->renderHtmlPreview($packet, $data);
         $history = $this->renderHistoryForSection($section);
+        $exportReplacements = $this->buildReplacements($packet, $data);
 
         return view('aop.syllabi.show', [
             'section' => $section,
@@ -410,6 +411,8 @@ class SyllabusController extends Controller
             'history' => $history,
             'structuredSections' => collect($packet['syllabus_sections'] ?? []),
             'blocks' => collect($packet['blocks'] ?? []),
+            'exportReplacements' => $exportReplacements,
+            'templateTokenRows' => $this->buildTemplateTokenRows($packet, $exportReplacements),
         ]);
     }
 
@@ -418,6 +421,7 @@ class SyllabusController extends Controller
         $this->ensureSectionInActiveTerm($section);
 
         $packet = $data->buildPacketForSection($section);
+        $packet['export_replacements'] = $this->buildReplacements($packet, $data);
         $name = $this->fileBase($packet) . '.json';
 
         $syllabus = $this->getOrCreateSyllabus($section);
@@ -855,7 +859,8 @@ class SyllabusController extends Controller
             $credits = ($max !== null && $max != $min) ? ($min . '-' . $max) : (string) $min;
         }
 
-        $visibleStructuredSections = $this->visibleStructuredSections($packet['syllabus_sections'] ?? []);
+        $allStructuredSections = $packet['syllabus_sections'] ?? [];
+        $visibleStructuredSections = $this->visibleStructuredSections($allStructuredSections);
         $structuredSectionsText = $this->renderStructuredSectionsText($visibleStructuredSections);
         $legacyBlocksText = $this->renderLegacyBlocksText($packet['blocks'] ?? []);
         $customBlocksText = trim(implode("
@@ -873,7 +878,7 @@ class SyllabusController extends Controller
         $meetingLines = $this->uniqueNonEmpty(array_map(fn (array $row) => $row['summary'], $meetingRows));
         $officeHourLines = $this->uniqueNonEmpty(array_map(fn (array $row) => $row['summary'], $officeHourRows));
 
-        return [
+        $replacements = [
             'COURSE_CODE' => $packet['course']['code'] ?? '',
             'COURSE_TITLE' => $packet['course']['title'] ?? '',
             'TERM_CODE' => $packet['term']['code'] ?? '',
@@ -920,7 +925,25 @@ class SyllabusController extends Controller
             'STRUCTURED_SECTIONS' => $structuredSectionsText,
             'LEGACY_BLOCKS' => $legacyBlocksText,
             'CUSTOM_BLOCKS' => $customBlocksText,
+            'STRUCTURED_SECTION_COUNT' => (string) count($visibleStructuredSections),
+            'STRUCTURED_SECTION_SLUGS' => implode("
+", array_map(
+                fn (array $section): string => (string) ($section['slug'] ?? ''),
+                $visibleStructuredSections
+            )),
+            'STRUCTURED_SECTION_TITLES' => implode("
+", array_map(
+                fn (array $section): string => trim((string) ($section['title'] ?? '')),
+                $visibleStructuredSections
+            )),
+            'LEGACY_BLOCK_COUNT' => (string) count($packet['blocks'] ?? []),
         ];
+
+        return array_merge(
+            $replacements,
+            $this->buildStructuredSectionReplacementTokens($allStructuredSections),
+            $this->buildLegacyBlockReplacementTokens($packet['blocks'] ?? [])
+        );
     }
 
     private function visibleStructuredSections(array $sections): array
@@ -1009,6 +1032,188 @@ class SyllabusController extends Controller
 
 ", $chunks);
     }
+
+    private function buildStructuredSectionReplacementTokens(array $sections): array
+    {
+        if (count($sections) === 0) {
+            return [];
+        }
+
+        usort($sections, function (array $a, array $b): int {
+            return (($a['sort_order'] ?? 0) <=> ($b['sort_order'] ?? 0)) ?: (($a['id'] ?? 0) <=> ($b['id'] ?? 0));
+        });
+
+        $tokens = [];
+        $visibleIndex = 1;
+
+        foreach ($sections as $section) {
+            $slug = trim((string) ($section['slug'] ?? ''));
+            if ($slug === '') {
+                continue;
+            }
+
+            $tokenBase = $this->slugTokenBase($slug);
+            $isVisible = (bool) ($section['is_required'] ?? false) || (bool) ($section['is_enabled'] ?? true);
+            $title = $isVisible ? trim((string) ($section['title'] ?? '')) : '';
+            $content = $isVisible ? $this->markdownToStructuredText((string) ($section['content'] ?? '')) : '';
+
+            $tokens['SECTION_' . $tokenBase . '_TITLE'] = $title;
+            $tokens['SECTION_' . $tokenBase . '_CONTENT'] = $content;
+            $tokens['SECTION_' . $tokenBase . '_ENABLED'] = $isVisible ? '1' : '0';
+            $tokens['SECTION_' . $tokenBase . '_ORDER'] = (string) ($section['sort_order'] ?? 0);
+            $tokens['SECTION_' . $tokenBase . '_SCOPE'] = (string) ($section['scope'] ?? '');
+
+            if ($isVisible) {
+                $indexToken = str_pad((string) $visibleIndex, 2, '0', STR_PAD_LEFT);
+                $tokens['STRUCTURED_SECTION_' . $indexToken . '_TITLE'] = $title;
+                $tokens['STRUCTURED_SECTION_' . $indexToken . '_SLUG'] = $slug;
+                $tokens['STRUCTURED_SECTION_' . $indexToken . '_CONTENT'] = $content;
+                $visibleIndex++;
+            }
+        }
+
+        return $tokens;
+    }
+
+    private function buildLegacyBlockReplacementTokens(array $blocks): array
+    {
+        if (count($blocks) === 0) {
+            return [];
+        }
+
+        $tokens = [];
+        $index = 1;
+
+        foreach ($blocks as $block) {
+            $indexToken = str_pad((string) $index, 2, '0', STR_PAD_LEFT);
+            $tokens['LEGACY_BLOCK_' . $indexToken . '_TITLE'] = trim((string) ($block['title'] ?? ''));
+            $tokens['LEGACY_BLOCK_' . $indexToken . '_CATEGORY'] = trim((string) ($block['category'] ?? ''));
+            $tokens['LEGACY_BLOCK_' . $indexToken . '_CONTENT'] = $this->markdownToStructuredText((string) ($block['content'] ?? ''));
+            $index++;
+        }
+
+        return $tokens;
+    }
+
+    private function slugTokenBase(string $slug): string
+    {
+        $token = strtoupper((string) preg_replace('/[^A-Z0-9]+/', '_', strtoupper($slug)));
+        $token = trim($token, '_');
+
+        return $token !== '' ? $token : 'SECTION';
+    }
+
+    private function buildTemplateTokenRows(array $packet, array $replacements): array
+    {
+        $rows = [
+            [
+                'placeholder' => '{{COURSE_CODE}}',
+                'description' => 'Course code.',
+                'value' => $replacements['COURSE_CODE'] ?? '',
+            ],
+            [
+                'placeholder' => '{{COURSE_TITLE}}',
+                'description' => 'Course title.',
+                'value' => $replacements['COURSE_TITLE'] ?? '',
+            ],
+            [
+                'placeholder' => '{{TERM_CODE}} / {{TERM_NAME}}',
+                'description' => 'Term code and term name.',
+                'value' => trim(($replacements['TERM_CODE'] ?? '') . ' / ' . ($replacements['TERM_NAME'] ?? ''), ' /'),
+            ],
+            [
+                'placeholder' => '{{SECTION_CODE}}',
+                'description' => 'Section code.',
+                'value' => $replacements['SECTION_CODE'] ?? '',
+            ],
+            [
+                'placeholder' => '{{INSTRUCTOR_NAME}} / {{INSTRUCTOR_EMAIL}}',
+                'description' => 'Instructor identity fields.',
+                'value' => trim(($replacements['INSTRUCTOR_NAME'] ?? '') . ' / ' . ($replacements['INSTRUCTOR_EMAIL'] ?? ''), ' /'),
+            ],
+            [
+                'placeholder' => '{{CREDIT_HOURS}} / {{DELIVERY_MODE}}',
+                'description' => 'Credit hours and delivery mode.',
+                'value' => trim(($replacements['CREDIT_HOURS'] ?? '') . ' / ' . ($replacements['DELIVERY_MODE'] ?? ''), ' /'),
+            ],
+            [
+                'placeholder' => '{{LOCATION}} / {{MEETING_DAYS}} / {{MEETING_TIME}}',
+                'description' => 'Primary meeting/location fields.',
+                'value' => trim(implode(' / ', array_filter([
+                    $replacements['LOCATION'] ?? '',
+                    $replacements['MEETING_DAYS'] ?? '',
+                    $replacements['MEETING_TIME'] ?? '',
+                ])), ' /'),
+            ],
+            [
+                'placeholder' => '{{OFFICE_HOURS}}',
+                'description' => 'Office hours single-line summary.',
+                'value' => $replacements['OFFICE_HOURS'] ?? '',
+            ],
+            [
+                'placeholder' => '{{COURSE_DESCRIPTION}}',
+                'description' => 'Catalog course description.',
+                'value' => $replacements['COURSE_DESCRIPTION'] ?? '',
+            ],
+            [
+                'placeholder' => '{{COURSE_OBJECTIVES}}',
+                'description' => 'Catalog course objectives.',
+                'value' => $replacements['COURSE_OBJECTIVES'] ?? '',
+            ],
+            [
+                'placeholder' => '{{REQUIRED_MATERIALS}}',
+                'description' => 'Catalog required materials.',
+                'value' => $replacements['REQUIRED_MATERIALS'] ?? '',
+            ],
+            [
+                'placeholder' => '{{PREREQUISITES}} / {{COREQUISITES}}',
+                'description' => 'Catalog requisites text.',
+                'value' => trim(($replacements['PREREQUISITES'] ?? '') . ' / ' . ($replacements['COREQUISITES'] ?? ''), ' /'),
+            ],
+            [
+                'placeholder' => '{{STRUCTURED_SECTIONS}}',
+                'description' => 'All visible structured sections flattened into one text block in syllabus order.',
+                'value' => $replacements['STRUCTURED_SECTIONS'] ?? '',
+            ],
+            [
+                'placeholder' => '{{LEGACY_BLOCKS}} / {{CUSTOM_BLOCKS}}',
+                'description' => 'Legacy shared block output. CUSTOM_BLOCKS keeps backward compatibility by appending legacy content after structured sections.',
+                'value' => $replacements['CUSTOM_BLOCKS'] ?? '',
+            ],
+            [
+                'placeholder' => '{{STRUCTURED_SECTION_01_TITLE}} / {{STRUCTURED_SECTION_01_CONTENT}}',
+                'description' => 'First visible structured section by order. Increment 01, 02, 03... as needed.',
+                'value' => trim(($replacements['STRUCTURED_SECTION_01_TITLE'] ?? '') . ' / ' . ($replacements['STRUCTURED_SECTION_01_CONTENT'] ?? ''), ' /'),
+            ],
+        ];
+
+        foreach ($packet['syllabus_sections'] ?? [] as $section) {
+            $slug = trim((string) ($section['slug'] ?? ''));
+            if ($slug === '') {
+                continue;
+            }
+
+            $tokenBase = $this->slugTokenBase($slug);
+            $sectionTitle = trim((string) ($section['title'] ?? $slug));
+            $rows[] = [
+                'placeholder' => '{{SECTION_' . $tokenBase . '_TITLE}} / {{SECTION_' . $tokenBase . '_CONTENT}}',
+                'description' => 'Slug-based structured section tokens for “' . $sectionTitle . '”. Also available: {{SECTION_' . $tokenBase . '_ENABLED}}, {{SECTION_' . $tokenBase . '_ORDER}}, {{SECTION_' . $tokenBase . '_SCOPE}}.',
+                'value' => trim(($replacements['SECTION_' . $tokenBase . '_TITLE'] ?? '') . ' / ' . ($replacements['SECTION_' . $tokenBase . '_CONTENT'] ?? ''), ' /'),
+            ];
+        }
+
+        foreach ($packet['blocks'] ?? [] as $index => $block) {
+            $indexToken = str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT);
+            $rows[] = [
+                'placeholder' => '{{LEGACY_BLOCK_' . $indexToken . '_TITLE}} / {{LEGACY_BLOCK_' . $indexToken . '_CONTENT}}',
+                'description' => 'Indexed legacy block tokens for transition-period template placement.',
+                'value' => trim(($replacements['LEGACY_BLOCK_' . $indexToken . '_TITLE'] ?? '') . ' / ' . ($replacements['LEGACY_BLOCK_' . $indexToken . '_CONTENT'] ?? ''), ' /'),
+            ];
+        }
+
+        return $rows;
+    }
+
 
     private function markdownToStructuredText(string $markdown): string
     {

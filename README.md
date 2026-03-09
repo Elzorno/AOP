@@ -54,6 +54,8 @@ For syllabus rendering, install:
 - `libreoffice` for PDF conversion from the rendered DOCX template
 - PHP `ZipArchive` support so the app can populate DOCX template placeholders
 
+Structured syllabus sections also expose slug-based and order-based DOCX placeholder tokens. See `docs/SYLLABUS_TEMPLATE_TOKENS.md` for the current token model.
+
 See `docs/AOP_DEPLOY_CHECKLIST.md` for a clean production deployment workflow.
 
 ## First-time setup

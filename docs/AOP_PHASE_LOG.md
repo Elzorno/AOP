@@ -105,3 +105,11 @@ This file tracks what each phase changed so the project remains understandable w
 - Added per-syllabus editing from the syllabus preview page for sections whose content is allowed to vary by section.
 - Updated the browser preview and JSON packet to render the structured syllabus sections before legacy shared blocks.
 - Added `STRUCTURED_SECTIONS` and `LEGACY_BLOCKS` replacement values while keeping `CUSTOM_BLOCKS` compatible for DOCX/PDF template work.
+
+
+## Phase 28
+- Aligned DOCX/PDF export replacements more closely with the structured syllabus builder.
+- Added slug-based structured section placeholders such as `SECTION_ATTENDANCE_TITLE` and `SECTION_ATTENDANCE_CONTENT`.
+- Added indexed structured section placeholders such as `STRUCTURED_SECTION_01_TITLE` and `STRUCTURED_SECTION_01_CONTENT` for templates that follow visible syllabus order.
+- Added indexed legacy-block placeholders to support transition-period template placement without losing the old block system.
+- Added in-app template token reference guidance on the syllabus preview page and documented the token model in `docs/SYLLABUS_TEMPLATE_TOKENS.md`.

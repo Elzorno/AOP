@@ -114,6 +114,44 @@
   <div style="height:14px;"></div>
 
   <div class="card">
+    <div class="row" style="margin-bottom:10px; align-items:flex-start;">
+      <div>
+        <h2>DOCX Template Tokens</h2>
+        <p class="muted" style="margin-top:6px; max-width:950px;">
+          Structured sections now drive the export token map. You can keep using aggregate placeholders like <code>@{{STRUCTURED_SECTIONS}}</code>,
+          or place specific section tokens intentionally in the DOCX template using slug-based placeholders such as
+          <code>@{{SECTION_ATTENDANCE_TITLE}}</code> and <code>@{{SECTION_ATTENDANCE_CONTENT}}</code>.
+        </p>
+      </div>
+    </div>
+
+    @if(($templateTokenRows ?? []) === [])
+      <p class="muted">No export tokens are available for this syllabus yet.</p>
+    @else
+      <table style="margin-top:8px;">
+        <thead>
+          <tr>
+            <th style="width:320px;">Placeholder</th>
+            <th style="width:320px;">Purpose</th>
+            <th>Current Value Preview</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($templateTokenRows as $row)
+            <tr>
+              <td><code>{{ $row['placeholder'] }}</code></td>
+              <td>{{ $row['description'] }}</td>
+              <td class="muted" style="white-space:pre-wrap;">{{ $row['value'] !== '' ? \Illuminate\Support\Str::limit($row['value'], 180) : '—' }}</td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+    @endif
+  </div>
+
+  <div style="height:14px;"></div>
+
+  <div class="card">
     <div class="row" style="margin-bottom:10px;">
       <div>
         <h2>Legacy Shared Blocks</h2>
