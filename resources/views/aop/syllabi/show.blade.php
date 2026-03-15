@@ -32,10 +32,10 @@
       Legacy blocks are still available, but they are transition-period content and should not be the main authoring path for new structure work.
     </p>
     <div class="actions" style="margin-top:10px; gap:8px;">
-      <span class="badge" style="background:#e8f0ff; color:#1e40af;">Catalog Default</span>
-      <span class="badge" style="background:#fff3cd; color:#7a5b00;">Per-Syllabus Override</span>
-      <span class="badge" style="background:#eef2ff; color:#4338ca;">Global Shared</span>
-      <span class="badge" style="background:#ffe8e8; color:#8a0a0a;">Missing</span>
+      <span class="badge info">Catalog Default</span>
+      <span class="badge warn">Per-Syllabus Override</span>
+      <span class="badge">Global Shared</span>
+      <span class="badge danger">Missing</span>
     </div>
   </div>
 
@@ -95,11 +95,11 @@
               </td>
               <td>
                 @if($source === 'override')
-                  <span class="badge" style="background:#fff3cd; color:#7a5b00;">Per-Syllabus Override</span>
+                  <span class="badge warn">Per-Syllabus Override</span>
                 @elseif($source === 'catalog')
-                  <span class="badge" style="background:#e8f0ff; color:#1e40af;">Catalog Default</span>
+                  <span class="badge info">Catalog Default</span>
                 @else
-                  <span class="badge" style="background:#ffe8e8; color:#8a0a0a;">Missing</span>
+                  <span class="badge danger">Missing</span>
                 @endif
               </td>
               <td class="muted" style="white-space:pre-wrap;">
@@ -167,11 +167,11 @@
               </td>
               <td>
                 @if(($structured['source'] ?? '') === 'global')
-                  <span class="badge" style="background:#eef2ff; color:#4338ca;">Global Shared</span>
+                  <span class="badge">Global Shared</span>
                 @elseif(($structured['source'] ?? '') === 'syllabus_override')
-                  <span class="badge" style="background:#fff3cd; color:#7a5b00;">Per-Syllabus Override</span>
+                  <span class="badge warn">Per-Syllabus Override</span>
                 @else
-                  <span class="badge">Shared Starter / Default</span>
+                  <span class="badge muted">Shared Starter / Default</span>
                 @endif
                 <div class="muted" style="margin-top:6px; font-size:12px;">
                   {{ ($structured['scope'] ?? 'global') === 'syllabus' ? 'Per-syllabus section' : 'Global section' }}
@@ -180,15 +180,15 @@
               <td>
                 <div style="display:grid; gap:6px;">
                   @if(!empty($structured['is_required']))
-                    <span class="badge" style="background:#e8f0ff; color:#1e40af;">Required</span>
+                    <span class="badge info">Required</span>
                   @endif
                   @if(!empty($structured['is_enabled']) || !empty($structured['is_required']))
-                    <span class="badge" style="background:#e6ffed; color:#0b6b2f;">Visible</span>
+                    <span class="badge success">Visible</span>
                   @else
-                    <span class="badge" style="background:#ffe8e8; color:#8a0a0a;">Hidden for this syllabus</span>
+                    <span class="badge danger">Hidden for this syllabus</span>
                   @endif
                   @if(!empty($structured['is_locked']))
-                    <span class="badge" style="background:#fff3cd; color:#7a5b00;">Protected Definition</span>
+                    <span class="badge warn">Protected Definition</span>
                   @endif
                 </div>
               </td>
@@ -325,9 +325,9 @@
               <td><span class="badge">{{ strtoupper($h->format) }}</span></td>
               <td>
                 @if($h->status === 'SUCCESS')
-                  <span class="badge" style="background:#e6ffed; color:#0b6b2f;">SUCCESS</span>
+                  <span class="badge success">SUCCESS</span>
                 @else
-                  <span class="badge" style="background:#ffe8e8; color:#8a0a0a;">ERROR</span>
+                  <span class="badge danger">ERROR</span>
                 @endif
               </td>
               <td class="muted">

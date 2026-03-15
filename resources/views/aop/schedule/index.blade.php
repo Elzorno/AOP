@@ -12,7 +12,7 @@
             <span style="margin-left:10px;" class="badge">Published v{{ $latestPublication->version }}</span>
           @endif
           @if(!empty($term->schedule_locked))
-            <span style="margin-left:10px;" class="badge" style="background:#fef9c3; color:#854d0e;">Locked</span>
+            <span style="margin-left:10px;" class="badge warn">Locked</span>
           @endif
         </p>
       @else
@@ -28,10 +28,10 @@
   </div>
 
   @if(session('status'))
-    <div class="card" style="border-left:4px solid #2ecc71;">
+    <div class="card panel-success">
       <strong>{{ session('status') }}</strong>
     </div>
-    <div style="height:10px;"></div>
+    <div class="stack-sm"></div>
   @endif
 
   @if(!$term)
@@ -64,7 +64,7 @@
         </div>
         <div>
           <div class="muted">Schedule State</div>
-          <span class="badge" style="{{ $summary['schedule_locked'] ? 'background:#fef9c3; color:#854d0e;' : 'background:#dcfce7; color:#166534;' }}">
+          <span class="badge {{ $summary['schedule_locked'] ? 'warn' : 'success' }}">
             {{ $summary['schedule_locked'] ? 'Locked' : 'Unlocked' }}
           </span>
         </div>

@@ -16,10 +16,10 @@
   </div>
 
   @if(session('status'))
-    <div class="card" style="border-left:4px solid #2ecc71;">
+    <div class="card panel-success">
       <strong>{{ session('status') }}</strong>
     </div>
-    <div style="height:10px;"></div>
+    <div class="stack-sm"></div>
   @endif
 
   <div class="card" style="margin-bottom:14px;">
@@ -42,7 +42,7 @@
         @if($templateExists)
           <span class="badge">Template: Installed</span>
         @else
-          <span class="badge" style="background:#ffe8e8;">Template: Missing</span>
+          <span class="badge danger">Template: Missing</span>
         @endif
       </div>
 
@@ -117,19 +117,19 @@
               <td>
                 <div style="display:grid; gap:6px;">
                   @if($definition->is_required)
-                    <span class="badge" style="background:#e8f0ff; color:#1e40af;">Required</span>
+                    <span class="badge info">Required</span>
                   @else
-                    <span class="badge">Optional</span>
+                    <span class="badge muted">Optional</span>
                   @endif
 
                   @if($definition->is_active)
-                    <span class="badge" style="background:#e6ffed; color:#0b6b2f;">Active</span>
+                    <span class="badge success">Active</span>
                   @else
-                    <span class="badge" style="background:#ffe8e8; color:#8a0a0a;">Inactive</span>
+                    <span class="badge danger">Inactive</span>
                   @endif
 
                   @if($definition->is_locked)
-                    <span class="badge" style="background:#fff3cd; color:#7a5b00;">Protected</span>
+                    <span class="badge warn">Protected</span>
                   @endif
                 </div>
               </td>
@@ -198,9 +198,9 @@
               </td>
               <td>
                 @if($block->is_locked)
-                  <span class="badge" style="background:#fff3cd; color:#7a5b00;">Protected</span>
+                  <span class="badge warn">Protected</span>
                 @else
-                  <span class="badge">Editable</span>
+                  <span class="badge muted">Editable</span>
                 @endif
               </td>
               <td>

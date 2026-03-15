@@ -26,7 +26,7 @@
             <td>{{ $r->building ?? '—' }}</td>
             <td>{{ $r->room_number ?? '—' }}</td>
             <td>{{ $r->is_active ? 'Yes' : 'No' }}</td>
-            <td><a class="btn link" href="{{ route('aop.rooms.edit', $r) }}">Edit</a></td>
+            <td><a class="btn secondary sm" href="{{ route('aop.rooms.edit', $r) }}">Edit</a></td>
           </tr>
         @endforeach
       </tbody>

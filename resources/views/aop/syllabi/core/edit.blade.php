@@ -38,11 +38,11 @@
       <h2>Course Description</h2>
       <div class="actions" style="margin-top:8px; gap:8px;">
         @if(($coreContent['course_description']['source'] ?? '') === 'override')
-          <span class="badge" style="background:#fff3cd; color:#7a5b00;">Per-Syllabus Override</span>
+          <span class="badge warn">Per-Syllabus Override</span>
         @elseif(($coreContent['course_description']['source'] ?? '') === 'catalog')
-          <span class="badge" style="background:#e8f0ff; color:#1e40af;">Catalog Default</span>
+          <span class="badge info">Catalog Default</span>
         @else
-          <span class="badge" style="background:#ffe8e8; color:#8a0a0a;">Missing</span>
+          <span class="badge danger">Missing</span>
         @endif
       </div>
       <label>Override for this syllabus</label>
@@ -64,11 +64,11 @@
       <h2>Course Objectives</h2>
       <div class="actions" style="margin-top:8px; gap:8px;">
         @if(($coreContent['course_objectives']['source'] ?? '') === 'override')
-          <span class="badge" style="background:#fff3cd; color:#7a5b00;">Per-Syllabus Override</span>
+          <span class="badge warn">Per-Syllabus Override</span>
         @elseif(($coreContent['course_objectives']['source'] ?? '') === 'catalog')
-          <span class="badge" style="background:#e8f0ff; color:#1e40af;">Catalog Default</span>
+          <span class="badge info">Catalog Default</span>
         @else
-          <span class="badge" style="background:#ffe8e8; color:#8a0a0a;">Missing</span>
+          <span class="badge danger">Missing</span>
         @endif
       </div>
       <label>Override for this syllabus</label>
@@ -90,11 +90,11 @@
       <h2>Required Materials</h2>
       <div class="actions" style="margin-top:8px; gap:8px;">
         @if(($coreContent['required_materials']['source'] ?? '') === 'override')
-          <span class="badge" style="background:#fff3cd; color:#7a5b00;">Per-Syllabus Override</span>
+          <span class="badge warn">Per-Syllabus Override</span>
         @elseif(($coreContent['required_materials']['source'] ?? '') === 'catalog')
-          <span class="badge" style="background:#e8f0ff; color:#1e40af;">Catalog Default</span>
+          <span class="badge info">Catalog Default</span>
         @else
-          <span class="badge" style="background:#ffe8e8; color:#8a0a0a;">Missing</span>
+          <span class="badge danger">Missing</span>
         @endif
       </div>
       <label>Override for this syllabus</label>

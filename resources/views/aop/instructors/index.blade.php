@@ -33,7 +33,7 @@
             <td>{{ $i->is_active ? 'Active' : 'Inactive' }}</td>
             <td>
               @if ($safeColor)
-                <span class="badge" style="background:#f3f4f6; color:#111827; border:1px solid #e5e7eb;">
+                <span class="badge muted">
                   <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ $safeColor }};margin-right:6px;vertical-align:middle;"></span>
                   {{ $safeColor }}
                 </span>
@@ -42,7 +42,7 @@
               @endif
             </td>
             <td style="text-align:right;">
-              <a class="btn secondary" href="{{ route('aop.instructors.edit', $i) }}">Edit</a>
+              <a class="btn secondary sm" href="{{ route('aop.instructors.edit', $i) }}">Edit</a>
             </td>
           </tr>
         @empty

@@ -4,7 +4,7 @@
 
 <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css">
 @if($errors->any())
-  <div class="card" style="border-left:4px solid #b00020; margin-bottom:12px;">
+  <div class="card panel-danger" style="margin-bottom:12px;">
     <strong>Please fix the highlighted issues.</strong>
     <ul style="margin:8px 0 0 18px;">
       @foreach($errors->all() as $error)

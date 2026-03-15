@@ -57,7 +57,7 @@
             <td>
                 {{ $t->name }}
                 @if($t->status)
-                    <span class="badge" style="background:#eee;color:#333;margin-left:4px;">{{ ucfirst($t->status) }}</span>
+                <span class="badge muted" style="margin-left:4px;">{{ ucfirst($t->status) }}</span>
                 @endif
             </td>
             <td>{{ $t->starts_on?->format('Y-m-d') ?? '—' }} to {{ $t->ends_on?->format('Y-m-d') ?? '—' }}</td>
@@ -66,16 +66,16 @@
             <td>{{ $t->buffer_minutes }}m</td>
             <td>
               <div class="actions">
-                <a class="btn link" href="{{ route('aop.terms.edit', $t) }}">Edit</a>
-                <a class="btn link" href="{{ route('aop.terms.clone.create', $t) }}">Clone</a>
-                <form method="POST" action="{{ route('aop.terms.draft', $t) }}" style="display:inline;">
+                <a class="btn secondary sm" href="{{ route('aop.terms.edit', $t) }}">Edit</a>
+                <a class="btn secondary sm" href="{{ route('aop.terms.clone.create', $t) }}">Clone</a>
+                <form method="POST" action="{{ route('aop.terms.draft', $t) }}" class="actions">
                     @csrf
-                    <button class="btn link" type="submit">Clone to Draft</button>
+                    <button class="btn secondary sm" type="submit">Clone to Draft</button>
                 </form>
                 @if($t->status === 'draft')
-                    <form method="POST" action="{{ route('aop.terms.publish', $t) }}" style="display:inline;">
+                  <form method="POST" action="{{ route('aop.terms.publish', $t) }}" class="actions">
                         @csrf
-                        <button class="btn link" type="submit" style="color:var(--success-color, green);">Publish</button>
+                        <button class="btn success sm" type="submit">Publish</button>
                     </form>
                 @endif
               </div>

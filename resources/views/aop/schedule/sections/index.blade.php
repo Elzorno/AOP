@@ -61,7 +61,7 @@
   </div>
 
   <div class="card">
-    <p class="muted" style="margin:0 0 10px 0;">Showing {{ $sections->count() }} section(s).</p>
+    <p class="muted">Showing {{ $sections->count() }} section(s).</p>
     <table>
       <thead>
         <tr>
@@ -81,7 +81,7 @@
             <td>{{ $s->instructor?->name ?? '—' }}</td>
             <td>{{ $s->modality->value }}</td>
             <td>{{ $s->meetingBlocks->count() }}</td>
-            <td><a class="btn link" href="{{ route('aop.schedule.sections.edit', $s) }}">Edit</a></td>
+            <td><a class="btn secondary sm" href="{{ route('aop.schedule.sections.edit', $s) }}">Edit</a></td>
           </tr>
         @empty
           <tr><td colspan="6">No sections yet.</td></tr>

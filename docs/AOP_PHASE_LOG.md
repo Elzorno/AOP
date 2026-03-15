@@ -149,3 +149,9 @@ This file tracks what each phase changed so the project remains understandable w
 - Added a publish safety gate so snapshot publishing requires explicit confirmation when blockers are present, while still allowing intentional override snapshots when needed.
 - Kept the existing lock requirement (`schedule_locked`) as a hard guard before any snapshot can be published.
 - Added feature tests covering the new publish confirmation gate for both blocked and allowed paths.
+
+## Phase 34.1
+- Performed a UI continuity polish sweep across Terms, Schedule, Readiness, Publish, Catalog, Rooms, Sections, Instructor Dashboard, and Syllabi views.
+- Standardized action controls to shared button variants (`btn`, `secondary`, `success`, `sm`) to remove mixed filled/text-only action styling.
+- Standardized status semantics with shared badge variants (`success`, `warn`, `danger`, `info`, `muted`) and replaced scattered inline badge colors.
+- Standardized success/error panel accents via shared panel classes (`panel-success`, `panel-danger`, `panel-warn`) for consistent alert/readability treatment.

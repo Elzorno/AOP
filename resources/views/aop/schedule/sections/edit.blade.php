@@ -9,7 +9,7 @@
   </div>
 
   @if($errors->any())
-    <div class="card" style="margin-bottom:14px; border-left:4px solid #dc2626; background:#fef2f2; color:#991b1b;">
+    <div class="card panel-danger" style="margin-bottom:14px; background:#fef2f2; color:#991b1b;">
       <strong>Unable to save changes.</strong>
       <ul style="margin:8px 0 0 18px;">
         @foreach($errors->all() as $message)
@@ -20,7 +20,7 @@
   @endif
 
   @if(session('status'))
-    <div class="card" style="margin-bottom:14px; border-left:4px solid #16a34a; background:#f0fdf4; color:#166534;">
+    <div class="card panel-success" style="margin-bottom:14px; background:#f0fdf4; color:#166534;">
       <strong>{{ session('status') }}</strong>
     </div>
   @endif

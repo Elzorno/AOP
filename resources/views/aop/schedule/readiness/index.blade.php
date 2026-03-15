@@ -47,9 +47,9 @@
           <tr>
             <td>
               @if($pass)
-                <span class="badge" style="background:#dcfce7;color:#14532d;">PASS</span>
+                <span class="badge success">PASS</span>
               @else
-                <span class="badge" style="background:#fee2e2;color:#7f1d1d;">FAIL</span>
+                <span class="badge danger">FAIL</span>
               @endif
             </td>
             <td>
@@ -63,9 +63,9 @@
             <td>{{ number_format($scheduled) }} min</td>
             <td>
               @if($delta >= 0)
-                <span class="badge" style="background:#dcfce7;color:#14532d;">+{{ number_format($delta) }} min</span>
+                <span class="badge success">+{{ number_format($delta) }} min</span>
               @else
-                <span class="badge" style="background:#fee2e2;color:#7f1d1d;">{{ number_format($delta) }} min</span>
+                <span class="badge danger">{{ number_format($delta) }} min</span>
               @endif
             </td>
             <td>
@@ -124,20 +124,20 @@
           <tr>
             <td>
               @if(!$isFull)
-                <span class="badge" style="background:#e5e7eb;color:#111827;">N/A</span>
+                <span class="badge muted">N/A</span>
               @elseif($pass)
-                <span class="badge" style="background:#dcfce7;color:#14532d;">PASS</span>
+                <span class="badge success">PASS</span>
               @else
-                <span class="badge" style="background:#fee2e2;color:#7f1d1d;">FAIL</span>
+                <span class="badge danger">FAIL</span>
               @endif
             </td>
             <td><strong>{{ $ins->name }}</strong><br><span class="muted">{{ $ins->email }}</span></td>
             <td>{{ $isFull ? 'Yes' : 'No' }}</td>
             <td>
               @if($locked)
-                <span class="badge" style="background:#dcfce7;color:#14532d;">Locked</span>
+                <span class="badge success">Locked</span>
               @else
-                <span class="badge" style="background:#fef9c3;color:#854d0e;">Unlocked</span>
+                <span class="badge warn">Unlocked</span>
               @endif
             </td>
             <td>{{ number_format($hours, 2) }} hrs <span class="muted">({{ number_format($mins) }} min)</span></td>

@@ -25,14 +25,14 @@
   </div>
 
   @if(session('status'))
-    <div class="card" style="border-left:4px solid #2ecc71;">
+    <div class="card panel-success">
       <strong>{{ session('status') }}</strong>
     </div>
-    <div style="height:10px;"></div>
+    <div class="stack-sm"></div>
   @endif
 
   @if($errors->any())
-    <div class="card" style="border-left:4px solid #e11d48; margin-bottom:10px;">
+    <div class="card panel-danger" style="margin-bottom:10px;">
       <strong>Publish blocked</strong>
       <div style="margin-top:6px;" class="muted">{{ $errors->first('publish_gate') ?: $errors->first() }}</div>
     </div>
@@ -44,7 +44,7 @@
       <p>You must set an active term before publishing schedule snapshots.</p>
     </div>
   @else
-    <div class="card" style="margin-bottom:14px; border-left:4px solid {{ ($readiness && $readiness['is_ready']) ? '#16a34a' : '#d97706' }};">
+    <div class="card {{ ($readiness && $readiness['is_ready']) ? 'panel-success' : 'panel-warn' }}" style="margin-bottom:14px;">
       <h2 style="margin-bottom:6px;">Readiness Gate</h2>
       @if($readiness && $readiness['is_ready'])
         <p class="muted">No blockers detected. This term is ready to publish after lock verification.</p>
@@ -134,9 +134,9 @@
                       <button class="btn secondary" type="button" onclick="copyPublicLink('pub_{{ $p->id }}')">Copy</button>
                     </div>
                     <div style="margin-top:6px;">
-                      <input id="pub_{{ $p->id }}" type="text" readonly value="{{ $publicUrl }}" style="width:100%; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size:12px;">
+                      <input id="pub_{{ $p->id }}" type="text" readonly value="{{ $publicUrl }}" class="mono-input" style="width:100%;">
                     </div>
-                    <div class="muted" style="margin-top:4px; font-size:12px;">Anyone with this link can view/download the published snapshot.</div>
+                    <div class="text-muted-xs" style="margin-top:4px;">Anyone with this link can view/download the published snapshot.</div>
                   @else
                     <span class="muted">Not available</span>
                   @endif

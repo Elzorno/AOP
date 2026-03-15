@@ -30,7 +30,7 @@
             <td>{{ $c->lecture_hours_per_week ?? '—' }}</td>
             <td>{{ $c->lab_hours_per_week ?? '—' }}</td>
             <td>{{ $c->is_active ? 'Yes' : 'No' }}</td>
-            <td><a class="btn link" href="{{ route('aop.catalog.edit', $c) }}">Edit</a></td>
+            <td><a class="btn secondary sm" href="{{ route('aop.catalog.edit', $c) }}">Edit</a></td>
           </tr>
         @endforeach
       </tbody>

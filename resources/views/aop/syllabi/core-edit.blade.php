@@ -44,7 +44,7 @@
   </div>
 
   @if($errors->any())
-    <div class="card" style="border-left:4px solid #b00020; margin-bottom:12px;">
+    <div class="card panel-danger" style="margin-bottom:12px;">
       <strong>Please fix the highlighted issues.</strong>
       <ul style="margin:8px 0 0 18px;">
         @foreach($errors->all() as $error)
@@ -80,11 +80,11 @@
               <div class="muted" style="margin-top:6px;">
                 Current source:
                 @if($source === 'syllabus')
-                  <span class="badge" style="background:#e8f0ff; color:#1e40af;">Per-Syllabus Override</span>
+                  <span class="badge info">Per-Syllabus Override</span>
                 @elseif($catalogText !== '')
-                  <span class="badge" style="background:#eef6ff; color:#1f4d8f;">Catalog Default</span>
+                  <span class="badge info">Catalog Default</span>
                 @else
-                  <span class="badge" style="background:#ffe8e8; color:#8a0a0a;">Missing</span>
+                  <span class="badge danger">Missing</span>
                 @endif
               </div>
             </div>

@@ -6,10 +6,10 @@
   </div>
 
   @if(session('status'))
-    <div class="card" style="border-left:4px solid #2ecc71;">
+    <div class="card panel-success">
       <strong>{{ session('status') }}</strong>
     </div>
-    <div style="height:10px;"></div>
+    <div class="stack-sm"></div>
   @endif
 
   @if(!$activeTerm)
@@ -48,10 +48,10 @@
                 </td>
                 <td>
                   @if($sec->syllabus)
-                    <span class="badge" style="background:var(--success-color);color:#fff;">Generated</span>
-                    <a href="{{ route('aop.syllabi.show', $sec) }}" class="link" style="font-size:12px;margin-left:8px;">View</a>
+                    <span class="badge success">Generated</span>
+                    <a href="{{ route('aop.syllabi.show', $sec) }}" class="text-muted-xs" style="margin-left:8px;">View</a>
                   @else
-                    <span class="muted" style="font-size:12px;">Not Started</span>
+                    <span class="text-muted-xs">Not Started</span>
                   @endif
                 </td>
               </tr>
@@ -142,7 +142,7 @@
                     @csrf
                     @method('DELETE')
                     <input type="hidden" name="from_instructor_portal" value="1">
-                    <button type="submit" class="btn link" style="color:red; font-size:12px;">Remove</button>
+                    <button type="submit" class="btn link-danger">Remove</button>
                   </form>
                 </td>
               </tr>
