@@ -130,9 +130,28 @@
 
     <div style="height:12px;"></div>
 
+    <div style="height:12px;"></div>
+
     <details>
       <summary style="cursor:pointer; font-weight:700;">Add Meeting Block</summary>
-      <form method="POST" action="{{ route('aop.schedule.meetingBlocks.store', $section) }}">
+      
+      <div style="margin: 15px 0; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+        <h3 style="margin-top:0; font-size:14px;">Suggest Slot</h3>
+        <div style="display: flex; gap: 10px; align-items: flex-end;">
+            <div>
+                <label style="font-size:12px;">Duration (min)</label>
+                <input type="number" id="suggestDuration" value="60" style="width: 80px;" />
+            </div>
+            <div>
+                <label style="font-size:12px;">Days (optional, e.g. Mon,Wed,Fri)</label>
+                <input type="text" id="suggestDays" placeholder="Mon,Wed,Fri" />
+            </div>
+            <button type="button" class="btn secondary" onclick="fetchSuggestions()">Find Open Slots</button>
+        </div>
+        <div id="suggestionsList" style="margin-top: 10px; font-size:13px;"></div>
+      </div>
+
+      <form method="POST" id="addBlockForm" action="{{ route('aop.schedule.meetingBlocks.store', $section) }}">
         @csrf
 
         <label>Type</label>
@@ -180,4 +199,61 @@
       </form>
     </details>
   </div>
+
+  <script>
+    function fetchSuggestions() {
+      const dur = document.getElementById('suggestDuration').value || 60;
+      const days = document.getElementById('suggestDays').value;
+      const url = "{{ route('aop.schedule.sections.suggest', $section) }}?duration=" + dur + "&days=" + encodeURIComponent(days);
+      const list = document.getElementById('suggestionsList');
+      
+      list.innerHTML = '<em>Searching...</em>';
+
+      fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.suggestions || data.suggestions.length === 0) {
+                list.innerHTML = '<em>No conflicts-free slots found. Try a different duration or days.</em>';
+                return;
+            }
+
+            let html = '<ul style="padding-left: 20px; list-style-type: disc;">';
+            data.suggestions.forEach((s, idx) => {
+                const daysStr = s.days.join(',');
+                const rooms = s.available_rooms.length > 0 ? s.available_rooms.map(r => r.name).join(', ') : 'None';
+                html += `<li style="margin-bottom:6px;">
+                    <strong>${daysStr}</strong> ${s.starts_at} - ${s.ends_at} (Open Rooms: ${rooms}) 
+                    <button type="button" class="btn secondary link" style="font-size:11px; margin-left:10px" onclick="applySuggestion('${daysStr}', '${s.starts_at}', '${s.ends_at}', ${s.available_rooms.length > 0 ? s.available_rooms[0].id : 'null'})">Use Slot</button>
+                </li>`;
+            });
+            html += '</ul>';
+            list.innerHTML = html;
+        });
+    }
+
+    function applySuggestion(daysStr, start, end, roomId) {
+        const form = document.getElementById('addBlockForm');
+        
+        // Reset checkboxes
+        form.querySelectorAll('input[type="checkbox"][name="days[]"]').forEach(cb => cb.checked = false);
+        
+        // Check matching days
+        const days = daysStr.split(',');
+        days.forEach(d => {
+            const cb = form.querySelector('input[type="checkbox"][name="days[]"][value="' + d + '"]');
+            if (cb) cb.checked = true;
+        });
+
+        // Set times
+        form.querySelector('input[name="starts_at"]').value = start;
+        form.querySelector('input[name="ends_at"]').value = end;
+
+        // Set room if available
+        if (roomId !== null) {
+            form.querySelector('select[name="room_id"]').value = roomId;
+        }
+
+        alert('Form filled with suggestion!');
+    }
+  </script>
 </x-aop-layout>

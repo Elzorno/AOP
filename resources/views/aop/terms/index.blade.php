@@ -54,7 +54,12 @@
                 <span class="badge">Active</span>
               @endif
             </td>
-            <td>{{ $t->name }}</td>
+            <td>
+                {{ $t->name }}
+                @if($t->status)
+                    <span class="badge" style="background:#eee;color:#333;margin-left:4px;">{{ ucfirst($t->status) }}</span>
+                @endif
+            </td>
             <td>{{ $t->starts_on?->format('Y-m-d') ?? '—' }} to {{ $t->ends_on?->format('Y-m-d') ?? '—' }}</td>
             <td>{{ $t->weeks_in_term }}</td>
             <td>{{ $t->slot_minutes }}m</td>
@@ -63,6 +68,16 @@
               <div class="actions">
                 <a class="btn link" href="{{ route('aop.terms.edit', $t) }}">Edit</a>
                 <a class="btn link" href="{{ route('aop.terms.clone.create', $t) }}">Clone</a>
+                <form method="POST" action="{{ route('aop.terms.draft', $t) }}" style="display:inline;">
+                    @csrf
+                    <button class="btn link" type="submit">Clone to Draft</button>
+                </form>
+                @if($t->status === 'draft')
+                    <form method="POST" action="{{ route('aop.terms.publish', $t) }}" style="display:inline;">
+                        @csrf
+                        <button class="btn link" type="submit" style="color:var(--success-color, green);">Publish</button>
+                    </form>
+                @endif
               </div>
             </td>
           </tr>

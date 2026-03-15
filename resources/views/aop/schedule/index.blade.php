@@ -60,6 +60,7 @@
           <a class="btn" href="{{ route('aop.schedule.sections.index') }}">Meeting Blocks</a>
           <a class="btn" href="{{ route('aop.rooms.index') }}">Rooms</a>
           <a class="btn secondary" href="{{ route('aop.schedule.grids.index') }}">Schedule Grids</a>
+          <a class="btn" href="{{ route('aop.schedule.calendar.index') }}">Calendar View</a>
         </div>
       </div>
 

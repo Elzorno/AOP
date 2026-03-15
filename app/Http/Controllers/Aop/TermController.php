@@ -114,4 +114,16 @@ class TermController extends Controller
 
         return redirect()->route('aop.terms.index')->with('status', 'Active term updated.');
     }
+
+    public function makeDraft(Term $term)
+    {
+        $draft = $term->cloneToDraft();
+        return redirect()->route('aop.terms.index')->with('status', 'Draft ' . $draft->code . ' created from ' . $term->code . '.');
+    }
+
+    public function publish(Term $term)
+    {
+        $term->update(['status' => 'published']);
+        return redirect()->route('aop.terms.index')->with('status', 'Term ' . $term->code . ' has been published.');
+    }
 }

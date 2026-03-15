@@ -47,6 +47,11 @@ Route::prefix('/public/schedule')->name('public.schedule.')->middleware('throttl
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Instructor specific
+    Route::post('/instructor-preferences', [App\Http\Controllers\Aop\InstructorPreferenceController::class, 'store'])->name('aop.instructor_preferences.store');
+    Route::post('/instructor-office-hours/{instructor}/blocks', [App\Http\Controllers\Aop\Schedule\OfficeHoursController::class, 'store'])->name('instructor.officeHours.store');
+    Route::delete('/instructor-office-hours/{instructor}/blocks/{officeHourBlock}', [App\Http\Controllers\Aop\Schedule\OfficeHoursController::class, 'destroy'])->name('instructor.officeHours.destroy');
+
     Route::prefix('/aop')->name('aop.')->middleware(['admin'])->group(function () {
         // Terms
         Route::get('/terms', [TermController::class, 'index'])->name('terms.index');
@@ -57,6 +62,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/terms/{term}/edit', [TermController::class, 'edit'])->name('terms.edit');
         Route::put('/terms/{term}', [TermController::class, 'update'])->name('terms.update');
         Route::post('/terms/active', [TermController::class, 'setActive'])->name('terms.setActive');
+        Route::post('/terms/{term}/draft', [TermController::class, 'makeDraft'])->name('terms.draft');
+        Route::post('/terms/{term}/publish', [TermController::class, 'publish'])->name('terms.publish');
 
         // Instructors
         Route::get('/instructors', [InstructorController::class, 'index'])->name('instructors.index');
@@ -93,6 +100,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/schedule/sections', [SectionController::class, 'store'])->name('schedule.sections.store');
         Route::get('/schedule/sections/{section}/edit', [SectionController::class, 'edit'])->name('schedule.sections.edit');
         Route::put('/schedule/sections/{section}', [SectionController::class, 'update'])->name('schedule.sections.update');
+        Route::get('/schedule/sections/{section}/suggest', [SectionController::class, 'suggest'])->name('schedule.sections.suggest');
 
         // Meeting Blocks (attached to sections)
         Route::post('/schedule/sections/{section}/meeting-blocks', [MeetingBlockController::class, 'store'])->name('schedule.meetingBlocks.store');
@@ -111,6 +119,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/schedule/grids', [ScheduleGridController::class, 'index'])->name('schedule.grids.index');
         Route::get('/schedule/grids/instructors/{instructor}', [ScheduleGridController::class, 'instructor'])->name('schedule.grids.instructor');
         Route::get('/schedule/grids/rooms/{room}', [ScheduleGridController::class, 'room'])->name('schedule.grids.room');
+
+        // Schedule Calendar (active term)
+        Route::get('/schedule/calendar', [App\Http\Controllers\Aop\Schedule\ScheduleCalendarController::class, 'index'])->name('schedule.calendar.index');
+        Route::get('/schedule/calendar/events', [App\Http\Controllers\Aop\Schedule\ScheduleCalendarController::class, 'events'])->name('schedule.calendar.events');
+        Route::post('/schedule/calendar/update', [App\Http\Controllers\Aop\Schedule\ScheduleCalendarController::class, 'update'])->name('schedule.calendar.update');
 
         // Schedule Reports (active term)
         Route::get('/schedule/reports', [ScheduleReportsController::class, 'index'])->name('schedule.reports.index');

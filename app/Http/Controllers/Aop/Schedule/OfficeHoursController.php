@@ -121,6 +121,10 @@ class OfficeHoursController extends Controller
             'notes' => $data['notes'] ?? null,
         ]);
 
+        if ($request->has('from_instructor_portal')) {
+            return redirect()->route('dashboard')->with('status', 'Office hours block added.');
+        }
+
         return redirect()->route('aop.schedule.officeHours.show', $instructor)->with('status', 'Office hours block added.');
     }
 
@@ -188,6 +192,10 @@ class OfficeHoursController extends Controller
         abort_if($officeHourBlock->term_id !== $term->id || $officeHourBlock->instructor_id !== $instructor->id, 400, 'Office hour block not in active term/instructor.');
 
         $officeHourBlock->delete();
+
+        if ($request->has('from_instructor_portal')) {
+            return redirect()->route('dashboard')->with('status', 'Office hours block deleted.');
+        }
 
         return redirect()->route('aop.schedule.officeHours.show', $instructor)->with('status', 'Office hours block deleted.');
     }

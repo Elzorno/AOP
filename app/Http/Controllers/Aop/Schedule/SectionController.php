@@ -126,4 +126,17 @@ class SectionController extends Controller
 
         return redirect()->route('aop.schedule.sections.edit', $section)->with('status', 'Section updated.');
     }
+
+    public function suggest(Request $request, Section $section, \App\Services\ScheduleSuggestionService $service)
+    {
+        $term = $this->activeTermOrFail();
+        abort_if($section->offering->term_id !== $term->id, 400, 'Section not in active term.');
+
+        $duration = $request->integer('duration', 60); // default to 60 mins
+        $days = $request->input('days'); // e.g., 'Mon,Wed,Fri'
+
+        $suggestions = $service->suggestSlots($section, $duration, $days);
+
+        return response()->json(['suggestions' => $suggestions]);
+    }
 }
