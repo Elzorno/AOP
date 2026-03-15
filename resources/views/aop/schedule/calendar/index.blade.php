@@ -10,6 +10,29 @@
       border-radius: 6px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
+
+    #calendarStatus {
+      display: none;
+      margin: 0 0 14px 0;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border-left: 4px solid transparent;
+      background: #f8fafc;
+    }
+
+    #calendarStatus.is-error {
+      display: block;
+      border-left-color: #dc2626;
+      color: #991b1b;
+      background: #fef2f2;
+    }
+
+    #calendarStatus.is-success {
+      display: block;
+      border-left-color: #16a34a;
+      color: #166534;
+      background: #f0fdf4;
+    }
   </style>
 
   <div class="row" style="margin-bottom:14px;">
@@ -23,6 +46,8 @@
     Drag and drop blocks to update their times. Note: This grid maps Monday-Sunday to an arbitrary week so you can visualize the weekly schedule. Ensure that block starts and ends within the day.
   </p>
 
+  <div id="calendarStatus" role="status" aria-live="polite"></div>
+
   <div id="calendar"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
@@ -31,6 +56,58 @@
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       var calendarEl = document.getElementById('calendar');
+      var statusEl = document.getElementById('calendarStatus');
+
+      function setStatus(message, level) {
+        statusEl.textContent = message;
+        statusEl.classList.remove('is-error', 'is-success');
+        statusEl.classList.add(level === 'success' ? 'is-success' : 'is-error');
+      }
+
+      async function submitCalendarUpdate(info) {
+        var start = info.event.start;
+        var end = info.event.end;
+
+        if (!start || !end) {
+          info.revert();
+          setStatus('Unable to update: event time could not be read.', 'error');
+          return;
+        }
+
+        var startStr = start.toTimeString().substring(0, 5);
+        var endStr = end.toTimeString().substring(0, 5);
+        var blockId = info.event.extendedProps.blockId;
+
+        try {
+          var response = await fetch("{{ route('aop.schedule.calendar.update') }}", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': '{{ csrf_token() }}',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+              blockId: blockId,
+              starts_at: startStr,
+              ends_at: endStr
+            })
+          });
+
+          var data = await response.json();
+
+          if (!response.ok || data.status !== 'success') {
+            info.revert();
+            setStatus(data.message || 'Update failed. Changes were reverted.', 'error');
+            return;
+          }
+
+          setStatus(data.message || 'Meeting block updated.', 'success');
+        } catch (error) {
+          console.error('Error:', error);
+          info.revert();
+          setStatus('An unexpected error occurred. Changes were reverted.', 'error');
+        }
+      }
       
       var calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'timeGridWeek',
@@ -46,84 +123,10 @@
         eventOverlap: true,
         events: "{{ route('aop.schedule.calendar.events') }}",
         eventDrop: function(info) {
-          // Send AJAX request to update block time
-          var start = info.event.start;
-          var end = info.event.end;
-          
-          if (!start || !end) {
-              info.revert();
-              return;
-          }
-
-          var startStr = start.toTimeString().substring(0, 5);
-          var endStr = end.toTimeString().substring(0, 5);
-          var blockId = info.event.extendedProps.blockId;
-
-          fetch("{{ route('aop.schedule.calendar.update') }}", {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-TOKEN': '{{ csrf_token() }}',
-              'Accept': 'application/json',
-            },
-            body: JSON.stringify({
-              blockId: blockId,
-              starts_at: startStr,
-              ends_at: endStr
-            })
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.status !== 'success') {
-              alert('Failed to update time.');
-              info.revert();
-            }
-          })
-          .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred.');
-            info.revert();
-          });
+          submitCalendarUpdate(info);
         },
         eventResize: function(info) {
-            // we can reuse the same update endpoint for scaling the duration
-            var start = info.event.start;
-            var end = info.event.end;
-            
-            if (!start || !end) {
-                info.revert();
-                return;
-            }
-
-            var startStr = start.toTimeString().substring(0, 5);
-            var endStr = end.toTimeString().substring(0, 5);
-            var blockId = info.event.extendedProps.blockId;
-
-            fetch("{{ route('aop.schedule.calendar.update') }}", {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json',
-              },
-              body: JSON.stringify({
-                blockId: blockId,
-                starts_at: startStr,
-                ends_at: endStr
-              })
-            })
-            .then(response => response.json())
-            .then(data => {
-              if (data.status !== 'success') {
-                alert('Failed to update duration.');
-                info.revert();
-              }
-            })
-            .catch(error => {
-              console.error('Error:', error);
-              alert('An error occurred.');
-              info.revert();
-            });
+            submitCalendarUpdate(info);
         }
       });
       

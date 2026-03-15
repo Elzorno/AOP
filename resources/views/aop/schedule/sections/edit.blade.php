@@ -8,7 +8,25 @@
     </div>
   </div>
 
+  @if($errors->any())
+    <div class="card" style="margin-bottom:14px; border-left:4px solid #dc2626; background:#fef2f2; color:#991b1b;">
+      <strong>Unable to save changes.</strong>
+      <ul style="margin:8px 0 0 18px;">
+        @foreach($errors->all() as $message)
+          <li>{{ $message }}</li>
+        @endforeach
+      </ul>
+    </div>
+  @endif
+
+  @if(session('status'))
+    <div class="card" style="margin-bottom:14px; border-left:4px solid #16a34a; background:#f0fdf4; color:#166534;">
+      <strong>{{ session('status') }}</strong>
+    </div>
+  @endif
+
   <div class="card" style="margin-bottom:14px;">
+    <h2>Section Details</h2>
     <h2>{{ $section->offering->catalogCourse->code }} — {{ $section->offering->catalogCourse->title }} ({{ $section->section_code }})</h2>
 
     <form method="POST" action="{{ route('aop.schedule.sections.update', $section) }}">
@@ -25,7 +43,7 @@
           <select name="instructor_id">
             <option value="">—</option>
             @foreach ($instructors as $i)
-              <option value="{{ $i->id }}" {{ $section->instructor_id === $i->id ? 'selected' : '' }}>{{ $i->name }}</option>
+              <option value="{{ $i->id }}" {{ (string) old('instructor_id', $section->instructor_id) === (string) $i->id ? 'selected' : '' }}>{{ $i->name }}</option>
             @endforeach
           </select>
         </div>
@@ -33,7 +51,7 @@
           <label>Modality</label>
           <select name="modality" required>
             @foreach ($modalities as $m)
-              <option value="{{ $m->value }}" {{ $section->modality->value === $m->value ? 'selected' : '' }}>{{ $m->value }}</option>
+              <option value="{{ $m->value }}" {{ old('modality', $section->modality->value) === $m->value ? 'selected' : '' }}>{{ $m->value }}</option>
             @endforeach
           </select>
         </div>
@@ -47,8 +65,8 @@
     </form>
   </div>
 
-  <div class="card">
-    <h2>Meeting Blocks</h2>
+  <div class="card" style="margin-bottom:14px;">
+    <h2>Current Meeting Blocks</h2>
     <p>Rooms are required for in-person/hybrid sections. Online sections do not require rooms.</p>
 
     <table style="margin-top:10px;">
@@ -79,15 +97,14 @@
 
                   <label>Type</label>
                   <select name="type" required>
-                    @foreach (\App\Enums\MeetingBlockType::cases() as $t)
+                    @foreach ($meetingBlockTypes as $t)
                       <option value="{{ $t->value }}" {{ $mb->type->value === $t->value ? 'selected' : '' }}>{{ $t->value }}</option>
                     @endforeach
                   </select>
 
                   <label>Days</label>
-                  @php $days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']; @endphp
                   <div class="split">
-                    @foreach ($days as $d)
+                    @foreach ($weekDays as $d)
                       <label style="display:flex; gap:8px; align-items:center; margin:6px 0;">
                         <input type="checkbox" name="days[]" value="{{ $d }}" style="width:auto;" {{ in_array($d, $mb->days_json ?? []) ? 'checked' : '' }} />
                         <span>{{ $d }}</span>
@@ -109,7 +126,7 @@
                   <label>Room</label>
                   <select name="room_id">
                     <option value="">—</option>
-                    @foreach (\App\Models\Room::where('is_active', true)->orderBy('name')->get() as $r)
+                    @foreach ($rooms as $r)
                       <option value="{{ $r->id }}" {{ $mb->room_id === $r->id ? 'selected' : '' }}>{{ $r->name }}</option>
                     @endforeach
                   </select>
@@ -128,76 +145,96 @@
       </tbody>
     </table>
 
-    <div style="height:12px;"></div>
+    @if($section->meetingBlocks->isEmpty())
+      <p class="muted" style="margin-top:10px;">Add at least one meeting block so readiness can validate this section.</p>
+    @endif
+  </div>
 
+  <div class="card" style="margin-bottom:14px;">
+    <h2>Add Meeting Block</h2>
+    <p class="muted">Use Suggest Slot to pre-fill a conflict-aware block or enter one manually.</p>
     <div style="height:12px;"></div>
+    <div style="margin: 0 0 15px 0; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+      <h3 style="margin-top:0; font-size:14px;">Suggest Slot</h3>
+      <div style="display: flex; gap: 10px; align-items: flex-end;">
+          <div>
+              <label style="font-size:12px;">Duration (min)</label>
+              <input type="number" id="suggestDuration" value="60" style="width: 80px;" />
+          </div>
+          <div>
+              <label style="font-size:12px;">Days (optional, e.g. Mon,Wed,Fri)</label>
+              <input type="text" id="suggestDays" placeholder="Mon,Wed,Fri" />
+          </div>
+          <button type="button" class="btn secondary" onclick="fetchSuggestions()">Find Open Slots</button>
+      </div>
+      <div id="suggestionsList" style="margin-top: 10px; font-size:13px;"></div>
+    </div>
 
-    <details>
-      <summary style="cursor:pointer; font-weight:700;">Add Meeting Block</summary>
-      
-      <div style="margin: 15px 0; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
-        <h3 style="margin-top:0; font-size:14px;">Suggest Slot</h3>
-        <div style="display: flex; gap: 10px; align-items: flex-end;">
-            <div>
-                <label style="font-size:12px;">Duration (min)</label>
-                <input type="number" id="suggestDuration" value="60" style="width: 80px;" />
-            </div>
-            <div>
-                <label style="font-size:12px;">Days (optional, e.g. Mon,Wed,Fri)</label>
-                <input type="text" id="suggestDays" placeholder="Mon,Wed,Fri" />
-            </div>
-            <button type="button" class="btn secondary" onclick="fetchSuggestions()">Find Open Slots</button>
-        </div>
-        <div id="suggestionsList" style="margin-top: 10px; font-size:13px;"></div>
+    <form method="POST" id="addBlockForm" action="{{ route('aop.schedule.meetingBlocks.store', $section) }}">
+      @csrf
+
+      <label>Type</label>
+      <select name="type" required>
+        @foreach ($meetingBlockTypes as $t)
+          <option value="{{ $t->value }}">{{ $t->value }}</option>
+        @endforeach
+      </select>
+
+      <label>Days</label>
+      <div class="split">
+        @foreach ($weekDays as $d)
+          <label style="display:flex; gap:8px; align-items:center; margin:6px 0;">
+            <input type="checkbox" name="days[]" value="{{ $d }}" style="width:auto;" />
+            <span>{{ $d }}</span>
+          </label>
+        @endforeach
       </div>
 
-      <form method="POST" id="addBlockForm" action="{{ route('aop.schedule.meetingBlocks.store', $section) }}">
-        @csrf
-
-        <label>Type</label>
-        <select name="type" required>
-          @foreach (\App\Enums\MeetingBlockType::cases() as $t)
-            <option value="{{ $t->value }}">{{ $t->value }}</option>
-          @endforeach
-        </select>
-
-        <label>Days</label>
-        @php $days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']; @endphp
-        <div class="split">
-          @foreach ($days as $d)
-            <label style="display:flex; gap:8px; align-items:center; margin:6px 0;">
-              <input type="checkbox" name="days[]" value="{{ $d }}" style="width:auto;" />
-              <span>{{ $d }}</span>
-            </label>
-          @endforeach
+      <div class="split">
+        <div>
+          <label>Start</label>
+          <input type="time" name="starts_at" required />
         </div>
-
-        <div class="split">
-          <div>
-            <label>Start</label>
-            <input type="time" name="starts_at" required />
-          </div>
-          <div>
-            <label>End</label>
-            <input type="time" name="ends_at" required />
-          </div>
+        <div>
+          <label>End</label>
+          <input type="time" name="ends_at" required />
         </div>
+      </div>
 
-        <label>Room</label>
-        <select name="room_id">
-          <option value="">—</option>
-          @foreach (\App\Models\Room::where('is_active', true)->orderBy('name')->get() as $r)
-            <option value="{{ $r->id }}">{{ $r->name }}</option>
-          @endforeach
-        </select>
+      <label>Room</label>
+      <select name="room_id">
+        <option value="">—</option>
+        @foreach ($rooms as $r)
+          <option value="{{ $r->id }}">{{ $r->name }}</option>
+        @endforeach
+      </select>
 
-        <label>Notes</label>
-        <textarea name="notes"></textarea>
+      <label>Notes</label>
+      <textarea name="notes"></textarea>
 
-        <div style="height:12px;"></div>
-        <button class="btn" type="submit">Add Block</button>
-      </form>
-    </details>
+      <div style="height:12px;"></div>
+      <button class="btn" type="submit">Add Block</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Conflict & Help Notes</h2>
+    @if(count($conflictNotes) > 0)
+      <ul style="margin:8px 0 12px 18px;">
+        @foreach($conflictNotes as $note)
+          <li>{{ $note }}</li>
+        @endforeach
+      </ul>
+    @else
+      <p class="muted" style="margin:8px 0 12px 0;">No current conflicts detected for this section's existing meeting blocks.</p>
+    @endif
+
+    <ul style="margin:0 0 0 18px;">
+      <li>End time must be after start time.</li>
+      <li>In-person and hybrid sections require a room; online sections do not.</li>
+      <li>Room and instructor checks honor the active term buffer minutes.</li>
+      <li>Instructor conflicts include office-hour overlap checks.</li>
+    </ul>
   </div>
 
   <script>

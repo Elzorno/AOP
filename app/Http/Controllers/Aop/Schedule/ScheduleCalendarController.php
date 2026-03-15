@@ -6,8 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\MeetingBlock;
 use App\Models\Room;
 use App\Models\Term;
-use Carbon\Carbon;
+use App\Services\MeetingBlockMutationService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ScheduleCalendarController extends Controller
 {
@@ -100,29 +101,49 @@ class ScheduleCalendarController extends Controller
         return response()->json($events);
     }
 
-    public function update(Request $request)
+    public function update(Request $request, MeetingBlockMutationService $mutationService)
     {
         $term = $this->activeTermOrFail();
         $data = $request->validate([
             'blockId' => 'required|integer|exists:meeting_blocks,id',
             'starts_at' => 'required|date_format:H:i',
             'ends_at' => 'required|date_format:H:i',
-            'roomId' => 'nullable|integer|exists:rooms,id',
-            // if moving across days is supported, we'd take days_json here, but for now FullCalendar groupId handles all days together
-            // or if we only allow time sliding we don't update days
+            'roomId' => 'sometimes|nullable|integer|exists:rooms,id',
         ]);
 
-        $block = MeetingBlock::whereHas('section.offering', fn($q) => $q->where('term_id', $term->id))->findOrFail($data['blockId']);
+        $block = MeetingBlock::findOrFail($data['blockId']);
 
-        $block->starts_at = $data['starts_at'];
-        $block->ends_at = $data['ends_at'];
-        
-        if (array_key_exists('roomId', $data)) {
-            $block->room_id = $data['roomId'];
+        try {
+            $attributes = [
+                'starts_at' => $data['starts_at'],
+                'ends_at' => $data['ends_at'],
+            ];
+
+            if (array_key_exists('roomId', $data)) {
+                $attributes['roomId'] = $data['roomId'];
+            }
+
+            $updated = $mutationService->update($term, $block, $attributes);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Meeting block updated.',
+                'block' => [
+                    'id' => $updated->id,
+                    'starts_at' => substr((string) $updated->starts_at, 0, 5),
+                    'ends_at' => substr((string) $updated->ends_at, 0, 5),
+                    'room_id' => $updated->room_id,
+                ],
+            ]);
+        } catch (ValidationException $e) {
+            $errors = $e->errors();
+            $firstMessage = collect($errors)->flatten()->first() ?? 'Update failed.';
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $firstMessage,
+                'errors' => $errors,
+            ], 422);
         }
-
-        $block->save();
-
-        return response()->json(['status' => 'success', 'block' => $block]);
     }
 }

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MeetingBlock;
 use App\Models\Section;
 use App\Models\Term;
+use App\Services\MeetingBlockMutationService;
 use App\Services\ScheduleConflictService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -103,10 +104,9 @@ class MeetingBlockController extends Controller
         return redirect()->route('aop.schedule.sections.edit', $section)->with('status', 'Meeting block added.');
     }
 
-    public function update(Request $request, Section $section, MeetingBlock $meetingBlock, ScheduleConflictService $conflicts)
+    public function update(Request $request, Section $section, MeetingBlock $meetingBlock, MeetingBlockMutationService $mutationService)
     {
         $term = $this->ensureSectionInActiveTerm($section);
-        $this->ensureScheduleUnlocked($term);
         abort_if($meetingBlock->section_id !== $section->id, 400, 'Meeting block not in section.');
 
         $data = $request->validate([
@@ -119,52 +119,12 @@ class MeetingBlockController extends Controller
             'notes' => ['nullable','string'],
         ]);
 
-        if ($data['ends_at'] <= $data['starts_at']) {
-            return back()->withErrors(['ends_at' => 'End time must be after start time.'])->withInput();
-        }
-
-        if ($section->modality->value === 'ONLINE') {
-            $data['room_id'] = null;
-        } else {
-            if (empty($data['room_id'])) {
-                return back()->withErrors(['room_id' => 'Room is required for in-person or hybrid sections.'])->withInput();
-            }
-        }
-
-        $days = array_values(array_unique($data['days']));
-
-        // Room conflicts: class vs class only
-        $roomConflicts = $conflicts->roomConflictsForMeetingBlock($term, (int)($data['room_id'] ?? 0), $days, $data['starts_at'], $data['ends_at'], $meetingBlock->id);
-
-        if ($roomConflicts->count() > 0) {
-            $msg = 'Room conflict with: ' . $roomConflicts->map(fn($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
-            return back()->withErrors(['conflicts' => $msg])->withInput();
-        }
-
-        // Instructor conflicts: class vs class + office hours
-        if (!empty($section->instructor_id)) {
-            $insConf = $conflicts->instructorConflictsForMeetingBlock($term, (int)$section->instructor_id, $days, $data['starts_at'], $data['ends_at'], $meetingBlock->id);
-            $messages = [];
-
-            if ($insConf['meeting_blocks']->count() > 0) {
-                $messages[] = 'Instructor conflict with classes: ' . $insConf['meeting_blocks']->map(fn($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
-            }
-
-            if ($insConf['office_hour_blocks']->count() > 0) {
-                $messages[] = 'Instructor conflict with office hours: ' . $insConf['office_hour_blocks']->map(fn($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))->implode('; ');
-            }
-
-            if (!empty($messages)) {
-                return back()->withErrors(['conflicts' => implode(' | ', $messages)])->withInput();
-            }
-        }
-
-        $meetingBlock->update([
+        $mutationService->update($term, $meetingBlock, [
             'type' => $data['type'],
-            'days_json' => $days,
+            'days' => $data['days'],
             'starts_at' => $data['starts_at'],
             'ends_at' => $data['ends_at'],
-            'room_id' => $data['room_id'],
+            'room_id' => $data['room_id'] ?? null,
             'notes' => $data['notes'] ?? null,
         ]);
 

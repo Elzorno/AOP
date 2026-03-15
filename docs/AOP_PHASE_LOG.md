@@ -134,3 +134,12 @@ This file tracks what each phase changed so the project remains understandable w
 - Created **ScheduleSuggestionService** and integrated a "Suggest Slot" button for sections to automatically find conflict-free scheduling windows.
 - Launched the **Instructor Portal** allowing non-admin instructors to manage their own teaching preferences and office hours, and preview assigned classes/syllabi.
 - Consolidated **DashboardController** to dynamically toggle between Admin and Instructor views based on user role and email matching.
+
+## Phase 33
+- Added a shared `MeetingBlockMutationService` so meeting block updates use one validation/mutation path for both section form edits and calendar drag/resize updates.
+- Enforced update-time rules consistently across both paths: active term ownership, schedule lock guard, end-after-start validation, modality/room requirements, and room/instructor/office-hour conflict checks with `buffer_minutes`.
+- Updated calendar update responses to return readable JSON 422 validation payloads and improved the calendar UI so failed drag/resize operations are reverted with visible inline status messaging.
+- Upgraded Schedule Home to a workflow dashboard (`Build`, `Validate`, `Publish`) with active-term summary counts for offerings, sections, missing data, conflict totals, office-hours failures, publication version, term status, and lock state.
+- Added GET-based server-side filtering and sorting to the sections index (`q`, `modality`, `instructor_id`, `missing`, `sort`) while keeping Blade server-rendered.
+- Refactored section edit UX into clearer workspace cards and moved room data loading out of Blade into the controller (no model queries in touched Blade pages).
+- Added focused AOP feature tests covering calendar safety rules and a sections missing-state filter.
