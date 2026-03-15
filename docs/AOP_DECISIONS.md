@@ -5,6 +5,7 @@ This file is the **source of truth** for decisions that should persist across de
 ## Workflow
 - Patches are delivered as ZIP files mirroring the repo structure.
 - Stakeholder workflow: **unzip on Windows → upload/overwrite via FileZilla → run artisan clear commands**.
+- **Continuity Rule**: The `docs/` folder **MUST** be updated at each development iteration to maintain an accurate source of truth (Phase Log, Rules, and Decisions).
 
 ## Scheduling Domain Decisions
 - The app schedules sections within an **active Term**.
