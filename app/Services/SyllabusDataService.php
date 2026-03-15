@@ -20,6 +20,7 @@ class SyllabusDataService
             'offering.catalogCourse',
             'instructor',
             'meetingBlocks.room',
+            'syllabus.sectionItems',
         ]);
 
         /** @var Term|null $term */
@@ -27,19 +28,20 @@ class SyllabusDataService
 
         $course = $section->offering?->catalogCourse;
         $instructor = $section->instructor;
+        $syllabus = $section->syllabus;
 
-        /** @var Syllabus|null $syllabus */
-        $syllabus = $section->relationLoaded('syllabus')
-            ? $section->syllabus
-            : Syllabus::query()->with('sectionItems')->where('section_id', $section->id)->first();
-
-        $descriptionOverride = $syllabus?->course_description_override;
-        $objectivesOverride = $syllabus?->course_objectives_override;
-        $materialsOverride = $syllabus?->required_materials_override;
-
-        $hasDescriptionOverride = $this->hasMeaningfulText($descriptionOverride);
-        $hasObjectivesOverride = $this->hasMeaningfulText($objectivesOverride);
-        $hasMaterialsOverride = $this->hasMeaningfulText($materialsOverride);
+        $courseDescription = $this->resolveCoreContent(
+            $syllabus?->course_description_override,
+            $course?->description
+        );
+        $courseObjectives = $this->resolveCoreContent(
+            $syllabus?->course_objectives_override,
+            $course?->objectives
+        );
+        $requiredMaterials = $this->resolveCoreContent(
+            $syllabus?->required_materials_override,
+            $course?->required_materials
+        );
 
         $officeHours = [];
         if ($term && $instructor) {
@@ -50,8 +52,8 @@ class SyllabusDataService
                 ->get()
                 ->map(fn ($b) => [
                     'days' => $b->days_json ?? [],
-                    'start' => substr((string)$b->starts_at, 0, 5),
-                    'end' => substr((string)$b->ends_at, 0, 5),
+                    'start' => substr((string) $b->starts_at, 0, 5),
+                    'end' => substr((string) $b->ends_at, 0, 5),
                     'notes' => $b->notes,
                 ])
                 ->all();
@@ -60,10 +62,10 @@ class SyllabusDataService
         $meetingBlocks = $section->meetingBlocks
             ->sortBy('starts_at')
             ->map(fn ($mb) => [
-                'type' => is_object($mb->type) && property_exists($mb->type, 'value') ? $mb->type->value : (string)$mb->type,
+                'type' => is_object($mb->type) && property_exists($mb->type, 'value') ? $mb->type->value : (string) $mb->type,
                 'days' => $mb->days_json ?? [],
-                'start' => substr((string)$mb->starts_at, 0, 5),
-                'end' => substr((string)$mb->ends_at, 0, 5),
+                'start' => substr((string) $mb->starts_at, 0, 5),
+                'end' => substr((string) $mb->ends_at, 0, 5),
                 'room' => $mb->room?->name ?? '',
                 'notes' => $mb->notes,
             ])
@@ -77,12 +79,11 @@ class SyllabusDataService
                 'name' => $term?->name ?? '',
             ],
             'course' => [
-                'id' => $course?->id,
                 'code' => $course?->code ?? '',
                 'title' => $course?->title ?? '',
                 'department' => $course?->department ?? '',
-                'objectives' => $hasObjectivesOverride ? (string) $objectivesOverride : ($course?->objectives ?? ''),
-                'required_materials' => $hasMaterialsOverride ? (string) $materialsOverride : ($course?->required_materials ?? ''),
+                'objectives' => $courseObjectives['value'],
+                'required_materials' => $requiredMaterials['value'],
                 'credits_text' => $course?->credits_text ?? '',
                 'credits_min' => $course?->credits_min,
                 'credits_max' => $course?->credits_max,
@@ -90,28 +91,54 @@ class SyllabusDataService
                 'course_lab_fee' => $course?->course_lab_fee,
                 'prerequisites' => $course?->prereq_text ?? '',
                 'corequisites' => $course?->coreq_text ?? '',
-                'description' => $hasDescriptionOverride ? (string) $descriptionOverride : ($course?->description ?? ''),
+                'description' => $courseDescription['value'],
                 'notes' => $course?->notes ?? '',
-                'description_source' => $hasDescriptionOverride ? 'syllabus' : 'catalog',
-                'objectives_source' => $hasObjectivesOverride ? 'syllabus' : 'catalog',
-                'required_materials_source' => $hasMaterialsOverride ? 'syllabus' : 'catalog',
-                'description_override' => $descriptionOverride,
-                'objectives_override' => $objectivesOverride,
-                'required_materials_override' => $materialsOverride,
-                'description_catalog' => $course?->description ?? '',
-                'objectives_catalog' => $course?->objectives ?? '',
-                'required_materials_catalog' => $course?->required_materials ?? '',
             ],
             'section' => [
                 'code' => $section->section_code,
                 'modality' => is_object($section->modality) && property_exists($section->modality, 'value')
-                ? $section->modality->value
-                : (string)$section->modality,
+                    ? $section->modality->value
+                    : (string) $section->modality,
                 'notes' => $section->notes,
             ],
             'instructor' => [
                 'name' => $instructor?->name ?? '',
                 'email' => $instructor?->email ?? '',
+            ],
+            'core_content' => [
+                'course_description' => [
+                    'key' => 'course_description',
+                    'label' => 'Course Description',
+                    'value' => $courseDescription['value'],
+                    'source' => $courseDescription['source'],
+                    'source_label' => $courseDescription['source_label'],
+                    'has_override' => $courseDescription['has_override'],
+                    'override_value' => $courseDescription['override_value'],
+                    'catalog_value' => $courseDescription['catalog_value'],
+                    'is_missing' => $courseDescription['source'] === 'missing',
+                ],
+                'course_objectives' => [
+                    'key' => 'course_objectives',
+                    'label' => 'Course Objectives',
+                    'value' => $courseObjectives['value'],
+                    'source' => $courseObjectives['source'],
+                    'source_label' => $courseObjectives['source_label'],
+                    'has_override' => $courseObjectives['has_override'],
+                    'override_value' => $courseObjectives['override_value'],
+                    'catalog_value' => $courseObjectives['catalog_value'],
+                    'is_missing' => $courseObjectives['source'] === 'missing',
+                ],
+                'required_materials' => [
+                    'key' => 'required_materials',
+                    'label' => 'Required Materials',
+                    'value' => $requiredMaterials['value'],
+                    'source' => $requiredMaterials['source'],
+                    'source_label' => $requiredMaterials['source_label'],
+                    'has_override' => $requiredMaterials['has_override'],
+                    'override_value' => $requiredMaterials['override_value'],
+                    'catalog_value' => $requiredMaterials['catalog_value'],
+                    'is_missing' => $requiredMaterials['source'] === 'missing',
+                ],
             ],
             'office_hours' => $officeHours,
             'meeting_blocks' => $meetingBlocks,
@@ -154,7 +181,6 @@ class SyllabusDataService
             ];
         }
 
-        // Use the first block as the "primary" meeting info.
         $mb = $meetingBlocks[0];
         $days = $this->daysToString($mb['days'] ?? []);
         $time = trim(($mb['start'] ?? '') . '-' . ($mb['end'] ?? ''));
@@ -166,12 +192,6 @@ class SyllabusDataService
             'location' => $room !== '' ? $room : 'TBD',
             'delivery_mode' => 'TBD',
         ];
-    }
-
-
-    private function hasMeaningfulText(?string $value): bool
-    {
-        return is_string($value) && trim($value) !== '';
     }
 
     private function buildStructuredSections(Section $section): array
@@ -200,16 +220,33 @@ class SyllabusDataService
         return $definitions
             ->map(function (SyllabusSectionDefinition $definition) use ($items): array {
                 $item = $items->get($definition->id);
+                $titleOverride = trim((string) ($item?->title_override ?? ''));
+                $contentOverride = $this->normalizeMarkdown((string) ($item?->content_markdown ?? ''));
+                $defaultContent = $this->normalizeMarkdown((string) ($definition->default_content ?? ''));
 
-                $title = trim((string) ($item?->title_override ?: $definition->title));
+                $title = $titleOverride !== '' ? $titleOverride : (string) $definition->title;
                 $content = $definition->scope === 'global'
-                    ? (string) ($definition->default_content ?? '')
-                    : (string) (($item?->content_markdown !== null && trim((string) $item?->content_markdown) !== '')
-                        ? $item?->content_markdown
-                        : ($definition->default_content ?? ''));
+                    ? $defaultContent
+                    : ($contentOverride !== '' ? $contentOverride : $defaultContent);
 
-                $content = $this->normalizeMarkdown($content);
                 $isEnabled = $definition->is_required ? true : (bool) ($item?->is_enabled ?? true);
+                $sortOrder = (int) ($item?->sort_order ?? $definition->sort_order ?? 0);
+                $hasPerSyllabusCustomization = $definition->scope === 'syllabus' && (
+                    $titleOverride !== ''
+                    || $contentOverride !== ''
+                    || ($item !== null && !$definition->is_required && (bool) ($item->is_enabled ?? true) !== true)
+                    || ($item !== null && $sortOrder !== (int) ($definition->sort_order ?? 0))
+                );
+
+                $source = $definition->scope === 'global'
+                    ? 'global'
+                    : ($hasPerSyllabusCustomization ? 'syllabus_override' : 'definition_default');
+
+                $sourceLabel = match ($source) {
+                    'global' => 'Global Shared',
+                    'syllabus_override' => 'Per-Syllabus Override',
+                    default => 'Shared Starter / Default',
+                };
 
                 return [
                     'id' => $definition->id,
@@ -227,9 +264,14 @@ class SyllabusDataService
                     'is_active' => (bool) $definition->is_active,
                     'is_enabled' => $isEnabled,
                     'is_locked' => (bool) $definition->is_locked,
-                    'sort_order' => (int) ($item?->sort_order ?? $definition->sort_order ?? 0),
+                    'sort_order' => $sortOrder,
                     'can_edit_per_syllabus' => $definition->scope === 'syllabus',
                     'item_id' => $item?->id,
+                    'has_title_override' => $titleOverride !== '',
+                    'has_content_override' => $contentOverride !== '',
+                    'customized_for_syllabus' => $hasPerSyllabusCustomization,
+                    'source' => $source,
+                    'source_label' => $sourceLabel,
                 ];
             })
             ->sortBy([['sort_order', 'asc'], ['id', 'asc']])
@@ -262,11 +304,56 @@ class SyllabusDataService
             ->all();
     }
 
+    private function resolveCoreContent(?string $overrideValue, ?string $catalogValue): array
+    {
+        $overrideValue = $this->normalizeTextBlock((string) ($overrideValue ?? ''));
+        $catalogValue = $this->normalizeTextBlock((string) ($catalogValue ?? ''));
+
+        if ($overrideValue !== '') {
+            return [
+                'value' => $overrideValue,
+                'source' => 'override',
+                'source_label' => 'Per-Syllabus Override',
+                'has_override' => true,
+                'override_value' => $overrideValue,
+                'catalog_value' => $catalogValue,
+            ];
+        }
+
+        if ($catalogValue !== '') {
+            return [
+                'value' => $catalogValue,
+                'source' => 'catalog',
+                'source_label' => 'Catalog Default',
+                'has_override' => false,
+                'override_value' => '',
+                'catalog_value' => $catalogValue,
+            ];
+        }
+
+        return [
+            'value' => '',
+            'source' => 'missing',
+            'source_label' => 'Missing',
+            'has_override' => false,
+            'override_value' => '',
+            'catalog_value' => '',
+        ];
+    }
+
     private function normalizeMarkdown(string $content): string
     {
         $content = str_replace(["\r\n", "\r"], "\n", $content);
 
         return rtrim($content);
+    }
+
+    private function normalizeTextBlock(string $content): string
+    {
+        $content = str_replace(["\r\n", "\r"], "\n", $content);
+        $content = preg_replace("/\n{3,}/", "\n\n", $content) ?? $content;
+
+        return trim($content);
     }
 
     private function renderMarkdownHtml(string $markdown): string
@@ -292,9 +379,21 @@ class SyllabusDataService
 
     private function daysToString(array $days): string
     {
-        $order = ['Mon'=>1,'Tue'=>2,'Wed'=>3,'Thu'=>4,'Fri'=>5,'Sat'=>6,'Sun'=>7];
-        $days = array_values(array_filter($days, fn($d) => is_string($d) && $d !== ''));
-        usort($days, fn($a,$b) => ($order[$a] ?? 99) <=> ($order[$b] ?? 99));
-        return implode(', ', $days);
+        $map = [
+            'M' => 'Mon',
+            'T' => 'Tue',
+            'W' => 'Wed',
+            'R' => 'Thu',
+            'F' => 'Fri',
+            'S' => 'Sat',
+            'U' => 'Sun',
+        ];
+
+        $parts = [];
+        foreach ($days as $d) {
+            $parts[] = $map[$d] ?? $d;
+        }
+
+        return implode('/', $parts);
     }
 }

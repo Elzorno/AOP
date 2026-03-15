@@ -22,6 +22,14 @@
     <div style="height:10px;"></div>
   @endif
 
+  <div class="card" style="margin-bottom:14px;">
+    <h2>Authoring Quick Guide</h2>
+    <p class="muted" style="margin-top:6px; max-width:920px;">
+      Open an individual syllabus to manage section-specific content. The <strong>Core Content</strong> editor controls Course Description, Course Objectives, and Required Materials for one section.
+      Structured sections handle ordered syllabus sections below the fixed top content. Legacy shared blocks are still available during the transition.
+    </p>
+  </div>
+
   <div class="card">
     <h2>Template</h2>
     <p class="muted">AOP can now prefer HTML-aligned syllabus exports so DOCX/PDF output tracks the cleaner in-app layout more closely. Template-based export remains available for compatibility and fallback.</p>
@@ -251,6 +259,7 @@
               <td>
                 <div class="actions" style="gap:8px; flex-wrap:wrap;">
                   <a class="btn secondary" href="{{ route('aop.syllabi.show', $s) }}">View</a>
+                  <a class="btn secondary" href="{{ route('aop.syllabi.core.edit', $s) }}">Core Content</a>
                   <a class="btn secondary" href="{{ route('aop.syllabi.downloadHtml', $s) }}">HTML</a>
                   <a class="btn secondary" href="{{ route('aop.syllabi.downloadJson', $s) }}">JSON</a>
                   <a class="btn" href="{{ route('aop.syllabi.downloadDocx', $s) }}">DOCX</a>

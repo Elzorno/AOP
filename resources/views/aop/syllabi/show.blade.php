@@ -2,30 +2,8 @@
   <x-slot:title>Syllabus Preview</x-slot:title>
 
   @php
-    $catalogCourseId = $packet['course']['id'] ?? null;
-    $coreContentRows = [
-      [
-        'label' => 'Course Description',
-        'source' => $packet['course']['description_source'] ?? 'catalog',
-        'current' => $packet['course']['description'] ?? '',
-        'catalog' => $packet['course']['description_catalog'] ?? '',
-        'override' => $packet['course']['description_override'] ?? null,
-      ],
-      [
-        'label' => 'Course Objectives',
-        'source' => $packet['course']['objectives_source'] ?? 'catalog',
-        'current' => $packet['course']['objectives'] ?? '',
-        'catalog' => $packet['course']['objectives_catalog'] ?? '',
-        'override' => $packet['course']['objectives_override'] ?? null,
-      ],
-      [
-        'label' => 'Required Materials',
-        'source' => $packet['course']['required_materials_source'] ?? 'catalog',
-        'current' => $packet['course']['required_materials'] ?? '',
-        'catalog' => $packet['course']['required_materials_catalog'] ?? '',
-        'override' => $packet['course']['required_materials_override'] ?? null,
-      ],
-    ];
+    $coreContent = $packet['core_content'] ?? [];
+    $catalogCourse = $section->offering->catalogCourse ?? null;
   @endphp
 
   <div class="row" style="margin-bottom:14px;">
@@ -38,9 +16,6 @@
     <div class="actions">
       <a class="btn secondary" href="{{ route('aop.syllabi.index') }}">Back to Syllabi</a>
       <a class="btn secondary" href="{{ route('aop.syllabi.core.edit', $section) }}">Edit Core Content</a>
-      @if($catalogCourseId)
-        <a class="btn secondary" href="{{ route('aop.catalog.edit', $catalogCourseId) }}">Edit Catalog Course</a>
-      @endif
       <a class="btn secondary" href="{{ route('aop.syllabi.structure.create') }}">New Structure Section</a>
       <a class="btn secondary" href="{{ route('aop.syllabi.downloadHtml', $section) }}">HTML</a>
       <a class="btn secondary" href="{{ route('aop.syllabi.downloadJson', $section) }}">JSON</a>
@@ -49,16 +24,29 @@
     </div>
   </div>
 
-  @if(session('status'))
-    <div class="card" style="border-left:4px solid #2ecc71; margin-bottom:14px;">
-      <strong>{{ session('status') }}</strong>
+  <div class="card" style="margin-bottom:14px;">
+    <h2>Syllabus Authoring Guide</h2>
+    <p class="muted" style="margin-top:6px; max-width:980px;">
+      Use this page as the syllabus control center. The fixed top content is edited through <strong>Core Content</strong>.
+      Structured sections are either <strong>Global Shared</strong> or <strong>Per-Syllabus</strong>.
+      Legacy blocks are still available, but they are transition-period content and should not be the main authoring path for new structure work.
+    </p>
+    <div class="actions" style="margin-top:10px; gap:8px;">
+      <span class="badge" style="background:#e8f0ff; color:#1e40af;">Catalog Default</span>
+      <span class="badge" style="background:#fff3cd; color:#7a5b00;">Per-Syllabus Override</span>
+      <span class="badge" style="background:#eef2ff; color:#4338ca;">Global Shared</span>
+      <span class="badge" style="background:#ffe8e8; color:#8a0a0a;">Missing</span>
     </div>
-  @endif
+  </div>
 
   <div class="card">
     <p class="muted">
-      This preview uses the newer document-style HTML layout. The fixed top sections now have a dedicated edit screen,
-      and the structured sections below still control the intentional syllabus order.
+      This preview uses the cleaner document-style HTML layout. With <code>AOP_SYLLABUS_EXPORT_ENGINE={{ $exportEngine ?? "auto" }}</code>, AOP can use this HTML as the preferred DOCX/PDF export source so rendered files stay closer to what you see here.
+      @if($templateExists)
+        The uploaded DOCX template remains available as a compatibility fallback.
+      @else
+        No DOCX template fallback is currently installed.
+      @endif
     </p>
     <div style="margin-top:12px;">
       <iframe srcdoc="{{ e($html) }}" style="width:100%; height:1100px; border:1px solid #ddd; border-radius:10px;"></iframe>
@@ -70,58 +58,72 @@
   <div class="card">
     <div class="row" style="margin-bottom:10px; align-items:flex-start;">
       <div>
-        <h2>Core Course Content</h2>
-        <p class="muted" style="margin-top:6px; max-width:980px;">
-          The fixed top sections in the syllabus layout — Course Description, Course Objectives, and Required Materials —
-          are edited here. Each field can either use the shared catalog value or a per-syllabus override for this specific section.
+        <h2>Core Syllabus Content</h2>
+        <p class="muted" style="margin-top:6px; max-width:940px;">
+          These are the fixed top sections of the syllabus. Each field can use the catalog default or a per-syllabus override for this section only.
         </p>
       </div>
       <div class="actions">
         <a class="btn secondary" href="{{ route('aop.syllabi.core.edit', $section) }}">Edit This Syllabus</a>
-        @if($catalogCourseId)
-          <a class="btn secondary" href="{{ route('aop.catalog.edit', $catalogCourseId) }}">Edit Catalog Defaults</a>
+        @if($catalogCourse)
+          <a class="btn secondary" href="{{ route('aop.catalog.edit', $catalogCourse) }}">Edit Catalog Course</a>
         @endif
       </div>
     </div>
 
-    <table style="margin-top:8px;">
-      <thead>
-        <tr>
-          <th style="width:220px;">Field</th>
-          <th style="width:180px;">Current Source</th>
-          <th>Current Value Preview</th>
-        </tr>
-      </thead>
-      <tbody>
-        @foreach($coreContentRows as $row)
-          @php
-            $currentValue = trim((string) ($row['current'] ?? ''));
-            $catalogValue = trim((string) ($row['catalog'] ?? ''));
-            $source = $row['source'] ?? 'catalog';
-          @endphp
+    @if($coreContent === [])
+      <p class="muted">Core syllabus content is not available for this section yet.</p>
+    @else
+      <table style="margin-top:8px;">
+        <thead>
           <tr>
-            <td>
-              <strong>{{ $row['label'] }}</strong>
-              @if($source === 'syllabus')
-                <div class="muted" style="margin-top:4px;">This syllabus currently overrides the catalog value.</div>
-              @else
-                <div class="muted" style="margin-top:4px;">Using the shared catalog default.</div>
-              @endif
-            </td>
-            <td>
-              @if($source === 'syllabus')
-                <span class="badge" style="background:#e8f0ff; color:#1e40af;">Per-Syllabus Override</span>
-              @elseif($catalogValue !== '')
-                <span class="badge" style="background:#eef6ff; color:#1f4d8f;">Catalog Default</span>
-              @else
-                <span class="badge" style="background:#ffe8e8; color:#8a0a0a;">Missing</span>
-              @endif
-            </td>
-            <td class="muted" style="white-space:pre-wrap;">{{ $currentValue !== '' ? \Illuminate\Support\Str::limit($currentValue, 280) : 'TBD' }}</td>
+            <th style="width:220px;">Field</th>
+            <th style="width:170px;">Source</th>
+            <th>Current Value</th>
+            <th style="width:280px;">Actions</th>
           </tr>
-        @endforeach
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @foreach($coreContent as $field)
+            @php
+              $source = $field['source'] ?? 'missing';
+              $value = trim((string) ($field['value'] ?? ''));
+            @endphp
+            <tr>
+              <td>
+                <strong>{{ $field['label'] ?? 'Core Field' }}</strong>
+              </td>
+              <td>
+                @if($source === 'override')
+                  <span class="badge" style="background:#fff3cd; color:#7a5b00;">Per-Syllabus Override</span>
+                @elseif($source === 'catalog')
+                  <span class="badge" style="background:#e8f0ff; color:#1e40af;">Catalog Default</span>
+                @else
+                  <span class="badge" style="background:#ffe8e8; color:#8a0a0a;">Missing</span>
+                @endif
+              </td>
+              <td class="muted" style="white-space:pre-wrap;">
+                {{ $value !== '' ? \Illuminate\Support\Str::limit($value, 280) : 'No content entered yet.' }}
+              </td>
+              <td>
+                <div class="actions" style="gap:8px; flex-wrap:wrap;">
+                  <a class="btn secondary" href="{{ route('aop.syllabi.core.edit', $section) }}">Edit This Syllabus</a>
+                  @if(!empty($field['has_override']))
+                    <form method="POST" action="{{ route('aop.syllabi.core.resetField', [$section, $field['key']]) }}" style="display:inline; margin:0;" onsubmit="return confirm('Reset this field to the catalog default?');">
+                      @csrf
+                      <button class="btn secondary" type="submit">Reset to Catalog</button>
+                    </form>
+                  @endif
+                  @if($catalogCourse)
+                    <a class="btn secondary" href="{{ route('aop.catalog.edit', $catalogCourse) }}">Edit Catalog Course</a>
+                  @endif
+                </div>
+              </td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+    @endif
   </div>
 
   <div style="height:14px;"></div>
@@ -131,8 +133,8 @@
       <div>
         <h2>Syllabus Structure</h2>
         <p class="muted" style="margin-top:6px; max-width:900px;">
-          These are the structured sections assembled into this syllabus after the fixed top content. Global sections are managed from the Syllabi page.
-          Per-syllabus sections can be edited here for this specific section only.
+          Structured sections are the main authoring system for ordered syllabus content below the fixed top area.
+          Global sections are managed once and shared everywhere. Per-syllabus sections can be customized for this section only and reset back to the shared starter content.
         </p>
       </div>
       <div class="actions">
@@ -147,10 +149,10 @@
         <thead>
           <tr>
             <th style="width:220px;">Section</th>
-            <th style="width:130px;">Scope</th>
+            <th style="width:170px;">Source</th>
             <th style="width:150px;">Status</th>
             <th>Content Preview</th>
-            <th style="width:170px;">Actions</th>
+            <th style="width:220px;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -164,7 +166,16 @@
                 @endif
               </td>
               <td>
-                <span class="badge">{{ ($structured['scope'] ?? 'global') === 'syllabus' ? 'Per-Syllabus' : 'Global' }}</span>
+                @if(($structured['source'] ?? '') === 'global')
+                  <span class="badge" style="background:#eef2ff; color:#4338ca;">Global Shared</span>
+                @elseif(($structured['source'] ?? '') === 'syllabus_override')
+                  <span class="badge" style="background:#fff3cd; color:#7a5b00;">Per-Syllabus Override</span>
+                @else
+                  <span class="badge">Shared Starter / Default</span>
+                @endif
+                <div class="muted" style="margin-top:6px; font-size:12px;">
+                  {{ ($structured['scope'] ?? 'global') === 'syllabus' ? 'Per-syllabus section' : 'Global section' }}
+                </div>
               </td>
               <td>
                 <div style="display:grid; gap:6px;">
@@ -189,6 +200,12 @@
                 <div class="actions" style="gap:8px; flex-wrap:wrap;">
                   @if(($structured['scope'] ?? 'global') === 'syllabus')
                     <a class="btn secondary" href="{{ route('aop.syllabi.structure.section.edit', [$section, $structured['id']]) }}">Edit This Syllabus</a>
+                    @if(!empty($structured['item_id']))
+                      <form method="POST" action="{{ route('aop.syllabi.structure.section.reset', [$section, $structured['id']]) }}" style="display:inline; margin:0;" onsubmit="return confirm('Reset this section to the shared starter content?');">
+                        @csrf
+                        <button class="btn secondary" type="submit">Reset to Default</button>
+                      </form>
+                    @endif
                   @else
                     <a class="btn secondary" href="{{ route('aop.syllabi.structure.edit', $structured['id']) }}">Edit Globally</a>
                   @endif
