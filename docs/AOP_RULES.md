@@ -4,10 +4,25 @@ This document describes business rules in plain language and points to where the
 
 ## Active Term
 - Scheduling actions operate on the Term where `terms.is_active = 1`.
+- Terms have a `status` (Draft, Published, Archived).
+- Cloning a term deep-copies all offerings, sections, and meeting blocks into a new `status='draft'` term.
 - If no active term exists, scheduling pages should instruct the user to set one.
 
 **Code:**
 - `app/Http/Controllers/Aop/Schedule/*` (controllers typically call `Term::where('is_active', true)->first()`)
+- `app/Models/Term.php` (`cloneToDraft()`)
+
+## Instructor Portal
+- Non-admin users whose email matches an `instructors` record are automatically routed to the Instructor Dashboard.
+- Instructors can submit:
+  - **Teaching Preferences**: Preferred days, max course load, and unavailability notes.
+  - **Office Hours**: Manage their own weekly office hour blocks.
+- Instructors can preview their assigned sections and view their auto-generated syllabi.
+
+**Code:**
+- `app/Http/Controllers/Aop/DashboardController.php` (routing logic)
+- `app/Http/Controllers/Aop/InstructorPreferenceController.php` (preference logic)
+- `app/Models/InstructorPreference.php`
 
 ## Offerings and Sections
 - Offerings belong to a Term and reference a Catalog Course.

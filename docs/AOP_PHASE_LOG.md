@@ -127,3 +127,10 @@ This file tracks what each phase changed so the project remains understandable w
 - Updated syllabus preview authoring UX so editable areas now show clearer source labeling such as Catalog Default, Per-Syllabus Override, Global Shared, and Missing.
 - Added reset actions for per-syllabus structured sections so they can be returned to their shared starter content from the syllabus preview page.
 - Added clearer syllabus authoring guidance and direct Core Content edit links from both the Syllabi index and the individual syllabus preview page.
+
+## Phase 32
+- Implemented **Draft Mode for Terms** adding a `status` column to the `terms` table and a robust `cloneToDraft()` method in the `Term` model.
+- Integrated **Interactive Calendar View** using `FullCalendar.js` with drag-and-drop and resize functionality to update meeting block times in real-time.
+- Created **ScheduleSuggestionService** and integrated a "Suggest Slot" button for sections to automatically find conflict-free scheduling windows.
+- Launched the **Instructor Portal** allowing non-admin instructors to manage their own teaching preferences and office hours, and preview assigned classes/syllabi.
+- Consolidated **DashboardController** to dynamically toggle between Admin and Instructor views based on user role and email matching.
