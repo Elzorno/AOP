@@ -5,116 +5,144 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="robots" content="noindex,nofollow" />
   <title>{{ $title ?? 'Academic Ops Platform' }}</title>
+  @vite(['resources/css/app.css', 'resources/js/app.js'])
   <style>
-    :root { --bg:#f7f7f8; --card:#ffffff; --text:#111827; --muted:#6b7280; --border:#e5e7eb; --brand:#111827; --link:#2563eb; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--text); }
-    header { background:var(--card); border-bottom:1px solid var(--border); padding:14px 20px; display:flex; gap:16px; align-items:center; justify-content:space-between; }
-    .brand { font-weight:700; letter-spacing:.2px; }
-    .nav { display:flex; gap:12px; flex-wrap:wrap; }
-    .nav a { text-decoration:none; color:var(--text); padding:6px 10px; border-radius:10px; }
-    .nav a.active { background:#eef2ff; color:#1d4ed8; }
-    main { max-width:1100px; margin:18px auto; padding:0 16px; }
-    .row { display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
-    .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 1px 1px rgba(0,0,0,.03); }
-    .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap:14px; }
-    .col-4 { grid-column: span 4; }
-    .col-6 { grid-column: span 6; }
-    .col-12 { grid-column: span 12; }
-    @media (max-width: 900px){ .col-4,.col-6{ grid-column: span 12; } }
-    h1 { font-size:22px; margin:0; }
-    h2 { font-size:16px; margin:0 0 10px 0; }
-    h3 { font-size:14px; margin:0 0 8px 0; }
-    p { margin:6px 0; color:var(--muted); }
-    table { width:100%; border-collapse:collapse; }
-    th, td { text-align:left; padding:10px; border-bottom:1px solid var(--border); vertical-align:top; }
-    th { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
-    .btn { display:inline-block; background:var(--brand); color:white; padding:8px 12px; border-radius:12px; text-decoration:none; border:0; cursor:pointer; }
-    .btn.secondary { background:#374151; }
-    .btn.danger { background:#991b1b; }
-    .btn.link { background:transparent; color:var(--link); padding:0; }
-    .badge { display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; background:#eef2ff; color:#1d4ed8; }
-    .status { padding:10px 12px; border:1px solid #bbf7d0; background:#f0fdf4; border-radius:14px; color:#166534; }
-    .error { padding:10px 12px; border:1px solid #fecaca; background:#fef2f2; border-radius:14px; color:#991b1b; }
-    label { display:block; font-size:12px; color:var(--muted); margin:10px 0 4px; }
-    input, textarea, select { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:white; box-sizing:border-box; }
-    textarea { min-height:120px; }
-    .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    footer { max-width:1100px; margin:24px auto; padding:0 16px 24px; color:var(--muted); font-size:12px; }
-    .split { display:flex; gap:12px; flex-wrap:wrap; }
-    .split > * { flex:1 1 260px; }
-    .field-error { color:#991b1b; font-size:12px; margin-top:4px; }
-    .markdown-body { color:var(--text); line-height:1.6; }
-    .markdown-body > :first-child { margin-top:0; }
-    .markdown-body > :last-child { margin-bottom:0; }
-    .markdown-body p { color:var(--text); }
-    .markdown-body ul, .markdown-body ol { padding-left:22px; color:var(--text); }
-    .markdown-body li + li { margin-top:4px; }
-    .markdown-body blockquote { margin:10px 0; padding:8px 12px; border-left:4px solid var(--border); background:#f9fafb; color:var(--text); border-radius:8px; }
-    .markdown-body code { background:#f3f4f6; border:1px solid #e5e7eb; padding:2px 6px; border-radius:6px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:13px; }
-    .markdown-body pre { background:#0f172a; color:#e5e7eb; padding:12px; border-radius:10px; overflow:auto; }
-    .markdown-body pre code { background:transparent; border:0; color:inherit; padding:0; }
-    .markdown-preview.compact { max-height:150px; overflow:auto; font-size:14px; }
-    .markdown-preview.compact p, .markdown-preview.compact ul, .markdown-preview.compact ol, .markdown-preview.compact pre { margin:0 0 8px 0; }
-    .toast-editor-shell { margin-top:10px; }
-    .toastui-editor-defaultUI { border-radius:12px; overflow:hidden; border-color:var(--border) !important; }
-    .toastui-editor-defaultUI-toolbar { border-top-left-radius:12px; border-top-right-radius:12px; }
+    /* Markdown Preview specific legacy styling overrides that are hard to shim perfectly with apply */
+    .markdown-body { color: rgb(15 23 42); line-height: 1.6; }
+    .markdown-body p { margin-bottom: 1rem; }
+    .markdown-body ul, .markdown-body ol { padding-left: 22px; list-style-type: disc; margin-bottom: 1rem; }
+    .markdown-body blockquote { margin: 10px 0; padding: 12px 16px; border-left: 4px solid #e2e8f0; background: #f8fafc; border-radius: 8px; font-style: italic;}
+    .markdown-body pre { background:#0f172a; color:#e5e7eb; padding:16px; border-radius:12px; overflow:auto; font-size: 0.875rem;}
+    .markdown-body code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .markdown-body p code, .markdown-body li code { background:#f1f5f9; border:1px solid #e2e8f0; padding:2px 6px; border-radius:6px; font-size:0.875em; color: #db2777; }
+    .markdown-preview.compact { max-height: 150px; overflow: auto; font-size: 0.875rem; }
+    .markdown-preview.compact p { margin-bottom: 0.5rem; }
+    .toast-editor-shell { margin-top: 0.5rem; }
+    .toastui-editor-defaultUI { border-radius: 0.75rem; overflow: hidden; border-color: #cbd5e1 !important; }
+    .toastui-editor-defaultUI-toolbar { border-top-left-radius: 0.75rem; border-top-right-radius: 0.75rem; }
   </style>
 </head>
-<body>
-<header>
-  <div class="row" style="width:100%">
-    <div class="split">
-      <div>
-        <div class="brand">Academic Ops Platform</div>
-        <div style="margin-top:4px; color:var(--muted); font-size:12px;">
-          {{ $activeTermLabel ?? 'No active term selected' }}
-        </div>
-      </div>
-      <div style="text-align:right;">
-        <div style="font-size:12px; color:var(--muted);">Signed in as</div>
-        <div style="font-weight:600;">{{ auth()->user()->name }}</div>
+<body class="font-sans antialiased text-slate-900 bg-slate-50 min-h-screen flex selection:bg-indigo-100 selection:text-indigo-900">
+
+<!-- Sidebar -->
+<aside class="w-64 flex-shrink-0 bg-slate-900 text-white flex flex-col justify-between hidden md:flex sticky top-0 h-screen shadow-xl z-20">
+  <div>
+    <!-- Brand -->
+    <div class="p-6 border-b border-white/10">
+      <h1 class="text-xl font-extrabold tracking-tight text-white mb-1">Academic Ops Platform</h1>
+      <div class="text-xs font-medium text-emerald-400 flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        {{ $activeTermLabel ?? 'No active term selected' }}
       </div>
     </div>
 
-    <nav class="nav" style="margin-top:10px;">
-      <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">Dashboard</a>
-      <a href="{{ route('aop.terms.index') }}" class="{{ request()->routeIs('aop.terms.*') ? 'active' : '' }}">Terms</a>
-      <a href="{{ route('aop.instructors.index') }}" class="{{ request()->routeIs('aop.instructors.*') ? 'active' : '' }}">Instructors</a>
-      <a href="{{ route('aop.rooms.index') }}" class="{{ request()->routeIs('aop.rooms.*') ? 'active' : '' }}">Rooms</a>
-      <a href="{{ route('aop.catalog.index') }}" class="{{ request()->routeIs('aop.catalog.*') ? 'active' : '' }}">Catalog</a>
-      <a href="{{ route('aop.schedule.home') }}" class="{{ request()->routeIs('aop.schedule.*') ? 'active' : '' }}">Schedule</a>
-      <a href="{{ route('profile.edit') }}" class="{{ request()->routeIs('profile.*') ? 'active' : '' }}">Profile</a>
-      <form method="POST" action="{{ route('logout') }}" style="display:inline;">
-        @csrf
-        <button class="btn secondary" type="submit">Log out</button>
-      </form>
+    <!-- Navigation -->
+    <nav class="p-4 space-y-1">
+      @php
+        $navItems = [
+          ['route' => 'dashboard', 'label' => 'Dashboard', 'match' => 'dashboard'],
+          ['route' => 'aop.terms.index', 'label' => 'Terms', 'match' => 'aop.terms.*'],
+          ['route' => 'aop.instructors.index', 'label' => 'Instructors', 'match' => 'aop.instructors.*'],
+          ['route' => 'aop.rooms.index', 'label' => 'Rooms', 'match' => 'aop.rooms.*'],
+          ['route' => 'aop.catalog.index', 'label' => 'Catalog', 'match' => 'aop.catalog.*'],
+          ['route' => 'aop.schedule.home', 'label' => 'Schedule', 'match' => 'aop.schedule.*'],
+        ];
+      @endphp
+
+      @foreach($navItems as $item)
+        <a href="{{ route($item['route']) }}" 
+           class="block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 {{ request()->routeIs($item['match']) ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+          {{ $item['label'] }}
+        </a>
+      @endforeach
     </nav>
   </div>
-</header>
 
-<main>
-  @if (session('status') && !in_array(session('status'), ['profile-updated', 'password-updated'], true))
-    <div class="status">{{ session('status') }}</div>
-    <div style="height:12px;"></div>
-  @endif
-
-  @if ($errors->any() && !request()->routeIs('profile.*'))
-    <div class="error">
-      <div style="font-weight:700; margin-bottom:6px;">Please fix the following:</div>
-      <ul style="margin:0; padding-left:18px;">
-        @foreach ($errors->all() as $e)
-          <li>{{ $e }}</li>
-        @endforeach
-      </ul>
+  <!-- Footer Info / Profile -->
+  <div class="p-4 border-t border-white/10">
+    <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition-colors duration-200 mb-2 {{ request()->routeIs('profile.*') ? 'bg-slate-800 text-white' : 'text-slate-300' }}">
+      <div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-inner">
+        {{ substr(auth()->user()->name, 0, 1) }}
+      </div>
+      <div>
+        <div class="text-sm font-semibold text-white">{{ auth()->user()->name }}</div>
+        <div class="text-xs text-slate-400">View Profile</div>
+      </div>
+    </a>
+    
+    <form method="POST" action="{{ route('logout') }}" class="mt-2">
+      @csrf
+      <button type="submit" class="w-full text-left px-3 py-2 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors flex justify-between items-center group">
+        Log out
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+      </button>
+    </form>
+    
+    <div class="mt-6 px-2 text-xs text-slate-500 font-mono">
+      v{{ config('aop.version', '1.0.0') }}
     </div>
-    <div style="height:12px;"></div>
-  @endif
+  </div>
+</aside>
 
-  {{ $slot }}
-</main>
+<!-- Mobile Header (Visible only on small screens) -->
+<div class="md:hidden flex flex-col w-full">
+  <header class="bg-slate-900 text-white p-4 flex justify-between items-center z-20 shadow-md">
+    <div>
+      <h1 class="text-lg font-bold">AOP</h1>
+      <div class="text-xs text-emerald-400">{{ $activeTermLabel ?? 'No active term selected' }}</div>
+    </div>
+    
+    <!-- Simplified Mobile Nav Dropdown (Optional improvement, keeping standard links for now) -->
+    <div class="flex gap-2 text-sm overflow-x-auto pb-1 max-w-[60vw]">
+      <a href="{{ route('dashboard') }}" class="text-slate-300">Dashboard</a>
+      <a href="{{ route('aop.terms.index') }}" class="text-slate-300">Terms</a>
+      <!-- Add others as needed -->
+    </div>
+  </header>
+  
+  <main class="flex-1 w-full relative">
+    @yield('main-content')
+  </main>
+</div>
 
-<footer>
-  <div>Version: <span class="badge">{{ config('aop.version', '1.0.0') }}</span></div>
-</footer>
+
+<!-- Main Content Wrapper (Desktop) -->
+<div class="flex-1 flex flex-col min-w-0 hidden md:flex relative h-screen overflow-hidden">
+  
+  <!-- Content Area -->
+  <main class="flex-1 overflow-y-auto w-full">
+    <div class="max-w-6xl mx-auto p-4 md:p-8">
+      
+      @if (session('status') && !in_array(session('status'), ['profile-updated', 'password-updated'], true))
+        <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 mb-6 shadow-sm flex items-start gap-3">
+          <svg class="w-5 h-5 text-emerald-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <div class="text-sm font-medium text-emerald-800">{{ session('status') }}</div>
+        </div>
+      @endif
+
+      @if ($errors->any() && !request()->routeIs('profile.*'))
+        <div class="rounded-xl border border-red-200 bg-red-50 p-4 mb-6 shadow-sm">
+          <div class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-red-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <div>
+              <div class="text-sm font-bold text-red-800 mb-1">Please fix the following issues:</div>
+              <ul class="list-disc list-inside text-sm text-red-700 marker:text-red-400 space-y-1">
+                @foreach ($errors->all() as $e)
+                  <li>{{ $e }}</li>
+                @endforeach
+              </ul>
+            </div>
+          </div>
+        </div>
+      @endif
+
+      <!-- Page Content Injected Here -->
+      <div class="pb-16">
+        {{ $slot }}
+      </div>
+    </div>
+  </main>
+</div>
+
 </body>
 </html>
