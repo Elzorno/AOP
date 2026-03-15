@@ -11,6 +11,7 @@ use App\Models\Room;
 use App\Models\SchedulePublication;
 use App\Models\Section;
 use App\Models\Term;
+use App\Services\ScheduleConflictService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -41,10 +42,13 @@ class SchedulePublishController extends Controller
             $latest = $publications->first();
         }
 
+        $readiness = $term ? $this->buildPublishReadinessSummary($term) : null;
+
         return view('aop.schedule.publish.index', [
             'term' => $term,
             'publications' => $publications,
             'latest' => $latest,
+            'readiness' => $readiness,
         ]);
     }
 
@@ -54,9 +58,19 @@ class SchedulePublishController extends Controller
 
         $data = $request->validate([
             'notes' => ['nullable', 'string', 'max:5000'],
+            'confirm_publish_with_issues' => ['nullable', 'boolean'],
         ]);
 
         abort_unless($term->schedule_locked, 403, 'Schedule must be locked before publishing a snapshot.');
+
+        $readiness = $this->buildPublishReadinessSummary($term);
+        if (($readiness['total_blockers'] ?? 0) > 0 && !$request->boolean('confirm_publish_with_issues')) {
+            return back()
+                ->withErrors([
+                    'publish_gate' => 'Readiness checks still show blockers. Review issues below or confirm publish anyway.',
+                ])
+                ->withInput();
+        }
 
         $nextVersion = (int) (SchedulePublication::where('term_id', $term->id)->max('version') ?? 0) + 1;
         $base = sprintf('aop/published/%s/v%d', $term->code, $nextVersion);
@@ -130,6 +144,222 @@ class SchedulePublishController extends Controller
         return redirect()
             ->route('aop.schedule.publish.index')
             ->with('status', "Published schedule snapshot v{$nextVersion} for {$term->code}.");
+    }
+
+    private function buildPublishReadinessSummary(Term $term): array
+    {
+        $sections = Section::query()
+            ->with(['meetingBlocks', 'offering.catalogCourse', 'instructor'])
+            ->whereHas('offering', fn ($q) => $q->where('term_id', $term->id))
+            ->get();
+
+        $meetingBlocks = MeetingBlock::query()
+            ->with(['section.offering.catalogCourse', 'section.instructor', 'room'])
+            ->whereHas('section.offering', fn ($q) => $q->where('term_id', $term->id))
+            ->get();
+
+        $officeBlocks = OfficeHourBlock::query()
+            ->where('term_id', $term->id)
+            ->get();
+
+        $sectionsMissingInstructor = $sections->whereNull('instructor_id')->count();
+        $sectionsMissingMeetingBlocks = $sections->filter(fn ($s) => $s->meetingBlocks->count() === 0)->count();
+
+        $meetingBlocksMissingRoom = $meetingBlocks
+            ->filter(function ($mb) {
+                $modality = $mb->section?->modality;
+                $requiresRoom = in_array($modality, ['IN_PERSON', 'HYBRID'], true);
+                return $requiresRoom && !$mb->room_id;
+            })
+            ->count();
+
+        $roomConflicts = $this->countRoomConflicts($term, $meetingBlocks);
+        $instructorConflicts = $this->countInstructorConflicts($term, $meetingBlocks, $officeBlocks);
+        $officeHoursFailing = $this->countOfficeHoursFailing($officeBlocks);
+        $instructionalMinutesFailing = $this->countInstructionalMinutesFailing($term, $sections);
+
+        $metrics = [
+            'sections_missing_instructor' => $sectionsMissingInstructor,
+            'sections_missing_meeting_blocks' => $sectionsMissingMeetingBlocks,
+            'meeting_blocks_missing_room' => $meetingBlocksMissingRoom,
+            'room_conflicts' => $roomConflicts,
+            'instructor_conflicts' => $instructorConflicts,
+            'office_hours_failing' => $officeHoursFailing,
+            'instructional_minutes_failing' => $instructionalMinutesFailing,
+        ];
+
+        return [
+            'metrics' => $metrics,
+            'total_blockers' => array_sum($metrics),
+            'is_ready' => array_sum($metrics) === 0,
+        ];
+    }
+
+    private function countRoomConflicts(Term $term, $meetingBlocks): int
+    {
+        $count = 0;
+        $grouped = $meetingBlocks->whereNotNull('room_id')->groupBy('room_id');
+
+        foreach ($grouped as $blocks) {
+            $list = $blocks->values();
+            $n = $list->count();
+            for ($i = 0; $i < $n; $i++) {
+                for ($j = $i + 1; $j < $n; $j++) {
+                    $a = $list[$i];
+                    $b = $list[$j];
+                    if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
+                        continue;
+                    }
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                        continue;
+                    }
+                    $count++;
+                }
+            }
+        }
+
+        return $count;
+    }
+
+    private function countInstructorConflicts(Term $term, $meetingBlocks, $officeBlocks): int
+    {
+        $count = 0;
+
+        $meetingByInstructor = $meetingBlocks
+            ->filter(fn ($mb) => (bool) $mb->section?->instructor_id)
+            ->groupBy(fn ($mb) => (int) $mb->section->instructor_id);
+
+        $officeByInstructor = $officeBlocks->groupBy('instructor_id');
+
+        $allInstructorIds = collect(array_unique(array_merge(
+            $meetingByInstructor->keys()->all(),
+            $officeByInstructor->keys()->all(),
+        )));
+
+        foreach ($allInstructorIds as $instructorId) {
+            $classList = ($meetingByInstructor[$instructorId] ?? collect())->values();
+            $officeList = ($officeByInstructor[$instructorId] ?? collect())->values();
+
+            $n = $classList->count();
+            for ($i = 0; $i < $n; $i++) {
+                for ($j = $i + 1; $j < $n; $j++) {
+                    $a = $classList[$i];
+                    $b = $classList[$j];
+                    if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
+                        continue;
+                    }
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                        continue;
+                    }
+                    $count++;
+                }
+            }
+
+            $m = $officeList->count();
+            for ($i = 0; $i < $m; $i++) {
+                for ($j = $i + 1; $j < $m; $j++) {
+                    $a = $officeList[$i];
+                    $b = $officeList[$j];
+                    if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
+                        continue;
+                    }
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                        continue;
+                    }
+                    $count++;
+                }
+            }
+
+            foreach ($classList as $classBlock) {
+                foreach ($officeList as $officeBlock) {
+                    if (!ScheduleConflictService::dayOverlap($classBlock->days_json ?? [], $officeBlock->days_json ?? [])) {
+                        continue;
+                    }
+                    if (!ScheduleConflictService::timesOverlap($classBlock->starts_at, $classBlock->ends_at, $officeBlock->starts_at, $officeBlock->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                        continue;
+                    }
+                    $count++;
+                }
+            }
+        }
+
+        return $count;
+    }
+
+    private function countOfficeHoursFailing($officeBlocks): int
+    {
+        $fullTimeInstructors = Instructor::query()
+            ->where('is_active', true)
+            ->where('is_full_time', true)
+            ->get();
+
+        $officeByInstructor = $officeBlocks->groupBy('instructor_id');
+        $failing = 0;
+
+        foreach ($fullTimeInstructors as $instructor) {
+            $blocks = ($officeByInstructor[$instructor->id] ?? collect())->values();
+            $minutesPerWeek = 0;
+            $days = [];
+
+            foreach ($blocks as $block) {
+                $blockDays = ScheduleConflictService::normalizeDays($block->days_json ?? []);
+                $days = array_merge($days, $blockDays);
+                $minutesPerWeek += $this->durationMinutes((string) $block->starts_at, (string) $block->ends_at) * count($blockDays);
+            }
+
+            $meetsHours = $minutesPerWeek >= 240;
+            $meetsDays = count(array_unique($days)) >= 3;
+
+            if (!($meetsHours && $meetsDays)) {
+                $failing++;
+            }
+        }
+
+        return $failing;
+    }
+
+    private function countInstructionalMinutesFailing(Term $term, $sections): int
+    {
+        $weeks = max(1, (int) ($term->weeks_in_term ?? 15));
+        $failing = 0;
+
+        foreach ($sections as $section) {
+            $course = $section->offering?->catalogCourse;
+
+            $lectureContact = (float) ($course?->lecture_hours_per_week ?? 0);
+            $labContact = (float) ($course?->lab_hours_per_week ?? 0);
+            $fallbackContact = (float) ($course?->contact_hours_per_week ?? 0);
+
+            if (($lectureContact + $labContact) <= 0 && $fallbackContact > 0) {
+                $lectureContact = $fallbackContact;
+                $labContact = 0;
+            }
+
+            $requiredMinutes = (int) round((($lectureContact * 750) + (($labContact / 3.0) * 2250)) * ($weeks / 15));
+
+            $scheduledPerWeek = 0;
+            foreach ($section->meetingBlocks as $mb) {
+                $duration = $this->durationMinutes((string) $mb->starts_at, (string) $mb->ends_at);
+                $scheduledPerWeek += $duration * count(ScheduleConflictService::normalizeDays($mb->days_json ?? []));
+            }
+
+            $scheduledMinutes = (int) round($scheduledPerWeek * $weeks);
+            if ($requiredMinutes > 0 && $scheduledMinutes < $requiredMinutes) {
+                $failing++;
+            }
+        }
+
+        return $failing;
+    }
+
+    private function durationMinutes(string $startsAt, string $endsAt): int
+    {
+        [$startHour, $startMinute] = array_map('intval', explode(':', substr($startsAt, 0, 5)));
+        [$endHour, $endMinute] = array_map('intval', explode(':', substr($endsAt, 0, 5)));
+        $start = ($startHour * 60) + $startMinute;
+        $end = ($endHour * 60) + $endMinute;
+
+        return max(0, $end - $start);
     }
 
     public function downloadTerm(SchedulePublication $publication): StreamedResponse

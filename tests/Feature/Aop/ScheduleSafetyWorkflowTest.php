@@ -8,6 +8,7 @@ use App\Models\MeetingBlock;
 use App\Models\Offering;
 use App\Models\OfficeHourBlock;
 use App\Models\Room;
+use App\Models\SchedulePublication;
 use App\Models\Section;
 use App\Models\Term;
 use App\Models\User;
@@ -212,6 +213,82 @@ class ScheduleSafetyWorkflowTest extends TestCase
         $response->assertOk();
         $response->assertSeeText($missing->section_code);
         $response->assertDontSeeText($withBlock->section_code);
+    }
+
+    public function test_publish_requires_confirmation_when_readiness_has_blockers(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $term = $this->createActiveTerm(['schedule_locked' => true]);
+
+        // Create a section with missing instructor and no meeting blocks to trigger blockers.
+        $this->createSection($term, [
+            'section_code' => 'PUB-BLOCK-01',
+            'instructor_id' => null,
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('aop.schedule.publish.store'), [
+            'notes' => 'Attempt publish with blockers.',
+        ]);
+
+        $response->assertSessionHasErrors('publish_gate');
+        $this->assertDatabaseCount('schedule_publications', 0);
+    }
+
+    public function test_publish_allows_override_when_readiness_has_blockers(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $term = $this->createActiveTerm(['schedule_locked' => true]);
+
+        $this->createSection($term, [
+            'section_code' => 'PUB-OVERRIDE-01',
+            'instructor_id' => null,
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('aop.schedule.publish.store'), [
+            'notes' => 'Intentional publish with known blockers.',
+            'confirm_publish_with_issues' => '1',
+        ]);
+
+        $response->assertRedirect(route('aop.schedule.publish.index'));
+
+        $publication = SchedulePublication::query()->first();
+        $this->assertNotNull($publication);
+        $this->assertSame(1, $publication->version);
+    }
+
+    public function test_publish_without_blockers_does_not_require_override(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $term = $this->createActiveTerm(['schedule_locked' => true]);
+
+        $instructor = Instructor::create([
+            'name' => 'Dr. Publish Ready',
+            'email' => 'publish-ready@example.test',
+            'is_full_time' => false,
+            'is_active' => true,
+        ]);
+
+        $room = Room::create(['name' => 'PUB-101', 'is_active' => true]);
+        $section = $this->createSection($term, [
+            'section_code' => 'PUB-CLEAN-01',
+            'instructor_id' => $instructor->id,
+        ]);
+
+        MeetingBlock::create([
+            'section_id' => $section->id,
+            'type' => 'LECTURE',
+            'days_json' => ['Mon', 'Wed'],
+            'starts_at' => '10:00',
+            'ends_at' => '11:15',
+            'room_id' => $room->id,
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('aop.schedule.publish.store'), [
+            'notes' => 'Publish clean schedule snapshot.',
+        ]);
+
+        $response->assertRedirect(route('aop.schedule.publish.index'));
+        $this->assertDatabaseCount('schedule_publications', 1);
     }
 
     private function createActiveTerm(array $overrides = []): Term

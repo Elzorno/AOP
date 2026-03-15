@@ -55,6 +55,14 @@ Readiness checks must detect conflicts:
 - `app/Http/Controllers/Aop/Schedule/ScheduleReadinessController.php`
 - `app/Services/ScheduleConflictService.php`
 
+## Publish Gate
+- Schedule snapshots require the active term schedule to be locked.
+- If readiness blockers exist (missing data/conflicts/minutes/office-hours), publishing requires an explicit confirmation from the operator.
+
+**Code:**
+- `app/Http/Controllers/Aop/Schedule/SchedulePublishController.php`
+- `resources/views/aop/schedule/publish/index.blade.php`
+
 ## Instructional Minutes Check (ODHE)
 Compute scheduled minutes for each section and compare to required minutes.
 

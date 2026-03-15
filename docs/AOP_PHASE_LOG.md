@@ -143,3 +143,9 @@ This file tracks what each phase changed so the project remains understandable w
 - Added GET-based server-side filtering and sorting to the sections index (`q`, `modality`, `instructor_id`, `missing`, `sort`) while keeping Blade server-rendered.
 - Refactored section edit UX into clearer workspace cards and moved room data loading out of Blade into the controller (no model queries in touched Blade pages).
 - Added focused AOP feature tests covering calendar safety rules and a sections missing-state filter.
+
+## Phase 34
+- Added a publish-time readiness summary on the Publish page showing key blockers: missing instructors, missing meeting blocks, missing rooms, room/instructor conflicts, office-hours failures, and instructional-minutes failures.
+- Added a publish safety gate so snapshot publishing requires explicit confirmation when blockers are present, while still allowing intentional override snapshots when needed.
+- Kept the existing lock requirement (`schedule_locked`) as a hard guard before any snapshot can be published.
+- Added feature tests covering the new publish confirmation gate for both blocked and allowed paths.
