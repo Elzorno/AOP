@@ -1,92 +1,196 @@
-<x-aop-layout :activeTermLabel="'Active Term: '.$term->code.' — '.$term->name">
+<x-aop-layout :activeTermLabel="'Active Term: '.$term->code.' - '.$term->name">
   <x-slot:title>Sections</x-slot:title>
 
-  <div class="row" style="margin-bottom:14px;">
-    <h1>Sections</h1>
-    <div class="actions">
-      <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Back</a>
-      <a class="btn" href="{{ route('aop.schedule.sections.create') }}">New Section</a>
-    </div>
-  </div>
+  @php
+    $sectionsMissingInstructorCount = $sections->whereNull('instructor_id')->count();
+    $sectionsMissingMeetingsCount = $sections->filter(fn ($section) => $section->meetingBlocks->isEmpty())->count();
+    $sectionsMissingRoomsCount = $sections->filter(function ($section) {
+        $roomRequired = ($section->modality?->value ?? null) !== 'ONLINE';
 
-  <div class="card" style="margin-bottom:14px;">
-    <form method="GET" action="{{ route('aop.schedule.sections.index') }}">
-      <div class="split" style="gap:12px; align-items:end;">
-        <div>
-          <label>Search</label>
-          <input type="text" name="q" value="{{ $filters['q'] }}" placeholder="Course code/title, section, instructor" />
+        return $roomRequired && $section->meetingBlocks->contains(fn ($meetingBlock) => !$meetingBlock->room_id);
+    })->count();
+  @endphp
+
+  <div class="page-shell">
+    <section class="page-header">
+      <span class="page-eyebrow">Section Directory</span>
+      <h1 class="page-title">Every section in the active term, with its missing pieces visible.</h1>
+      <p class="page-subtitle">
+        This is the scan-and-jump view for section work. Filter here when you need to triage across the term, then jump straight back into the schedule studio or focused editor at the exact section.
+      </p>
+
+      <div class="summary-strip">
+        <div class="summary-stat">
+          <div class="summary-stat-label">Visible Sections</div>
+          <div class="summary-stat-value">{{ $sections->count() }}</div>
+          <div class="summary-stat-note">Current result set after filters.</div>
         </div>
-        <div>
-          <label>Modality</label>
-          <select name="modality">
-            <option value="">All</option>
-            @foreach ($modalities as $m)
-              <option value="{{ $m->value }}" {{ $filters['modality'] === $m->value ? 'selected' : '' }}>{{ $m->value }}</option>
-            @endforeach
-          </select>
+        <div class="summary-stat">
+          <div class="summary-stat-label">Missing Instructor</div>
+          <div class="summary-stat-value">{{ $sectionsMissingInstructorCount }}</div>
+          <div class="summary-stat-note">Sections that still need an instructor assignment.</div>
         </div>
-        <div>
-          <label>Instructor</label>
-          <select name="instructor_id">
-            <option value="">All</option>
-            @foreach ($instructors as $i)
-              <option value="{{ $i->id }}" {{ (int) $filters['instructor_id'] === $i->id ? 'selected' : '' }}>{{ $i->name }}</option>
-            @endforeach
-          </select>
+        <div class="summary-stat">
+          <div class="summary-stat-label">Missing Meetings</div>
+          <div class="summary-stat-value">{{ $sectionsMissingMeetingsCount }}</div>
+          <div class="summary-stat-note">Sections that are not schedulable yet.</div>
         </div>
-        <div>
-          <label>Missing</label>
-          <select name="missing">
-            <option value="">Any</option>
-            <option value="instructor" {{ $filters['missing'] === 'instructor' ? 'selected' : '' }}>Missing Instructor</option>
-            <option value="meeting_blocks" {{ $filters['missing'] === 'meeting_blocks' ? 'selected' : '' }}>Missing Meeting Blocks</option>
-            <option value="room" {{ $filters['missing'] === 'room' ? 'selected' : '' }}>Missing Room</option>
-          </select>
-        </div>
-        <div>
-          <label>Sort</label>
-          <select name="sort">
-            <option value="recent" {{ $filters['sort'] === 'recent' ? 'selected' : '' }}>Recent</option>
-            <option value="course" {{ $filters['sort'] === 'course' ? 'selected' : '' }}>Course</option>
-            <option value="section" {{ $filters['sort'] === 'section' ? 'selected' : '' }}>Section</option>
-            <option value="instructor" {{ $filters['sort'] === 'instructor' ? 'selected' : '' }}>Instructor</option>
-          </select>
-        </div>
-        <div class="actions">
-          <button type="submit" class="btn">Apply</button>
-          <a class="btn secondary" href="{{ route('aop.schedule.sections.index') }}">Reset</a>
+        <div class="summary-stat">
+          <div class="summary-stat-label">Missing Rooms</div>
+          <div class="summary-stat-value">{{ $sectionsMissingRoomsCount }}</div>
+          <div class="summary-stat-note">In-person or hybrid blocks still missing rooms.</div>
         </div>
       </div>
-    </form>
-  </div>
 
-  <div class="card">
-    <p class="muted">Showing {{ $sections->count() }} section(s).</p>
-    <table>
-      <thead>
-        <tr>
-          <th>Course</th>
-          <th>Section</th>
-          <th>Instructor</th>
-          <th>Modality</th>
-          <th>Meeting Blocks</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse ($sections as $s)
-          <tr>
-            <td>{{ $s->offering->catalogCourse->code }} — {{ $s->offering->catalogCourse->title }}</td>
-            <td>{{ $s->section_code }}</td>
-            <td>{{ $s->instructor?->name ?? '—' }}</td>
-            <td>{{ $s->modality->value }}</td>
-            <td>{{ $s->meetingBlocks->count() }}</td>
-            <td><a class="btn secondary sm" href="{{ route('aop.schedule.sections.edit', $s) }}">Edit</a></td>
-          </tr>
-        @empty
-          <tr><td colspan="6">No sections yet.</td></tr>
-        @endforelse
-      </tbody>
-    </table>
+      <div class="toolbar-line">
+        <a class="btn" href="{{ route('aop.schedule.home') }}">Open Schedule Studio</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.sections.create') }}">Fallback Create Form</a>
+      </div>
+    </section>
+
+    <section class="workspace-card">
+      <div class="workspace-header">
+        <div>
+          <h2 class="workspace-title">Filter the section queue</h2>
+          <p class="workspace-copy">Keep the result set small so the next fix is obvious. Search works across course, section, and instructor.</p>
+        </div>
+      </div>
+
+      <form method="GET" action="{{ route('aop.schedule.sections.index') }}">
+        <div class="filter-grid">
+          <div class="md:col-span-2 xl:col-span-2">
+            <label for="q">Search</label>
+            <input id="q" type="text" name="q" value="{{ $filters['q'] }}" placeholder="Course code, title, section, instructor">
+          </div>
+          <div>
+            <label for="modality">Modality</label>
+            <select id="modality" name="modality">
+              <option value="">All modalities</option>
+              @foreach ($modalities as $m)
+                <option value="{{ $m->value }}" {{ $filters['modality'] === $m->value ? 'selected' : '' }}>{{ str_replace('_', ' ', $m->value) }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div>
+            <label for="instructor_id">Instructor</label>
+            <select id="instructor_id" name="instructor_id">
+              <option value="">All instructors</option>
+              @foreach ($instructors as $i)
+                <option value="{{ $i->id }}" {{ (int) $filters['instructor_id'] === $i->id ? 'selected' : '' }}>{{ $i->name }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div>
+            <label for="missing">Needs</label>
+            <select id="missing" name="missing">
+              <option value="">Any state</option>
+              <option value="instructor" {{ $filters['missing'] === 'instructor' ? 'selected' : '' }}>Missing instructor</option>
+              <option value="meeting_blocks" {{ $filters['missing'] === 'meeting_blocks' ? 'selected' : '' }}>Missing meeting blocks</option>
+              <option value="room" {{ $filters['missing'] === 'room' ? 'selected' : '' }}>Missing room</option>
+            </select>
+          </div>
+          <div>
+            <label for="sort">Sort</label>
+            <select id="sort" name="sort">
+              <option value="recent" {{ $filters['sort'] === 'recent' ? 'selected' : '' }}>Recently changed</option>
+              <option value="course" {{ $filters['sort'] === 'course' ? 'selected' : '' }}>Course</option>
+              <option value="section" {{ $filters['sort'] === 'section' ? 'selected' : '' }}>Section</option>
+              <option value="instructor" {{ $filters['sort'] === 'instructor' ? 'selected' : '' }}>Instructor</option>
+            </select>
+          </div>
+          <div class="actions md:items-end">
+            <button type="submit" class="btn secondary">Apply</button>
+            <a class="btn secondary" href="{{ route('aop.schedule.sections.index') }}">Reset</a>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    @if($sections->isEmpty())
+      <section class="workspace-card">
+        <div class="workspace-header">
+          <div>
+            <h2 class="workspace-title">No sections match the current filters</h2>
+            <p class="workspace-copy">Reset the filters or create a section directly inside the schedule studio so you can continue into meetings without another page change.</p>
+          </div>
+          <div class="actions">
+            <a class="btn" href="{{ route('aop.schedule.home') }}">Go to Studio</a>
+          </div>
+        </div>
+      </section>
+    @else
+      <section class="directory-grid">
+        @foreach($sections as $section)
+          @php
+            $course = $section->offering->catalogCourse;
+            $roomRequired = ($section->modality?->value ?? null) !== 'ONLINE';
+            $missingInstructor = !$section->instructor_id;
+            $missingMeetings = $section->meetingBlocks->isEmpty();
+            $missingRoom = $roomRequired && $section->meetingBlocks->contains(fn ($meetingBlock) => !$meetingBlock->room_id);
+            $issueCount = ($missingInstructor ? 1 : 0) + ($missingMeetings ? 1 : 0) + ($missingRoom ? 1 : 0);
+          @endphp
+          <article class="directory-card {{ $issueCount > 0 ? 'directory-card-danger' : 'directory-card-good' }}">
+            <div class="offering-head">
+              <div>
+                <div class="offering-kicker">Section</div>
+                <h2 class="offering-title">{{ $course->code }} {{ $section->section_code }}</h2>
+                <p class="offering-copy">{{ $course->title }}</p>
+              </div>
+              <div class="section-badges">
+                <span class="badge info">{{ $section->meetingBlocks->count() }} meeting block{{ $section->meetingBlocks->count() === 1 ? '' : 's' }}</span>
+                @if($issueCount === 0)
+                  <span class="badge success">Ready</span>
+                @endif
+                @if($missingInstructor)
+                  <span class="badge warn">Instructor needed</span>
+                @endif
+                @if($missingMeetings)
+                  <span class="badge warn">Meetings missing</span>
+                @endif
+                @if($missingRoom)
+                  <span class="badge warn">Room needed</span>
+                @endif
+              </div>
+            </div>
+
+            <div class="directory-meta">
+              <div class="offering-meta-card">
+                <strong class="block text-slate-900">Instructor</strong>
+                <span>{{ $section->instructor?->name ?? 'Unassigned' }}</span>
+              </div>
+              <div class="offering-meta-card">
+                <strong class="block text-slate-900">Modality</strong>
+                <span>{{ str_replace('_', ' ', $section->modality?->value ?? 'Unspecified') }}</span>
+              </div>
+              <div class="offering-meta-card">
+                <strong class="block text-slate-900">Offering</strong>
+                <span>{{ $section->offering->delivery_method ?: 'Delivery method not set' }}</span>
+              </div>
+              <div class="offering-meta-card">
+                <strong class="block text-slate-900">Meetings</strong>
+                <span>
+                  @if($section->meetingBlocks->isEmpty())
+                    None scheduled yet
+                  @else
+                    {{ $section->meetingBlocks->map(fn ($meetingBlock) => implode('/', $meetingBlock->days_json ?? []).' '.substr($meetingBlock->starts_at, 0, 5))->implode(', ') }}
+                  @endif
+                </span>
+              </div>
+            </div>
+
+            @if($section->notes)
+              <div class="status-note mt-4">{{ $section->notes }}</div>
+            @endif
+
+            <div class="section-actions">
+              <a class="btn" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Open in Studio</a>
+              <a class="btn secondary" href="{{ route('aop.schedule.sections.edit', $section) }}">Focused Editor</a>
+              <a class="btn secondary" href="{{ route('aop.syllabi.show', $section) }}">Syllabus</a>
+            </div>
+          </article>
+        @endforeach
+      </section>
+    @endif
   </div>
 </x-aop-layout>

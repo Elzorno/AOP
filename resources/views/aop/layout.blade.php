@@ -46,7 +46,7 @@
 @endphp
 
 <div class="min-h-screen md:flex">
-  <aside class="hidden md:flex md:w-80 md:flex-shrink-0">
+  <aside class="hidden md:flex md:w-[19rem] md:flex-shrink-0 xl:w-[20rem]">
     <div class="sticky top-0 flex h-screen w-full flex-col border-r border-slate-200/70 bg-slate-950 px-6 py-6 text-white shadow-2xl shadow-slate-950/20">
       <div class="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-5">
         <div class="flex items-start justify-between gap-3">
@@ -115,7 +115,7 @@
 
   <div class="min-w-0 flex-1">
     <header class="border-b border-white/50 bg-white/80 backdrop-blur-xl">
-      <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+      <div class="mx-auto w-full max-w-[1680px] px-6 py-5 xl:px-10">
         <div class="md:hidden">
           <div class="flex items-center justify-between gap-4">
             <div>
@@ -152,7 +152,7 @@
       </div>
     </header>
 
-    <main class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+    <main class="mx-auto w-full max-w-[1680px] px-6 py-8 xl:px-10">
       @if (session('status') && !in_array(session('status'), ['profile-updated', 'password-updated'], true))
         <div class="mb-6 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/95 p-4 shadow-sm">
           <svg class="mt-0.5 h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>

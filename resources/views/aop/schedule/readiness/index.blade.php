@@ -1,255 +1,305 @@
-<x-aop-layout :activeTermLabel="('Active Term: '.$term->code.' — '.$term->name)">
+<x-aop-layout :activeTermLabel="'Active Term: '.$term->code.' - '.$term->name">
   <x-slot:title>Schedule Readiness</x-slot:title>
 
-  <div class="row" style="margin-bottom:14px;">
-    <div>
-      <h1>Schedule Readiness</h1>
-      <p class="muted" style="margin-top:6px;">Active term: <strong>{{ $term->code }}</strong> — {{ $term->name }}</p>
-    </div>
-    <div class="actions">
-      <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Back</a>
-    </div>
-  </div>
+  @php
+    $roomConflictCount = count($roomConflicts);
+    $instructorConflictCount = count($instructorConflicts);
+    $blockingIssueCount = $sectionsMissingInstructor->count()
+      + $sectionsMissingMeetingBlocks->count()
+      + $meetingBlocksMissingRoom->count()
+      + $roomConflictCount
+      + $instructorConflictCount
+      + ($officeHoursFailing ?? collect())->count()
+      + ($minutesFailing ?? collect())->count();
+  @endphp
 
-  {{-- Instructional Minutes --}}
-  <div class="card" style="margin-bottom:16px;">
-    <h2>Instructional Minutes (ODHE / SSU Rules)</h2>
-    <p class="muted">
-      Required minutes are computed from weekly contact hours:
-      <strong>(lecture_contact_hours × 750) + ((lab_contact_hours ÷ 3) × 2250)</strong>.
-      Term weeks: <strong>{{ $term->weeks_in_term ?? 15 }}</strong> (scaled from a 15-week baseline).
-    </p>
+  <div class="page-shell">
+    <section class="page-header">
+      <span class="page-eyebrow">Readiness Review</span>
+      <h1 class="page-title">{{ $blockingIssueCount === 0 ? 'The active term is release-ready.' : 'Resolve blockers before publishing '.$term->code.'.' }}</h1>
+      <p class="page-subtitle">
+        Readiness keeps all publish-critical checks in one place: instructional minutes, office hours, missing assignments, missing rooms, and overlap conflicts.
+      </p>
 
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Status</th>
-          <th>Course / Section</th>
-          <th>Lecture/Lab (hrs)</th>
-          <th>Required</th>
-          <th>Scheduled</th>
-          <th>Delta</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse($instructionalMinutes as $row)
-          @php
-            $s = $row['section'];
-            $course = $row['course'];
-            $required = $row['required_minutes'];
-            $scheduled = $row['scheduled_minutes'];
-            $delta = $row['delta_minutes'];
-            $pass = $row['pass'];
-            $lec = $row['lecture_contact_hours'] ?? 0;
-            $lab = $row['lab_contact_hours'] ?? 0;
-          @endphp
-          <tr>
-            <td>
-              @if($pass)
-                <span class="badge success">PASS</span>
-              @else
-                <span class="badge danger">FAIL</span>
-              @endif
-            </td>
-            <td>
-              <div>
-                <strong>{{ $course?->code ?? '—' }}</strong> — {{ $course?->title ?? 'Untitled' }}<br>
-                Section {{ $s->section_code }} • Modality: {{ $s->modality?->value ?? '—' }}
+      <div class="summary-strip">
+        <div class="summary-stat">
+          <div class="summary-stat-label">Minutes Failing</div>
+          <div class="summary-stat-value">{{ ($minutesFailing ?? collect())->count() }}</div>
+          <div class="summary-stat-note">Sections below the required instructional minutes.</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-stat-label">Office Hours Failing</div>
+          <div class="summary-stat-value">{{ ($officeHoursFailing ?? collect())->count() }}</div>
+          <div class="summary-stat-note">Full-time instructors under the office-hours rule.</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-stat-label">Missing Assignments</div>
+          <div class="summary-stat-value">{{ $sectionsMissingInstructor->count() + $sectionsMissingMeetingBlocks->count() + $meetingBlocksMissingRoom->count() }}</div>
+          <div class="summary-stat-note">Instructor, meeting, and room gaps still open.</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-stat-label">Conflicts</div>
+          <div class="summary-stat-value">{{ $roomConflictCount + $instructorConflictCount }}</div>
+          <div class="summary-stat-note">Room and instructor overlap checks currently failing.</div>
+        </div>
+      </div>
+
+      <div class="toolbar-line">
+        <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule Studio</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.sections.index') }}">Section Directory</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.officeHours.index') }}">Office Hours</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.publish.index') }}">Publishing</a>
+      </div>
+    </section>
+
+    <section class="insight-grid">
+      <div class="insight-main">
+        <section class="workspace-card">
+          <div class="workspace-header">
+            <div>
+              <div class="briefing-kicker">Instructional minutes</div>
+              <h2 class="workspace-title">ODHE / SSU compliance by section</h2>
+              <p class="workspace-copy">
+                Required minutes are based on lecture and lab contact hours, scaled to <strong>{{ $term->weeks_in_term ?? 15 }}</strong> term week{{ ($term->weeks_in_term ?? 15) === 1 ? '' : 's' }}.
+              </p>
+            </div>
+          </div>
+
+          <div class="table-shell">
+            <table>
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Course / Section</th>
+                  <th>Lecture / Lab</th>
+                  <th>Required</th>
+                  <th>Scheduled</th>
+                  <th>Delta</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @forelse($instructionalMinutes as $row)
+                  @php
+                    $section = $row['section'];
+                    $course = $row['course'];
+                    $delta = $row['delta_minutes'];
+                  @endphp
+                  <tr>
+                    <td>
+                      <span class="badge {{ $row['pass'] ? 'success' : 'danger' }}">{{ $row['pass'] ? 'Pass' : 'Fail' }}</span>
+                    </td>
+                    <td>
+                      <strong>{{ $course?->code ?? '—' }}</strong> - {{ $course?->title ?? 'Untitled' }}<br>
+                      <span class="text-slate-500">Section {{ $section->section_code }} · {{ str_replace('_', ' ', $section->modality?->value ?? '—') }}</span>
+                    </td>
+                    <td>{{ number_format($row['lecture_contact_hours'] ?? 0, 2) }} / {{ number_format($row['lab_contact_hours'] ?? 0, 2) }}</td>
+                    <td>{{ number_format($row['required_minutes']) }} min</td>
+                    <td>{{ number_format($row['scheduled_minutes']) }} min</td>
+                    <td>
+                      <span class="badge {{ $delta >= 0 ? 'success' : 'danger' }}">
+                        {{ $delta >= 0 ? '+' : '' }}{{ number_format($delta) }} min
+                      </span>
+                    </td>
+                    <td>
+                      <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Fix in Studio</a>
+                    </td>
+                  </tr>
+                @empty
+                  <tr>
+                    <td colspan="7">No sections found for the active term.</td>
+                  </tr>
+                @endforelse
+              </tbody>
+            </table>
+          </div>
+
+          <p class="table-note">
+            {{ ($minutesFailing ?? collect())->count() > 0
+                ? ($minutesFailing ?? collect())->count().' section(s) currently fail the instructional minutes requirement.'
+                : 'All sections currently meet the instructional minutes requirement.' }}
+          </p>
+        </section>
+
+        <section class="workspace-card">
+          <div class="workspace-header">
+            <div>
+              <div class="briefing-kicker">Office hours</div>
+              <h2 class="workspace-title">Full-time instructor compliance</h2>
+              <p class="workspace-copy">Full-time instructors need at least 4 hours per week across at least 3 distinct days, without overlapping their classes.</p>
+            </div>
+          </div>
+
+          <div class="table-shell">
+            <table>
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Instructor</th>
+                  <th>Locked</th>
+                  <th>Hours / Week</th>
+                  <th>Days</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @forelse($officeHoursCompliance ?? [] as $row)
+                  @php $instructor = $row['instructor']; @endphp
+                  <tr>
+                    <td>
+                      @if(!$row['is_full_time'])
+                        <span class="badge muted">N/A</span>
+                      @else
+                        <span class="badge {{ $row['pass'] ? 'success' : 'danger' }}">{{ $row['pass'] ? 'Pass' : 'Fail' }}</span>
+                      @endif
+                    </td>
+                    <td>
+                      <strong>{{ $instructor->name }}</strong><br>
+                      <span class="text-slate-500">{{ $instructor->email }}</span>
+                    </td>
+                    <td>
+                      <span class="badge {{ $row['locked'] ? 'success' : 'warn' }}">{{ $row['locked'] ? 'Locked' : 'Open' }}</span>
+                    </td>
+                    <td>{{ number_format($row['hours_per_week'] ?? 0, 2) }} hrs <span class="text-slate-500">({{ number_format($row['minutes_per_week'] ?? 0) }} min)</span></td>
+                    <td>{{ $row['distinct_days'] ?? 0 }}</td>
+                    <td>
+                      <a class="btn secondary sm" href="{{ route('aop.schedule.officeHours.show', $instructor) }}">Review</a>
+                    </td>
+                  </tr>
+                @empty
+                  <tr>
+                    <td colspan="6">No instructors found.</td>
+                  </tr>
+                @endforelse
+              </tbody>
+            </table>
+          </div>
+
+          <p class="table-note">
+            {{ ($officeHoursFailing ?? collect())->count() > 0
+                ? ($officeHoursFailing ?? collect())->count().' full-time instructor(s) currently fail the office-hours requirement.'
+                : 'All full-time instructors currently meet the office-hours requirement.' }}
+          </p>
+        </section>
+
+        <section class="record-grid">
+          <article class="record-card {{ $roomConflictCount > 0 ? 'record-card-danger' : 'record-card-good' }}">
+            <div class="briefing-kicker">Room conflicts</div>
+            <h2 class="workspace-title mt-2">Physical space overlaps</h2>
+            <p class="workspace-copy">Conflicts here mean two classes claim the same room during overlapping time windows.</p>
+
+            @if($roomConflictCount === 0)
+              <div class="status-note mt-5">No room conflicts are currently detected.</div>
+            @else
+              <div class="mini-list">
+                @foreach($roomConflicts as $conflict)
+                  <div class="mini-list-item">
+                    <div>
+                      <div class="queue-label">{{ $conflict['room']?->name ?? 'Room' }}</div>
+                      <div class="queue-copy">{{ \App\Services\ScheduleConflictService::formatMeetingBlockLabel($conflict['a']) }} vs {{ \App\Services\ScheduleConflictService::formatMeetingBlockLabel($conflict['b']) }}</div>
+                    </div>
+                    <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['focus' => $conflict['a']->section_id]) }}#section-{{ $conflict['a']->section_id }}">Fix</a>
+                  </div>
+                @endforeach
               </div>
-            </td>
-            <td>{{ number_format($lec, 2) }} / {{ number_format($lab, 2) }}</td>
-            <td>{{ number_format($required) }} min</td>
-            <td>{{ number_format($scheduled) }} min</td>
-            <td>
-              @if($delta >= 0)
-                <span class="badge success">+{{ number_format($delta) }} min</span>
-              @else
-                <span class="badge danger">{{ number_format($delta) }} min</span>
-              @endif
-            </td>
-            <td>
-              <a class="btn" href="{{ route('aop.schedule.sections.edit', $s) }}">Edit</a>
-            </td>
-          </tr>
-        @empty
-          <tr><td colspan="7" class="muted">No sections found for the active term.</td></tr>
-        @endforelse
-      </tbody>
-    </table>
+            @endif
+          </article>
 
-    @if(($minutesFailing ?? collect())->count() > 0)
-      <div class="muted" style="margin-top:10px;">
-        <strong>{{ ($minutesFailing ?? collect())->count() }}</strong> section(s) are failing the instructional minutes requirement.
+          <article class="record-card {{ $instructorConflictCount > 0 ? 'record-card-danger' : 'record-card-good' }}">
+            <div class="briefing-kicker">Instructor conflicts</div>
+            <h2 class="workspace-title mt-2">Class and office-hour overlaps</h2>
+            <p class="workspace-copy">These conflicts check instructor availability across classes and office hours with the active term buffer applied.</p>
+
+            @if($instructorConflictCount === 0)
+              <div class="status-note mt-5">No instructor conflicts are currently detected.</div>
+            @else
+              <div class="mini-list">
+                @foreach($instructorConflicts as $conflict)
+                  <div class="mini-list-item">
+                    <div>
+                      <div class="queue-label">{{ $conflict['instructor']?->name ?? 'Instructor' }}</div>
+                      <div class="queue-copy">{{ $conflict['a_label'] }} vs {{ $conflict['b_label'] }}</div>
+                    </div>
+                    @if($conflict['a_section_id'])
+                      <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['focus' => $conflict['a_section_id']]) }}#section-{{ $conflict['a_section_id'] }}">Fix</a>
+                    @endif
+                  </div>
+                @endforeach
+              </div>
+            @endif
+          </article>
+        </section>
       </div>
-    @else
-      <div class="muted" style="margin-top:10px;">
-        All sections are meeting the instructional minutes requirement.
-      </div>
-    @endif
-  </div>
 
+      <aside class="insight-side">
+        <section class="watchlist">
+          <div class="briefing-kicker">Action lists</div>
+          <h2 class="watchlist-title">Missing instructor</h2>
+          <p class="watchlist-copy">Assign these sections first so availability and conflict checks become more accurate.</p>
 
-  {{-- Office Hours Compliance --}}
-  <div class="card" style="margin-bottom:16px;">
-    <h2>Office Hours Compliance (Full-Time)</h2>
-    <p class="muted">
-      Full-time instructors must have <strong>at least 4 hours/week</strong> of office hours
-      across <strong>at least 3 distinct days</strong>. (Office hours are checked against that instructor’s classes, with buffer minutes.)
-    </p>
+          @if($sectionsMissingInstructor->isEmpty())
+            <div class="status-note mt-5">Every visible section already has an instructor.</div>
+          @else
+            <div class="mini-list">
+              @foreach($sectionsMissingInstructor->take(8) as $section)
+                <div class="mini-list-item">
+                  <div>
+                    <div class="queue-label">{{ $section->offering?->catalogCourse?->code ?? '—' }} {{ $section->section_code }}</div>
+                    <div class="queue-copy">{{ $section->offering?->catalogCourse?->title ?? 'Untitled course' }}</div>
+                  </div>
+                  <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Assign</a>
+                </div>
+              @endforeach
+            </div>
+          @endif
+        </section>
 
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Status</th>
-          <th>Instructor</th>
-          <th>Full-Time</th>
-          <th>Locked</th>
-          <th>Hours/Week</th>
-          <th>Days</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse($officeHoursCompliance ?? [] as $row)
-          @php
-            $ins = $row['instructor'];
-            $isFull = (bool)$row['is_full_time'];
-            $locked = (bool)$row['locked'];
-            $pass = (bool)$row['pass'];
-            $hours = $row['hours_per_week'] ?? 0;
-            $mins = $row['minutes_per_week'] ?? 0;
-            $days = $row['distinct_days'] ?? 0;
-          @endphp
-          <tr>
-            <td>
-              @if(!$isFull)
-                <span class="badge muted">N/A</span>
-              @elseif($pass)
-                <span class="badge success">PASS</span>
-              @else
-                <span class="badge danger">FAIL</span>
-              @endif
-            </td>
-            <td><strong>{{ $ins->name }}</strong><br><span class="muted">{{ $ins->email }}</span></td>
-            <td>{{ $isFull ? 'Yes' : 'No' }}</td>
-            <td>
-              @if($locked)
-                <span class="badge success">Locked</span>
-              @else
-                <span class="badge warn">Unlocked</span>
-              @endif
-            </td>
-            <td>{{ number_format($hours, 2) }} hrs <span class="muted">({{ number_format($mins) }} min)</span></td>
-            <td>{{ $days }}</td>
-            <td>
-              <a class="btn" href="{{ route('aop.schedule.officeHours.show', $ins) }}">Edit</a>
-            </td>
-          </tr>
-        @empty
-          <tr><td colspan="7" class="muted">No instructors found.</td></tr>
-        @endforelse
-      </tbody>
-    </table>
+        <section class="watchlist">
+          <div class="briefing-kicker">Action lists</div>
+          <h2 class="watchlist-title">Missing meeting blocks</h2>
+          <p class="watchlist-copy">These sections still need a time pattern before the schedule can be considered complete.</p>
 
-    @if(($officeHoursFailing ?? collect())->count() > 0)
-      <div class="muted" style="margin-top:10px;">
-        <strong>{{ ($officeHoursFailing ?? collect())->count() }}</strong> full-time instructor(s) are failing the office hours requirement.
-      </div>
-    @else
-      <div class="muted" style="margin-top:10px;">
-        All full-time instructors are meeting the office hours requirement.
-      </div>
-    @endif
-  </div>
+          @if($sectionsMissingMeetingBlocks->isEmpty())
+            <div class="status-note mt-5">Every visible section already has at least one meeting block.</div>
+          @else
+            <div class="mini-list">
+              @foreach($sectionsMissingMeetingBlocks->take(8) as $section)
+                <div class="mini-list-item">
+                  <div>
+                    <div class="queue-label">{{ $section->offering?->catalogCourse?->code ?? '—' }} {{ $section->section_code }}</div>
+                    <div class="queue-copy">{{ $section->offering?->catalogCourse?->title ?? 'Untitled course' }}</div>
+                  </div>
+                  <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Add Block</a>
+                </div>
+              @endforeach
+            </div>
+          @endif
+        </section>
 
-  {{-- Existing checks remain below (instructor, blocks, rooms, conflicts) --}}
+        <section class="watchlist">
+          <div class="briefing-kicker">Action lists</div>
+          <h2 class="watchlist-title">Meeting blocks missing room</h2>
+          <p class="watchlist-copy">In-person and hybrid meetings without rooms will block readiness and publication.</p>
 
-  <div class="grid">
-    <div class="card col-6">
-      <h2>Missing Instructor</h2>
-      @if($sectionsMissingInstructor->count() === 0)
-        <p class="muted">All sections have an instructor.</p>
-      @else
-        <ul>
-          @foreach($sectionsMissingInstructor as $s)
-            <li>
-              {{ $s->offering?->catalogCourse?->code ?? '—' }} {{ $s->section_code }}
-              <a href="{{ route('aop.schedule.sections.edit', $s) }}">Edit</a>
-            </li>
-          @endforeach
-        </ul>
-      @endif
-    </div>
-
-    <div class="card col-6">
-      <h2>Missing Meeting Blocks</h2>
-      @if($sectionsMissingMeetingBlocks->count() === 0)
-        <p class="muted">All sections have meeting blocks.</p>
-      @else
-        <ul>
-          @foreach($sectionsMissingMeetingBlocks as $s)
-            <li>
-              {{ $s->offering?->catalogCourse?->code ?? '—' }} {{ $s->section_code }}
-              <a href="{{ route('aop.schedule.sections.edit', $s) }}">Edit</a>
-            </li>
-          @endforeach
-        </ul>
-      @endif
-    </div>
-
-    <div class="card col-6">
-      <h2>Meeting Blocks Missing Room</h2>
-      @if($meetingBlocksMissingRoom->count() === 0)
-        <p class="muted">All meeting blocks have rooms (or are online).</p>
-      @else
-        <ul>
-          @foreach($meetingBlocksMissingRoom as $mb)
-            <li>
-              {{ $mb->section?->offering?->catalogCourse?->code ?? '—' }} {{ $mb->section?->section_code ?? '' }} — {{ $mb->type }}
-              <a href="{{ route('aop.schedule.sections.edit', $mb->section) }}">Edit</a>
-            </li>
-          @endforeach
-        </ul>
-      @endif
-    </div>
-
-    <div class="card col-6">
-      <h2>Room Conflicts</h2>
-      @if(count($roomConflicts) === 0)
-        <p class="muted">No room conflicts detected.</p>
-      @else
-        <ul>
-          @foreach($roomConflicts as $c)
-            <li>
-              <strong>{{ $c['room']?->name ?? 'Room' }}</strong>: {{ \App\Services\ScheduleConflictService::formatMeetingBlockLabel($c['a']) }}
-              vs {{ \App\Services\ScheduleConflictService::formatMeetingBlockLabel($c['b']) }}
-            </li>
-          @endforeach
-        </ul>
-      @endif
-    </div>
-
-    <div class="card col-12">
-      <h2>Instructor Conflicts</h2>
-      @if(count($instructorConflicts) === 0)
-        <p class="muted">No instructor conflicts detected.</p>
-      @else
-        <ul>
-          @foreach($instructorConflicts as $c)
-            <li>
-              <strong>{{ $c['instructor']?->name ?? 'Instructor' }}</strong> ({{ $c['type'] }}):
-              {{ $c['a_label'] }} vs {{ $c['b_label'] }}
-              @if($c['a_section_id'])
-                <a href="{{ route('aop.schedule.sections.edit', $c['a_section_id']) }}">Edit A</a>
-              @endif
-              @if($c['b_section_id'])
-                <a href="{{ route('aop.schedule.sections.edit', $c['b_section_id']) }}">Edit B</a>
-              @endif
-            </li>
-          @endforeach
-        </ul>
-      @endif
-    </div>
+          @if($meetingBlocksMissingRoom->isEmpty())
+            <div class="status-note mt-5">Every required meeting block already has a room assigned.</div>
+          @else
+            <div class="mini-list">
+              @foreach($meetingBlocksMissingRoom->take(8) as $meetingBlock)
+                <div class="mini-list-item">
+                  <div>
+                    <div class="queue-label">{{ $meetingBlock->section?->offering?->catalogCourse?->code ?? '—' }} {{ $meetingBlock->section?->section_code ?? '' }}</div>
+                    <div class="queue-copy">{{ $meetingBlock->type->value }} · {{ implode(', ', $meetingBlock->days_json ?? []) ?: 'No days selected' }}</div>
+                  </div>
+                  @if($meetingBlock->section)
+                    <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['focus' => $meetingBlock->section->id]) }}#section-{{ $meetingBlock->section->id }}">Assign</a>
+                  @endif
+                </div>
+              @endforeach
+            </div>
+          @endif
+        </section>
+      </aside>
+    </section>
   </div>
 </x-aop-layout>

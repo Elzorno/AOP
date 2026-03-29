@@ -1,44 +1,67 @@
-<x-aop-layout :activeTermLabel="'Active Term: '.$term->code.' — '.$term->name">
+<x-aop-layout :activeTermLabel="'Active Term: '.$term->code.' - '.$term->name">
   <x-slot:title>New Offering</x-slot:title>
 
-  <div class="row" style="margin-bottom:14px;">
-    <h1>New Offering</h1>
-    <div class="actions">
-      <a class="btn secondary" href="{{ route('aop.schedule.offerings.index') }}">Back</a>
-    </div>
-  </div>
+  <div class="page-shell">
+    <section class="page-header">
+      <span class="page-eyebrow">Fallback Form</span>
+      <h1 class="page-title">Create an offering for {{ $term->code }}</h1>
+      <p class="page-subtitle">
+        Most offering setup happens faster inside the schedule studio, but this focused form is here when you want a dedicated page for the initial create step.
+      </p>
 
-  <div class="card">
-    <form method="POST" action="{{ route('aop.schedule.offerings.store') }}">
-      @csrf
+      <div class="toolbar-line">
+        <a class="btn" href="{{ route('aop.schedule.home') }}">Create in Studio Instead</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.offerings.index') }}">Offering Overview</a>
+      </div>
+    </section>
 
-      <label>Catalog Course</label>
-      <select name="catalog_course_id" required>
-        <option value="" disabled selected>Choose a course…</option>
-        @foreach ($courses as $c)
-          <option value="{{ $c->id }}">{{ $c->code }} — {{ $c->title }}</option>
-        @endforeach
-      </select>
-
-      <label>Delivery Method (optional)</label>
-      <input name="delivery_method" value="{{ old('delivery_method') }}" placeholder="In-person / Online / Hybrid" />
-
-      <label>Notes (optional)</label>
-      <textarea name="notes">{{ old('notes') }}</textarea>
-
-      <div class="split">
+    <section class="workspace-card">
+      <div class="workspace-header">
         <div>
-          <label>Prereq Override (optional)</label>
-          <textarea name="prereq_override">{{ old('prereq_override') }}</textarea>
-        </div>
-        <div>
-          <label>Coreq Override (optional)</label>
-          <textarea name="coreq_override">{{ old('coreq_override') }}</textarea>
+          <h2 class="workspace-title">Offering details</h2>
+          <p class="workspace-copy">Choose the catalog course first, then capture only the overrides or notes that matter for this term.</p>
         </div>
       </div>
 
-      <div style="height:12px;"></div>
-      <button class="btn" type="submit">Create Offering</button>
-    </form>
+      <form method="POST" action="{{ route('aop.schedule.offerings.store') }}">
+        @csrf
+
+        <label for="catalog_course_id">Catalog course</label>
+        <select id="catalog_course_id" name="catalog_course_id" required>
+          <option value="" disabled {{ old('catalog_course_id') ? '' : 'selected' }}>Choose a course</option>
+          @foreach ($courses as $course)
+            <option value="{{ $course->id }}" {{ (string) old('catalog_course_id') === (string) $course->id ? 'selected' : '' }}>
+              {{ $course->code }} - {{ $course->title }}
+            </option>
+          @endforeach
+        </select>
+
+        <div class="inline-form-grid-2">
+          <div>
+            <label for="delivery_method">Delivery method</label>
+            <input id="delivery_method" name="delivery_method" value="{{ old('delivery_method') }}" placeholder="Lecture, lab, hybrid">
+          </div>
+          <div>
+            <label for="notes">Notes</label>
+            <input id="notes" name="notes" value="{{ old('notes') }}" placeholder="Optional planning notes">
+          </div>
+        </div>
+
+        <div class="inline-form-grid-2">
+          <div>
+            <label for="prereq_override">Prerequisite override</label>
+            <textarea id="prereq_override" name="prereq_override" rows="4">{{ old('prereq_override') }}</textarea>
+          </div>
+          <div>
+            <label for="coreq_override">Corequisite override</label>
+            <textarea id="coreq_override" name="coreq_override" rows="4">{{ old('coreq_override') }}</textarea>
+          </div>
+        </div>
+
+        <div class="section-actions">
+          <button class="btn" type="submit">Create Offering</button>
+        </div>
+      </form>
+    </section>
   </div>
 </x-aop-layout>

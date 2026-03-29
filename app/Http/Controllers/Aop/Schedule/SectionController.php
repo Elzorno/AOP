@@ -165,7 +165,11 @@ class SectionController extends Controller
             ->first();
         abort_if(!$offering, 400, 'Offering not in active term.');
 
-        Section::create($data);
+        $section = Section::create($data);
+
+        if ($request->boolean('from_schedule_home')) {
+            return redirect()->route('aop.schedule.home', ['focus' => $section->id])->with('status', 'Section created.');
+        }
 
         return redirect()->route('aop.schedule.sections.index')->with('status', 'Section created.');
     }
@@ -211,6 +215,10 @@ class SectionController extends Controller
         ]);
 
         $section->update($data);
+
+        if ($request->boolean('from_schedule_home')) {
+            return redirect()->route('aop.schedule.home', ['focus' => $section->id])->with('status', 'Section updated.');
+        }
 
         return redirect()->route('aop.schedule.sections.edit', $section)->with('status', 'Section updated.');
     }

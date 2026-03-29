@@ -101,6 +101,10 @@ class MeetingBlockController extends Controller
             'notes' => $data['notes'] ?? null,
         ]);
 
+        if ($request->boolean('from_schedule_home')) {
+            return redirect()->route('aop.schedule.home', ['focus' => $section->id])->with('status', 'Meeting block added.');
+        }
+
         return redirect()->route('aop.schedule.sections.edit', $section)->with('status', 'Meeting block added.');
     }
 
@@ -127,6 +131,10 @@ class MeetingBlockController extends Controller
             'room_id' => $data['room_id'] ?? null,
             'notes' => $data['notes'] ?? null,
         ]);
+
+        if ($request->boolean('from_schedule_home')) {
+            return redirect()->route('aop.schedule.home', ['focus' => $section->id])->with('status', 'Meeting block updated.');
+        }
 
         return redirect()->route('aop.schedule.sections.edit', $section)->with('status', 'Meeting block updated.');
     }

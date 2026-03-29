@@ -160,6 +160,7 @@
 
     .page-shell {
         @apply space-y-8;
+        min-width: 0;
     }
 
     .page-header {
@@ -354,7 +355,7 @@
     }
 
     .briefing-grid {
-        @apply grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(20rem,0.9fr)] xl:items-start;
+        @apply grid gap-6 xl:grid-cols-[minmax(0,1fr)_23rem] xl:items-start;
     }
 
     .briefing-panel {
@@ -363,6 +364,7 @@
         border-color: var(--aop-line);
         box-shadow: var(--aop-shadow);
         backdrop-filter: blur(18px);
+        overflow: hidden;
     }
 
     .briefing-panel-strong {
@@ -390,6 +392,7 @@
         border-color: var(--aop-line);
         box-shadow: var(--aop-shadow);
         backdrop-filter: blur(18px);
+        overflow: hidden;
     }
 
     .status-ribbon {
@@ -492,6 +495,7 @@
         background: rgba(255, 255, 255, 0.9);
         border-color: var(--aop-line);
         box-shadow: var(--aop-shadow);
+        overflow: hidden;
     }
 
     .watchlist-title {
@@ -507,7 +511,7 @@
     }
 
     .watchlist-item {
-        @apply flex items-center justify-between gap-4 rounded-2xl border px-4 py-3;
+        @apply flex items-start justify-between gap-4 rounded-2xl border px-4 py-3;
         background: rgba(248, 250, 252, 0.9);
         border-color: rgba(148, 163, 184, 0.16);
     }
@@ -524,6 +528,7 @@
         @apply rounded-full px-3 py-1 text-sm font-semibold;
         background: #e2e8f0;
         color: #0f172a;
+        flex-shrink: 0;
     }
 
     .watchlist-value.good {
@@ -635,7 +640,7 @@
     }
 
     .stack-grid-2 {
-        @apply grid gap-4 lg:grid-cols-2;
+        @apply grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.85fr)];
     }
 
     .surface-note {
@@ -646,6 +651,414 @@
 
     .toolbar-line {
         @apply mt-4 flex flex-wrap gap-2;
+    }
+
+    .studio-grid {
+        @apply grid gap-6 xl:grid-cols-[minmax(0,1fr)_23rem] xl:items-start;
+    }
+
+    .studio-main {
+        @apply min-w-0 space-y-6;
+    }
+
+    .studio-sidebar {
+        @apply min-w-0 space-y-6;
+    }
+
+    .workspace-card {
+        @apply rounded-[2rem] border p-6;
+        background: rgba(255, 255, 255, 0.92);
+        border-color: var(--aop-line);
+        box-shadow: var(--aop-shadow);
+        backdrop-filter: blur(16px);
+        overflow: hidden;
+    }
+
+    .workspace-header {
+        @apply flex flex-col gap-4 border-b border-slate-200/70 pb-5 md:flex-row md:items-end md:justify-between;
+    }
+
+    .workspace-title {
+        @apply text-2xl font-semibold tracking-tight text-slate-950;
+    }
+
+    .workspace-copy {
+        @apply mt-2 text-sm leading-6 text-slate-600;
+    }
+
+    .filter-grid {
+        @apply mt-5 grid gap-4 xl:grid-cols-6;
+        align-items: end;
+    }
+
+    .offering-stack {
+        @apply mt-6 space-y-5;
+    }
+
+    .offering-card {
+        @apply rounded-[1.8rem] border p-5 md:p-6;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9));
+        border-color: var(--aop-line);
+        box-shadow: var(--aop-shadow);
+        overflow: hidden;
+    }
+
+    .offering-card-focus {
+        border-color: rgba(59, 130, 246, 0.34);
+        box-shadow: 0 24px 44px -30px rgba(37, 99, 235, 0.34);
+    }
+
+    .offering-head {
+        @apply flex flex-col gap-4 md:flex-row md:items-start md:justify-between;
+    }
+
+    .offering-kicker {
+        @apply text-xs font-semibold uppercase tracking-[0.2em] text-slate-500;
+    }
+
+    .offering-title {
+        @apply mt-2 text-2xl font-semibold tracking-tight text-slate-950;
+    }
+
+    .offering-copy {
+        @apply mt-2 text-sm leading-6 text-slate-600;
+    }
+
+    .offering-meta {
+        @apply mt-5 grid gap-3 xl:grid-cols-3;
+    }
+
+    .offering-meta-card {
+        @apply rounded-2xl border px-4 py-3 text-sm;
+        background: rgba(248, 250, 252, 0.88);
+        border-color: rgba(148, 163, 184, 0.16);
+    }
+
+    .section-stack {
+        @apply mt-6 space-y-4;
+    }
+
+    .section-card {
+        @apply rounded-[1.6rem] border p-4 md:p-5;
+        background: rgba(255, 255, 255, 0.94);
+        border-color: rgba(148, 163, 184, 0.18);
+        box-shadow: 0 18px 35px -30px rgba(15, 23, 42, 0.34);
+        overflow: hidden;
+    }
+
+    .section-card-focus {
+        border-color: rgba(59, 130, 246, 0.32);
+        box-shadow: 0 24px 40px -28px rgba(37, 99, 235, 0.3);
+    }
+
+    .section-head {
+        @apply flex flex-col gap-4 md:flex-row md:items-start md:justify-between;
+    }
+
+    .section-title {
+        @apply text-lg font-semibold tracking-tight text-slate-950;
+    }
+
+    .section-copy {
+        @apply mt-1 text-sm leading-6 text-slate-600;
+    }
+
+    .section-badges {
+        @apply mt-3 flex flex-wrap gap-2;
+    }
+
+    .section-actions {
+        @apply mt-4 flex flex-wrap gap-2;
+        align-items: center;
+    }
+
+    .disclosure {
+        @apply mt-4 rounded-[1.35rem] border;
+        background: rgba(248, 250, 252, 0.86);
+        border-color: rgba(148, 163, 184, 0.16);
+        overflow: hidden;
+    }
+
+    .disclosure + .disclosure {
+        @apply mt-3;
+    }
+
+    .disclosure-summary {
+        @apply flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-slate-800;
+    }
+
+    .disclosure-summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .disclosure-summary::after {
+        content: "+";
+        @apply text-base font-semibold text-slate-500;
+    }
+
+    .disclosure[open] .disclosure-summary::after {
+        content: "-";
+    }
+
+    .disclosure-body {
+        @apply border-t border-slate-200/70 px-4 py-4;
+        min-width: 0;
+    }
+
+    .inline-form-grid {
+        @apply grid gap-4 xl:grid-cols-4;
+        align-items: start;
+    }
+
+    .inline-form-grid-3 {
+        @apply grid gap-3 xl:grid-cols-3;
+    }
+
+    .inline-form-grid-2 {
+        @apply grid gap-4 xl:grid-cols-2;
+    }
+
+    .meeting-stack {
+        @apply mt-4 space-y-3;
+    }
+
+    .meeting-card {
+        @apply rounded-2xl border px-4 py-4;
+        background: rgba(248, 250, 252, 0.92);
+        border-color: rgba(148, 163, 184, 0.16);
+        overflow: hidden;
+    }
+
+    .meeting-head {
+        @apply flex flex-col gap-3 md:flex-row md:items-start md:justify-between;
+    }
+
+    .meeting-title {
+        @apply text-sm font-semibold text-slate-900;
+    }
+
+    .meeting-copy {
+        @apply mt-1 text-sm text-slate-600;
+    }
+
+    .queue-stack {
+        @apply mt-5 space-y-3;
+    }
+
+    .queue-link {
+        @apply flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 transition-colors;
+        background: rgba(248, 250, 252, 0.9);
+        border-color: rgba(148, 163, 184, 0.16);
+        color: #0f172a;
+        min-width: 0;
+    }
+
+    .queue-link:hover {
+        background: rgba(239, 246, 255, 0.92);
+        border-color: rgba(96, 165, 250, 0.24);
+    }
+
+    .queue-label {
+        @apply text-sm font-medium text-slate-900;
+    }
+
+    .queue-copy {
+        @apply mt-1 text-sm text-slate-500;
+    }
+
+    .studio-support {
+        @apply mt-5 grid gap-3;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .studio-support a {
+        @apply flex items-center rounded-2xl border px-4 py-3 text-sm font-medium leading-5 text-slate-700 transition-colors;
+        background: rgba(248, 250, 252, 0.88);
+        border-color: rgba(148, 163, 184, 0.16);
+        min-height: 4rem;
+        overflow-wrap: anywhere;
+        width: 100%;
+    }
+
+    .studio-support a:hover {
+        background: rgba(239, 246, 255, 0.92);
+        border-color: rgba(96, 165, 250, 0.24);
+        color: #1d4ed8;
+    }
+
+    .status-note {
+        @apply rounded-2xl border px-4 py-3 text-sm;
+        background: rgba(248, 250, 252, 0.88);
+        border-color: rgba(148, 163, 184, 0.16);
+        color: #475569;
+        overflow-wrap: anywhere;
+    }
+
+    .insight-grid,
+    .editor-layout {
+        @apply grid gap-6 lg:grid-cols-12;
+    }
+
+    .insight-main,
+    .editor-main {
+        @apply min-w-0 space-y-6 lg:col-span-8;
+    }
+
+    .insight-side,
+    .editor-side {
+        @apply min-w-0 space-y-6 lg:col-span-4;
+    }
+
+    .summary-strip {
+        @apply mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4;
+    }
+
+    .summary-stat {
+        @apply rounded-2xl border px-4 py-4;
+        background: rgba(248, 250, 252, 0.9);
+        border-color: rgba(148, 163, 184, 0.16);
+        overflow: hidden;
+    }
+
+    .summary-stat-label {
+        @apply text-xs font-semibold uppercase tracking-[0.18em] text-slate-500;
+    }
+
+    .summary-stat-value {
+        @apply mt-2 text-2xl font-semibold tracking-tight text-slate-950;
+    }
+
+    .summary-stat-note {
+        @apply mt-1 text-sm text-slate-500;
+    }
+
+    .directory-grid {
+        @apply grid gap-4 xl:grid-cols-2;
+    }
+
+    .directory-card,
+    .record-card {
+        @apply rounded-[1.6rem] border p-5;
+        background: rgba(255, 255, 255, 0.94);
+        border-color: rgba(148, 163, 184, 0.18);
+        box-shadow: 0 18px 35px -30px rgba(15, 23, 42, 0.34);
+        overflow: hidden;
+    }
+
+    .directory-card-danger,
+    .record-card-danger {
+        border-color: rgba(248, 113, 113, 0.28);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(254, 242, 242, 0.78));
+    }
+
+    .directory-card-good,
+    .record-card-good {
+        border-color: rgba(52, 211, 153, 0.24);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(236, 253, 245, 0.76));
+    }
+
+    .directory-meta {
+        @apply mt-5 grid gap-3 sm:grid-cols-2;
+    }
+
+    .record-grid {
+        @apply grid gap-4 md:grid-cols-2;
+    }
+
+    .mini-list {
+        @apply mt-4 space-y-3;
+    }
+
+    .mini-list-item {
+        @apply flex items-start justify-between gap-3 rounded-2xl border px-4 py-3;
+        background: rgba(248, 250, 252, 0.9);
+        border-color: rgba(148, 163, 184, 0.16);
+        min-width: 0;
+    }
+
+    .table-shell {
+        @apply mt-5 overflow-hidden rounded-[1.6rem] border;
+        background: rgba(255, 255, 255, 0.94);
+        border-color: rgba(148, 163, 184, 0.18);
+        box-shadow: 0 18px 35px -30px rgba(15, 23, 42, 0.34);
+    }
+
+    .table-shell table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table-shell th {
+        @apply bg-slate-50/90 px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500;
+    }
+
+    .table-shell td {
+        @apply border-t border-slate-200/70 px-4 py-4 align-top text-sm text-slate-700;
+    }
+
+    .table-shell tbody tr:nth-child(even) {
+        background: rgba(248, 250, 252, 0.72);
+    }
+
+    .table-note {
+        @apply mt-4 text-sm text-slate-500;
+    }
+
+    .helper-list {
+        @apply space-y-3 text-sm leading-6 text-slate-600;
+    }
+
+    .helper-list li {
+        @apply rounded-2xl border px-4 py-3;
+        background: rgba(248, 250, 252, 0.88);
+        border-color: rgba(148, 163, 184, 0.16);
+    }
+
+    .suggestion-list {
+        @apply mt-4 space-y-3;
+    }
+
+    .suggestion-item {
+        @apply flex flex-col gap-3 rounded-2xl border px-4 py-3 md:flex-row md:items-center md:justify-between;
+        background: rgba(248, 250, 252, 0.9);
+        border-color: rgba(148, 163, 184, 0.16);
+    }
+
+    .suggestion-meta {
+        @apply text-sm leading-6 text-slate-500;
+    }
+
+    .workspace-header > div:first-child,
+    .offering-head > div:first-child,
+    .section-head > div:first-child,
+    .meeting-head > div:first-child,
+    .watchlist-item > div:first-child,
+    .queue-link > div:first-child,
+    .mini-list-item > div:first-child {
+        min-width: 0;
+    }
+
+    .briefing-title,
+    .briefing-copy,
+    .workspace-title,
+    .workspace-copy,
+    .offering-title,
+    .offering-copy,
+    .section-title,
+    .section-copy,
+    .watchlist-name,
+    .watchlist-note,
+    .queue-label,
+    .queue-copy,
+    .summary-stat-note {
+        overflow-wrap: anywhere;
+    }
+
+    .badge,
+    .status-ribbon-item,
+    .section-actions .btn,
+    .quick-actions .btn {
+        flex-shrink: 0;
     }
 
     .nav-pill {
