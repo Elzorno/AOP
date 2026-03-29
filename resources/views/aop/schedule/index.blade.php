@@ -27,12 +27,12 @@
   <div class="page-shell">
     <section class="briefing-grid">
       <div class="briefing-panel briefing-panel-strong">
-        <div class="briefing-kicker">Schedule studio</div>
-        <h1 class="briefing-title">{{ $term ? $term->code.' scheduling workspace' : 'Choose an active term to start scheduling.' }}</h1>
+        <div class="briefing-kicker">Schedule</div>
+        <h1 class="briefing-title">{{ $term ? $term->code.' schedule' : 'Set an active term' }}</h1>
         <p class="briefing-copy">
           {{ $term
-              ? 'Create offerings, add sections, assign instructors, manage meetings, and review readiness without leaving the schedule workspace.'
-              : 'Select an active term first, then return here to build the schedule.' }}
+              ? 'Offerings, sections, meetings, and readiness for the active term.'
+              : 'Choose an active term to begin.' }}
         </p>
 
         @if ($term)
@@ -70,11 +70,11 @@
 
       <aside class="briefing-sidebar">
         <div class="briefing-kicker">Readiness</div>
-        <h2 class="watchlist-title">{{ $term ? ($isPublishReady ? 'Ready for release' : 'Needs attention') : 'No active term' }}</h2>
+        <h2 class="watchlist-title">{{ $term ? ($isPublishReady ? 'Ready' : 'Needs attention') : 'No active term' }}</h2>
         <p class="watchlist-copy">
           {{ $term
-              ? 'Current schedule state, release status, and latest publication.'
-              : 'Scheduling tools will appear here after a term is activated.' }}
+              ? 'Current term status.'
+              : 'Scheduling is unavailable until a term is active.' }}
         </p>
 
         <div class="watchlist-group">
@@ -125,7 +125,7 @@
         <div class="workspace-header">
           <div>
             <h2 class="workspace-title">Active term required</h2>
-            <p class="workspace-copy">Choose the active term, then return here to manage offerings, sections, and meeting blocks.</p>
+            <p class="workspace-copy">Set the term, then start building the schedule.</p>
           </div>
           <div class="actions">
             <a class="btn" href="{{ route('aop.terms.index') }}">Manage Terms</a>
@@ -138,9 +138,9 @@
           <section class="workspace-card">
             <div class="workspace-header">
               <div>
-                <div class="briefing-kicker">Fast lane</div>
-                <h2 class="workspace-title">Add offerings and jump straight into sections.</h2>
-                <p class="workspace-copy">New offerings start here. Section creation stays inside each offering so course context never gets lost.</p>
+                <div class="briefing-kicker">Offerings</div>
+                <h2 class="workspace-title">Add an offering</h2>
+                <p class="workspace-copy">Choose a course and add it to the active term.</p>
               </div>
             </div>
 
@@ -198,7 +198,7 @@
               </form>
 
               <div class="surface-note">
-                <strong class="text-slate-900">Workflow</strong>
+                <strong class="text-slate-900">Next steps</strong>
                 <div class="mt-3 text-sm leading-6 text-slate-600">
                   1. Add an offering for the active term.
                   <br>
@@ -216,9 +216,9 @@
           <section class="workspace-card">
             <div class="workspace-header">
               <div>
-                <div class="briefing-kicker">Schedule studio</div>
-                <h2 class="workspace-title">Offerings, sections, and meetings in one place.</h2>
-                <p class="workspace-copy">Filter the workspace, update section assignments, and manage meeting blocks without leaving the current term context.</p>
+                <div class="briefing-kicker">Sections</div>
+                <h2 class="workspace-title">Current schedule</h2>
+                <p class="workspace-copy">Search and update offerings, sections, and meetings.</p>
               </div>
             </div>
 
@@ -588,8 +588,8 @@
         <aside class="studio-sidebar">
           <section class="watchlist">
             <div class="briefing-kicker">Action queue</div>
-            <h2 class="watchlist-title">Sections needing attention</h2>
-            <p class="watchlist-copy">Jump directly to the sections with the most unresolved issues.</p>
+            <h2 class="watchlist-title">Needs attention</h2>
+            <p class="watchlist-copy">Highest issue counts first.</p>
 
             @if($issueQueue->isEmpty())
               <div class="status-note mt-5">No high-priority section issues are currently open.</div>
@@ -609,9 +609,9 @@
           </section>
 
           <section class="watchlist">
-            <div class="briefing-kicker">Support tools</div>
-            <h2 class="watchlist-title">Adjacent workflows</h2>
-            <p class="watchlist-copy">Open related schedule tools without losing the active term context.</p>
+            <div class="briefing-kicker">More tools</div>
+            <h2 class="watchlist-title">Schedule tools</h2>
+            <p class="watchlist-copy">Related pages.</p>
 
             <div class="studio-support">
               @foreach($supportLinks as $link)

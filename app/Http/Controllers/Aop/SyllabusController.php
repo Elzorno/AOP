@@ -216,7 +216,6 @@ class SyllabusController extends Controller
             'templateExists' => $templateExists,
             'latestBySection' => $latestBySection,
             'definitions' => $this->syllabusStructureDefinitions(),
-            'blocks' => $this->syllabusBlocks(),
             'exportEngine' => $this->configuredSyllabusExportEngine(),
         ]);
     }
@@ -236,44 +235,37 @@ class SyllabusController extends Controller
 
     public function createBlock()
     {
-        return view('aop.syllabi.blocks.create');
+        return redirect()
+            ->route('aop.syllabi.index')
+            ->with('status', 'Shared syllabus blocks have been removed.');
     }
 
     public function storeBlock(Request $request)
     {
-        $block = SyllabusBlock::create($this->validateBlock($request));
-
-        return redirect()->route('aop.syllabi.index')
-            ->with('status', 'Syllabus block “' . $block->title . '” created.');
+        return redirect()
+            ->route('aop.syllabi.index')
+            ->with('status', 'Shared syllabus blocks have been removed.');
     }
 
     public function editBlock(SyllabusBlock $block)
     {
-        return view('aop.syllabi.blocks.edit', [
-            'block' => $block,
-        ]);
+        return redirect()
+            ->route('aop.syllabi.index')
+            ->with('status', 'Shared syllabus blocks have been removed.');
     }
 
     public function updateBlock(Request $request, SyllabusBlock $block)
     {
-        $block->update($this->validateBlock($request));
-
-        return redirect()->route('aop.syllabi.index')
-            ->with('status', 'Syllabus block “' . $block->title . '” updated.');
+        return redirect()
+            ->route('aop.syllabi.index')
+            ->with('status', 'Shared syllabus blocks have been removed.');
     }
 
     public function destroyBlock(SyllabusBlock $block)
     {
-        if ($block->is_locked) {
-            return redirect()->route('aop.syllabi.index')
-                ->with('status', 'Protected syllabus blocks must be unprotected before deletion.');
-        }
-
-        $title = $block->title;
-        $block->delete();
-
-        return redirect()->route('aop.syllabi.index')
-            ->with('status', 'Syllabus block “' . $title . '” deleted.');
+        return redirect()
+            ->route('aop.syllabi.index')
+            ->with('status', 'Shared syllabus blocks have been removed.');
     }
 
     public function createDefinition()
@@ -490,7 +482,6 @@ class SyllabusController extends Controller
             'html' => $html,
             'history' => $history,
             'structuredSections' => collect($packet['syllabus_sections'] ?? []),
-            'blocks' => collect($packet['blocks'] ?? []),
             'exportReplacements' => $exportReplacements,
             'templateTokenRows' => $this->buildTemplateTokenRows($packet, $exportReplacements),
             'exportEngine' => $this->configuredSyllabusExportEngine(),
@@ -1365,11 +1356,6 @@ class SyllabusController extends Controller
                 'value' => $replacements['STRUCTURED_SECTIONS'] ?? '',
             ],
             [
-                'placeholder' => '{{LEGACY_BLOCKS}} / {{CUSTOM_BLOCKS}}',
-                'description' => 'Legacy shared block output. CUSTOM_BLOCKS keeps backward compatibility by appending legacy content after structured sections.',
-                'value' => $replacements['CUSTOM_BLOCKS'] ?? '',
-            ],
-            [
                 'placeholder' => '{{STRUCTURED_SECTION_01_TITLE}} / {{STRUCTURED_SECTION_01_CONTENT}}',
                 'description' => 'First visible structured section by order. Increment 01, 02, 03... as needed.',
                 'value' => trim(($replacements['STRUCTURED_SECTION_01_TITLE'] ?? '') . ' / ' . ($replacements['STRUCTURED_SECTION_01_CONTENT'] ?? ''), ' /'),
@@ -1388,15 +1374,6 @@ class SyllabusController extends Controller
                 'placeholder' => '{{SECTION_' . $tokenBase . '_TITLE}} / {{SECTION_' . $tokenBase . '_CONTENT}}',
                 'description' => 'Slug-based structured section tokens for “' . $sectionTitle . '”. Also available: {{SECTION_' . $tokenBase . '_ENABLED}}, {{SECTION_' . $tokenBase . '_ORDER}}, {{SECTION_' . $tokenBase . '_SCOPE}}.',
                 'value' => trim(($replacements['SECTION_' . $tokenBase . '_TITLE'] ?? '') . ' / ' . ($replacements['SECTION_' . $tokenBase . '_CONTENT'] ?? ''), ' /'),
-            ];
-        }
-
-        foreach ($packet['blocks'] ?? [] as $index => $block) {
-            $indexToken = str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT);
-            $rows[] = [
-                'placeholder' => '{{LEGACY_BLOCK_' . $indexToken . '_TITLE}} / {{LEGACY_BLOCK_' . $indexToken . '_CONTENT}}',
-                'description' => 'Indexed legacy block tokens for transition-period template placement.',
-                'value' => trim(($replacements['LEGACY_BLOCK_' . $indexToken . '_TITLE'] ?? '') . ' / ' . ($replacements['LEGACY_BLOCK_' . $indexToken . '_CONTENT'] ?? ''), ' /'),
             ];
         }
 

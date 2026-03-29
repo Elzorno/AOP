@@ -3,14 +3,12 @@
 
   <div class="page-shell">
     <section class="page-header">
-      <span class="page-eyebrow">Fallback Form</span>
+      <span class="page-eyebrow">Offerings</span>
       <h1 class="page-title">Create an offering for {{ $term->code }}</h1>
-      <p class="page-subtitle">
-        Most offering setup happens faster inside the schedule studio, but this focused form is here when you want a dedicated page for the initial create step.
-      </p>
+      <p class="page-subtitle">Add a catalog course to the active term.</p>
 
       <div class="toolbar-line">
-        <a class="btn" href="{{ route('aop.schedule.home') }}">Create in Studio Instead</a>
+        <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
         <a class="btn secondary" href="{{ route('aop.schedule.offerings.index') }}">Offering Overview</a>
       </div>
     </section>
@@ -19,7 +17,7 @@
       <div class="workspace-header">
         <div>
           <h2 class="workspace-title">Offering details</h2>
-          <p class="workspace-copy">Choose the catalog course first, then capture only the overrides or notes that matter for this term.</p>
+          <p class="workspace-copy">Course, delivery method, and term-specific overrides.</p>
         </div>
       </div>
 

@@ -3,19 +3,19 @@
 
   @php
     $isReadyToSchedule = $activeTerm && $counts['catalog_courses'] > 0 && $counts['instructors'] > 0 && $counts['rooms'] > 0;
-    $nextActionLabel = $activeTerm ? 'Open schedule workspace' : 'Set the active term';
+    $nextActionLabel = $activeTerm ? 'Open Schedule' : 'Set Active Term';
     $nextActionRoute = $activeTerm ? route('aop.schedule.home') : route('aop.terms.index');
   @endphp
 
   <div class="page-shell">
     <section class="briefing-grid">
       <div class="briefing-panel briefing-panel-strong">
-        <div class="briefing-kicker">Operations briefing</div>
-        <h1 class="briefing-title">{{ $activeTerm ? 'Keep the active term moving with one clear path.' : 'Start by selecting the term everyone should work inside.' }}</h1>
+        <div class="briefing-kicker">Dashboard</div>
+        <h1 class="briefing-title">{{ $activeTerm ? $activeTerm->code.' overview' : 'Set the active term' }}</h1>
         <p class="briefing-copy">
           {{ $activeTerm
-              ? 'Check term status, confirm setup, and continue directly into schedule work.'
-              : 'Choose an active term, then continue into setup and schedule work.' }}
+              ? 'Review setup and continue scheduling.'
+              : 'Choose the term before scheduling.' }}
         </p>
 
         <div class="status-ribbon">
@@ -41,9 +41,9 @@
       </div>
 
       <aside class="briefing-sidebar">
-        <div class="briefing-kicker">Control panel</div>
+        <div class="briefing-kicker">Status</div>
         <h2 class="watchlist-title">Current status</h2>
-        <p class="watchlist-copy">Current term, next step, and setup status.</p>
+        <p class="watchlist-copy">Term and setup status.</p>
 
         <div class="watchlist-group">
           <div class="watchlist-item">
@@ -56,7 +56,7 @@
           <div class="watchlist-item">
             <div>
               <div class="watchlist-name">Fastest next step</div>
-              <div class="watchlist-note">Shortest route to forward progress</div>
+              <div class="watchlist-note">Recommended next page</div>
             </div>
             <span class="watchlist-value good">{{ $activeTerm ? 'Schedule' : 'Terms' }}</span>
           </div>
@@ -74,29 +74,29 @@
     <section class="dock-grid">
       <a href="{{ route('aop.terms.index') }}" class="dock-item">
         <div class="dock-kicker">Context</div>
-        <h2 class="dock-title">Terms stay first</h2>
-        <p class="dock-copy">One location for activation, cloning, and lifecycle changes keeps the schedule context consistent across the product.</p>
+        <h2 class="dock-title">Terms</h2>
+        <p class="dock-copy">Set the active term and manage planning cycles.</p>
         <div class="dock-meta">Open terms</div>
       </a>
 
       <a href="{{ route('aop.catalog.index') }}" class="dock-item">
         <div class="dock-kicker">Inputs</div>
-        <h2 class="dock-title">Check the planning ingredients</h2>
+        <h2 class="dock-title">Inputs</h2>
         <p class="dock-copy">Review catalog, instructor, and room data before creating sections.</p>
         <div class="dock-meta">Review source data</div>
       </a>
 
       <a href="{{ route('aop.schedule.home') }}" class="dock-item">
         <div class="dock-kicker">Execution</div>
-        <h2 class="dock-title">Operate from one workspace</h2>
-        <p class="dock-copy">Scheduling, validation, and publishing stay together in one workspace.</p>
+        <h2 class="dock-title">Schedule</h2>
+        <p class="dock-copy">Build, review, and publish the active term schedule.</p>
         <div class="dock-meta">Launch schedule</div>
       </a>
 
       <a href="{{ route('aop.syllabi.index') }}" class="dock-item">
         <div class="dock-kicker">Downstream</div>
-        <h2 class="dock-title">Keep supporting work nearby</h2>
-        <p class="dock-copy">Open syllabus management, templates, and section exports from one place.</p>
+        <h2 class="dock-title">Syllabi</h2>
+        <p class="dock-copy">Manage templates, structure, and section exports.</p>
         <div class="dock-meta">Open syllabi</div>
       </a>
     </section>
@@ -109,8 +109,8 @@
               <div class="sequence-index">1</div>
               <div>
                 <div class="sequence-label">Set context</div>
-                <h2 class="sequence-title">Choose the term everyone should be working in.</h2>
-                <p class="sequence-copy">The active term becomes the default context for schedule and syllabus work.</p>
+                <h2 class="sequence-title">Choose the active term.</h2>
+                <p class="sequence-copy">Scheduling and syllabi follow this term.</p>
               </div>
             </div>
             <div class="actions">
@@ -120,8 +120,8 @@
           </div>
           <div class="sequence-strip">
             <div class="sequence-chip"><strong>{{ number_format($counts['terms']) }} terms</strong> Available for planning, cloning, and activation.</div>
-            <div class="sequence-chip"><strong>{{ $activeTerm ? $activeTerm->code : 'No active term' }}</strong> Current context seen across schedule tools.</div>
-            <div class="sequence-chip"><strong>{{ $activeTerm ? 'Aligned' : 'Needs action' }}</strong> Schedule tools use this context automatically.</div>
+            <div class="sequence-chip"><strong>{{ $activeTerm ? $activeTerm->code : 'No active term' }}</strong> Current active term.</div>
+            <div class="sequence-chip"><strong>{{ $activeTerm ? 'Aligned' : 'Needs action' }}</strong> Schedule pages follow this term.</div>
           </div>
         </article>
 
@@ -131,8 +131,8 @@
               <div class="sequence-index">2</div>
               <div>
                 <div class="sequence-label">Prepare inputs</div>
-                <h2 class="sequence-title">Verify the data that drives assignments and conflicts.</h2>
-                <p class="sequence-copy">Review source data before building sections and room assignments.</p>
+                <h2 class="sequence-title">Check catalog, instructors, and rooms.</h2>
+                <p class="sequence-copy">These records drive scheduling and conflict checks.</p>
               </div>
             </div>
             <div class="actions">
@@ -154,8 +154,8 @@
               <div class="sequence-index">3</div>
               <div>
                 <div class="sequence-label">Execute and publish</div>
-                <h2 class="sequence-title">Operate the schedule from one place instead of chasing tools.</h2>
-                <p class="sequence-copy">Build, validate, and publish from the schedule workspace.</p>
+                <h2 class="sequence-title">Build and publish the schedule.</h2>
+                <p class="sequence-copy">Open the active term schedule.</p>
               </div>
             </div>
             <div class="actions">
@@ -165,16 +165,16 @@
           </div>
           <div class="sequence-strip">
             <div class="sequence-chip"><strong>{{ number_format($counts['sections']) }} sections</strong> Existing records that feed scheduling work.</div>
-            <div class="sequence-chip"><strong>{{ $activeTerm ? 'Ready to move' : 'Blocked by context' }}</strong> Progress is fastest when the active term is already selected.</div>
-            <div class="sequence-chip"><strong>One launch point</strong> Reduces clicks by keeping the full schedule workflow together.</div>
+            <div class="sequence-chip"><strong>{{ $activeTerm ? 'Ready to move' : 'Blocked by context' }}</strong> Set the term before scheduling.</div>
+            <div class="sequence-chip"><strong>Readiness</strong> Review blockers before publish.</div>
           </div>
         </article>
       </div>
 
       <aside class="lg:col-span-5 watchlist">
-        <div class="briefing-kicker">Operational signals</div>
-        <h2 class="watchlist-title">Workspace totals</h2>
-        <p class="watchlist-copy">Workspace counts across planning, staffing, rooms, and sections.</p>
+        <div class="briefing-kicker">Totals</div>
+        <h2 class="watchlist-title">Records on file</h2>
+        <p class="watchlist-copy">Terms, courses, instructors, rooms, and sections.</p>
 
         <div class="watchlist-group">
           <div class="watchlist-item">

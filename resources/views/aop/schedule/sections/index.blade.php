@@ -15,9 +15,7 @@
     <section class="page-header">
       <span class="page-eyebrow">Section Directory</span>
       <h1 class="page-title">Every section in the active term, with its missing pieces visible.</h1>
-      <p class="page-subtitle">
-        This is the scan-and-jump view for section work. Filter here when you need to triage across the term, then jump straight back into the schedule studio or focused editor at the exact section.
-      </p>
+      <p class="page-subtitle">Filter sections, spot gaps, and open the next one to fix.</p>
 
       <div class="summary-strip">
         <div class="summary-stat">
@@ -53,7 +51,7 @@
       <div class="workspace-header">
         <div>
           <h2 class="workspace-title">Filter the section queue</h2>
-          <p class="workspace-copy">Keep the result set small so the next fix is obvious. Search works across course, section, and instructor.</p>
+          <p class="workspace-copy">Search by course, section, or instructor.</p>
         </div>
       </div>
 
@@ -112,7 +110,7 @@
         <div class="workspace-header">
           <div>
             <h2 class="workspace-title">No sections match the current filters</h2>
-            <p class="workspace-copy">Reset the filters or create a section directly inside the schedule studio so you can continue into meetings without another page change.</p>
+            <p class="workspace-copy">Reset the filters or add another section.</p>
           </div>
           <div class="actions">
             <a class="btn" href="{{ route('aop.schedule.home') }}">Go to Studio</a>
@@ -184,8 +182,8 @@
             @endif
 
             <div class="section-actions">
-              <a class="btn" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Open in Studio</a>
-              <a class="btn secondary" href="{{ route('aop.schedule.sections.edit', $section) }}">Focused Editor</a>
+              <a class="btn" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Open</a>
+              <a class="btn secondary" href="{{ route('aop.schedule.sections.edit', $section) }}">Edit</a>
               <a class="btn secondary" href="{{ route('aop.syllabi.show', $section) }}">Syllabus</a>
             </div>
           </article>

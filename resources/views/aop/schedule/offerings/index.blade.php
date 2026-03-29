@@ -10,9 +10,7 @@
     <section class="page-header">
       <span class="page-eyebrow">Schedule Coverage</span>
       <h1 class="page-title">Offering lineup for {{ $term->code }}</h1>
-      <p class="page-subtitle">
-        Use this view to confirm which catalog courses are already in the active term, then jump back into the schedule studio to add sections and meetings without losing context.
-      </p>
+      <p class="page-subtitle">Review active-term offerings and open the ones that need sections.</p>
 
       <div class="summary-strip">
         <div class="summary-stat">
@@ -49,7 +47,7 @@
         <div class="workspace-header">
           <div>
             <h2 class="workspace-title">No offerings yet</h2>
-            <p class="workspace-copy">Start in the schedule studio so you can create the offering and continue directly into section setup without switching pages.</p>
+            <p class="workspace-copy">Add the first offering to start the term schedule.</p>
           </div>
           <div class="actions">
             <a class="btn" href="{{ route('aop.schedule.home') }}">Create in Studio</a>
@@ -98,9 +96,9 @@
 
             <div class="section-actions">
               <a class="btn" href="{{ route('aop.schedule.home', ['focus_offering' => $offering->id]) }}#offering-{{ $offering->id }}">
-                {{ $offering->sections_count === 0 ? 'Add First Section' : 'Open in Studio' }}
+                {{ $offering->sections_count === 0 ? 'Add First Section' : 'Open' }}
               </a>
-              <a class="btn secondary" href="{{ route('aop.schedule.sections.index', ['q' => $course?->code]) }}">Find Sections</a>
+              <a class="btn secondary" href="{{ route('aop.schedule.sections.index', ['q' => $course?->code]) }}">Sections</a>
             </div>
           </article>
         @endforeach

@@ -31,7 +31,7 @@
           </span>
           <span class="status-ribbon-item">
             <span class="status-ribbon-dot {{ $templateExists ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>
-            {{ $templateExists ? 'Template fallback installed' : 'No template fallback' }}
+            {{ $templateExists ? 'Template installed' : 'Template missing' }}
           </span>
           <span class="status-ribbon-item">
             <span class="status-ribbon-dot {{ $coreOverrideCount === 0 ? 'bg-slate-400' : 'bg-amber-500' }}"></span>
@@ -54,9 +54,9 @@
       </div>
 
       <aside class="briefing-sidebar">
-        <div class="briefing-kicker">At a glance</div>
+        <div class="briefing-kicker">Section</div>
         <h2 class="watchlist-title">Current section</h2>
-        <p class="watchlist-copy">Section details, instructor assignment, and the latest successful exports.</p>
+        <p class="watchlist-copy">Details and recent exports.</p>
 
         <div class="watchlist-group">
           <div class="watchlist-item">
@@ -96,7 +96,7 @@
         <div>
           <div class="briefing-kicker">Preview</div>
           <h2 class="ledger-title">Document view</h2>
-          <p class="ledger-copy">Current HTML preview for this section syllabus.</p>
+          <p class="ledger-copy">Current HTML preview.</p>
         </div>
       </div>
 
@@ -117,7 +117,7 @@
         <div>
           <div class="briefing-kicker">Core content</div>
           <h2 class="ledger-title">Top-of-syllabus fields</h2>
-          <p class="ledger-copy">Edit course description, objectives, and required materials for this section.</p>
+          <p class="ledger-copy">Course description, objectives, and materials.</p>
         </div>
         <div class="actions">
           <a class="btn" href="{{ route('aop.syllabi.core.edit', $section) }}">Edit Core Content</a>
@@ -189,7 +189,7 @@
         <div>
           <div class="briefing-kicker">Structure</div>
           <h2 class="ledger-title">Ordered syllabus sections</h2>
-          <p class="ledger-copy">Section-specific items and globally shared structure used in this syllabus.</p>
+          <p class="ledger-copy">Shared and section-level syllabus sections.</p>
         </div>
         <div class="actions">
           <a class="btn secondary" href="{{ route('aop.syllabi.index') }}">Manage Structure</a>
@@ -280,7 +280,7 @@
         <div>
           <div class="briefing-kicker">Export tokens</div>
           <h2 class="ledger-title">DOCX placeholders</h2>
-          <p class="ledger-copy">Placeholders available for this syllabus when exporting to DOCX.</p>
+          <p class="ledger-copy">Placeholders available to the DOCX template.</p>
         </div>
       </div>
 
@@ -313,51 +313,9 @@
     <section class="ledger-shell">
       <div class="ledger-header">
         <div>
-          <div class="briefing-kicker">Shared blocks</div>
-          <h2 class="ledger-title">Legacy shared content</h2>
-          <p class="ledger-copy">Shared blocks still available to this syllabus.</p>
-        </div>
-        <div class="actions">
-          <a class="btn secondary" href="{{ route('aop.syllabi.blocks.create') }}">New Block</a>
-        </div>
-      </div>
-
-      @if(($blocks ?? collect())->count() === 0)
-        <p class="mt-5 muted">No shared syllabus blocks have been created yet.</p>
-      @else
-        <div class="stack-grid mt-5">
-          @foreach($blocks as $block)
-            <div class="surface-note">
-              <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <div class="text-base font-semibold text-slate-900">{{ $block['title'] ?: 'Untitled Block' }}</div>
-                  <div class="muted">
-                    {{ $block['category'] ?: 'Uncategorized' }}
-                    @if(!empty($block['version']))
-                      · Version {{ $block['version'] }}
-                    @endif
-                    @if(!empty($block['is_locked']))
-                      · Protected
-                    @endif
-                  </div>
-                </div>
-                <div class="actions">
-                  <a class="btn secondary sm" href="{{ route('aop.syllabi.blocks.edit', $block['id']) }}">Edit</a>
-                </div>
-              </div>
-              <div class="markdown-body mt-4">{!! $block['content_rendered'] ?? '<p>—</p>' !!}</div>
-            </div>
-          @endforeach
-        </div>
-      @endif
-    </section>
-
-    <section class="ledger-shell">
-      <div class="ledger-header">
-        <div>
           <div class="briefing-kicker">Render history</div>
           <h2 class="ledger-title">Recent exports</h2>
-          <p class="ledger-copy">Recent DOCX and PDF render activity for this section.</p>
+          <p class="ledger-copy">Recent DOCX and PDF renders.</p>
         </div>
       </div>
 

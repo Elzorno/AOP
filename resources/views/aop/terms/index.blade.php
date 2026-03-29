@@ -10,8 +10,8 @@
     <section class="briefing-grid">
       <div class="briefing-panel briefing-panel-strong">
         <div class="briefing-kicker">Term control</div>
-        <h1 class="briefing-title">{{ $active ? 'Keep the schedule anchored to one active term.' : 'Choose the active term before anyone schedules.' }}</h1>
-        <p class="briefing-copy">Set the active term, create new planning cycles, and manage draft or published terms.</p>
+        <h1 class="briefing-title">{{ $active ? $active->code.' is active' : 'Set the active term' }}</h1>
+        <p class="briefing-copy">Manage active, draft, and published terms.</p>
 
         <div class="status-ribbon">
           <span class="status-ribbon-item">
@@ -37,15 +37,15 @@
       </div>
 
       <aside class="briefing-sidebar">
-        <div class="briefing-kicker">At a glance</div>
+        <div class="briefing-kicker">Status</div>
         <h2 class="watchlist-title">Current term status</h2>
-        <p class="watchlist-copy">Active, draft, and published term counts.</p>
+        <p class="watchlist-copy">Active, draft, and published counts.</p>
 
         <div class="watchlist-group">
           <div class="watchlist-item">
             <div>
               <div class="watchlist-name">Active term</div>
-              <div class="watchlist-note">Used by schedule and publication flows</div>
+              <div class="watchlist-note">Used across schedule pages</div>
             </div>
             <span class="watchlist-value {{ $active ? 'good' : 'warn' }}">{{ $active ? $active->code : 'Unset' }}</span>
           </div>
@@ -75,8 +75,8 @@
               <div class="sequence-index">1</div>
               <div>
                 <div class="sequence-label">Primary action</div>
-                <h2 class="sequence-title">Set the active term once, then let the rest of the app follow it.</h2>
-                <p class="sequence-copy">Schedule and publication tools use this term automatically.</p>
+                <h2 class="sequence-title">Set the active term.</h2>
+                <p class="sequence-copy">Schedule pages follow this term automatically.</p>
               </div>
             </div>
           </div>
@@ -104,8 +104,8 @@
               <div class="sequence-index">2</div>
               <div>
                 <div class="sequence-label">Fast cloning path</div>
-                <h2 class="sequence-title">Reuse a strong starting point instead of rebuilding from zero.</h2>
-                <p class="sequence-copy">Create a new draft from an existing term and adjust it for the next cycle.</p>
+                <h2 class="sequence-title">Clone an existing term into a draft.</h2>
+                <p class="sequence-copy">Reuse an earlier setup for the next cycle.</p>
               </div>
             </div>
           </div>
@@ -118,9 +118,9 @@
       </div>
 
       <aside class="lg:col-span-5 watchlist">
-        <div class="briefing-kicker">Decision support</div>
-        <h2 class="watchlist-title">Before you continue</h2>
-        <p class="watchlist-copy">Activation changes the default term. Cloning creates a new draft from an existing setup.</p>
+        <div class="briefing-kicker">Notes</div>
+        <h2 class="watchlist-title">Term actions</h2>
+        <p class="watchlist-copy">Activation changes the default term. Cloning creates a new draft.</p>
 
         <div class="watchlist-group">
           <div class="watchlist-item">
@@ -153,7 +153,7 @@
         <div>
           <div class="briefing-kicker">Term ledger</div>
           <h2 class="ledger-title">All terms</h2>
-          <p class="ledger-copy">Compare dates, settings, status, and actions for every term.</p>
+          <p class="ledger-copy">Dates, settings, status, and actions.</p>
         </div>
       </div>
 

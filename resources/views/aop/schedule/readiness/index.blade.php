@@ -17,9 +17,7 @@
     <section class="page-header">
       <span class="page-eyebrow">Readiness Review</span>
       <h1 class="page-title">{{ $blockingIssueCount === 0 ? 'The active term is release-ready.' : 'Resolve blockers before publishing '.$term->code.'.' }}</h1>
-      <p class="page-subtitle">
-        Readiness keeps all publish-critical checks in one place: instructional minutes, office hours, missing assignments, missing rooms, and overlap conflicts.
-      </p>
+      <p class="page-subtitle">Instructional minutes, office hours, missing assignments, and conflicts.</p>
 
       <div class="summary-strip">
         <div class="summary-stat">
@@ -45,7 +43,7 @@
       </div>
 
       <div class="toolbar-line">
-        <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule Studio</a>
+        <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
         <a class="btn secondary" href="{{ route('aop.schedule.sections.index') }}">Section Directory</a>
         <a class="btn secondary" href="{{ route('aop.schedule.officeHours.index') }}">Office Hours</a>
         <a class="btn secondary" href="{{ route('aop.schedule.publish.index') }}">Publishing</a>
@@ -59,9 +57,7 @@
             <div>
               <div class="briefing-kicker">Instructional minutes</div>
               <h2 class="workspace-title">ODHE / SSU compliance by section</h2>
-              <p class="workspace-copy">
-                Required minutes are based on lecture and lab contact hours, scaled to <strong>{{ $term->weeks_in_term ?? 15 }}</strong> term week{{ ($term->weeks_in_term ?? 15) === 1 ? '' : 's' }}.
-              </p>
+              <p class="workspace-copy">Required minutes scaled to <strong>{{ $term->weeks_in_term ?? 15 }}</strong> term week{{ ($term->weeks_in_term ?? 15) === 1 ? '' : 's' }}.</p>
             </div>
           </div>
 
@@ -126,7 +122,7 @@
             <div>
               <div class="briefing-kicker">Office hours</div>
               <h2 class="workspace-title">Full-time instructor compliance</h2>
-              <p class="workspace-copy">Full-time instructors need at least 4 hours per week across at least 3 distinct days, without overlapping their classes.</p>
+              <p class="workspace-copy">Full-time instructors need 4 hours across at least 3 days.</p>
             </div>
           </div>
 
@@ -186,7 +182,7 @@
           <article class="record-card {{ $roomConflictCount > 0 ? 'record-card-danger' : 'record-card-good' }}">
             <div class="briefing-kicker">Room conflicts</div>
             <h2 class="workspace-title mt-2">Physical space overlaps</h2>
-            <p class="workspace-copy">Conflicts here mean two classes claim the same room during overlapping time windows.</p>
+            <p class="workspace-copy">Overlapping room assignments.</p>
 
             @if($roomConflictCount === 0)
               <div class="status-note mt-5">No room conflicts are currently detected.</div>
@@ -208,7 +204,7 @@
           <article class="record-card {{ $instructorConflictCount > 0 ? 'record-card-danger' : 'record-card-good' }}">
             <div class="briefing-kicker">Instructor conflicts</div>
             <h2 class="workspace-title mt-2">Class and office-hour overlaps</h2>
-            <p class="workspace-copy">These conflicts check instructor availability across classes and office hours with the active term buffer applied.</p>
+            <p class="workspace-copy">Overlapping class and office-hour assignments.</p>
 
             @if($instructorConflictCount === 0)
               <div class="status-note mt-5">No instructor conflicts are currently detected.</div>

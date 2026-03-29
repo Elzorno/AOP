@@ -3,14 +3,12 @@
 
   <div class="page-shell">
     <section class="page-header">
-      <span class="page-eyebrow">Fallback Form</span>
+      <span class="page-eyebrow">Sections</span>
       <h1 class="page-title">Create a section for the active term</h1>
-      <p class="page-subtitle">
-        The schedule studio is still the fastest place to add sections because it keeps the offering context visible, but this focused form is here when you need a dedicated entry screen.
-      </p>
+      <p class="page-subtitle">Choose the offering, then set the section details.</p>
 
       <div class="toolbar-line">
-        <a class="btn" href="{{ route('aop.schedule.home') }}">Create in Studio Instead</a>
+        <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
         <a class="btn secondary" href="{{ route('aop.schedule.sections.index') }}">Section Directory</a>
       </div>
     </section>
@@ -19,7 +17,7 @@
       <div class="workspace-header">
         <div>
           <h2 class="workspace-title">Section details</h2>
-          <p class="workspace-copy">Choose the offering first, then set the section code, instructor, and modality before moving into meeting times.</p>
+          <p class="workspace-copy">Offering, section code, instructor, modality, and notes.</p>
         </div>
       </div>
 

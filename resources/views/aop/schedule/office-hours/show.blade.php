@@ -18,9 +18,7 @@
     <section class="page-header">
       <span class="page-eyebrow">Office Hours</span>
       <h1 class="page-title">{{ $instructor->name }}</h1>
-      <p class="page-subtitle">
-        Keep instructor availability aligned with the active term so readiness, schedule conflicts, and publication checks all use the same source of truth.
-      </p>
+      <p class="page-subtitle">{{ $instructor->email }}</p>
 
       <div class="summary-strip">
         <div class="summary-stat">
@@ -58,7 +56,7 @@
           <div class="workspace-header">
             <div>
               <h2 class="workspace-title">Availability status</h2>
-              <p class="workspace-copy">Lock office hours when the instructor’s availability is finalized so later schedule work cannot change it accidentally.</p>
+              <p class="workspace-copy">Lock or unlock office hours for this term.</p>
             </div>
             <div class="actions">
               @if ($lock->office_hours_locked)
@@ -86,7 +84,7 @@
           <div class="workspace-header">
             <div>
               <h2 class="workspace-title">Current office-hour blocks</h2>
-              <p class="workspace-copy">Keep blocks editable inline so you can review the full weekly pattern without switching screens.</p>
+              <p class="workspace-copy">Saved office-hour blocks.</p>
             </div>
           </div>
 
@@ -172,7 +170,7 @@
           <div class="workspace-header">
             <div>
               <h2 class="workspace-title">Add an office-hour block</h2>
-              <p class="workspace-copy">Use a small number of clear weekly blocks so availability stays easy to review and conflict checks stay understandable.</p>
+              <p class="workspace-copy">Add another weekly block.</p>
             </div>
           </div>
 
@@ -217,7 +215,7 @@
 
       <aside class="editor-side">
         <section class="watchlist">
-          <div class="briefing-kicker">Instructor context</div>
+          <div class="briefing-kicker">Instructor</div>
           <h2 class="watchlist-title">{{ $instructor->name }}</h2>
           <p class="watchlist-copy">{{ $instructor->email }}</p>
 
@@ -247,9 +245,9 @@
         </section>
 
         <section class="watchlist">
-          <div class="briefing-kicker">Guidance</div>
-          <h2 class="watchlist-title">What this page protects</h2>
-          <p class="watchlist-copy">Clean office-hour data keeps instructor conflict checking honest everywhere else in the scheduling workflow.</p>
+          <div class="briefing-kicker">Notes</div>
+          <h2 class="watchlist-title">Office-hour rules</h2>
+          <p class="watchlist-copy">These checks are applied when blocks are saved.</p>
 
           <ul class="helper-list mt-5">
             <li>End time must always be after the start time.</li>

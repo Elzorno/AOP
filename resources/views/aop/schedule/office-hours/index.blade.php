@@ -3,14 +3,12 @@
 
   <div class="page-shell">
     <section class="page-header">
-      <span class="page-eyebrow">Instructor Availability</span>
-      <h1 class="page-title">Office hours live inside the same active-term workflow.</h1>
-      <p class="page-subtitle">
-        Choose an instructor to review or update office hours for the current term. These blocks are checked against class meetings during readiness and conflict review.
-      </p>
+      <span class="page-eyebrow">Office Hours</span>
+      <h1 class="page-title">Office hours for the active term</h1>
+      <p class="page-subtitle">Choose an instructor to review or update weekly availability.</p>
 
       <div class="toolbar-line">
-        <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule Studio</a>
+        <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
         @if($term)
           <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
         @else
@@ -24,7 +22,7 @@
         <div class="workspace-header">
           <div>
             <h2 class="workspace-title">No active term selected</h2>
-            <p class="workspace-copy">Office hours are always scoped to the active term, so choose the term first and then return here to manage instructor availability.</p>
+            <p class="workspace-copy">Set the term, then manage instructor availability.</p>
           </div>
           <div class="actions">
             <a class="btn" href="{{ route('aop.terms.index') }}">Open Terms</a>
@@ -36,7 +34,7 @@
         <div class="workspace-header">
           <div>
             <h2 class="workspace-title">Select an instructor</h2>
-            <p class="workspace-copy">Once selected, you can review office-hour coverage, lock state, and overlap issues without leaving the active term context.</p>
+            <p class="workspace-copy">Open an instructor to edit office hours.</p>
           </div>
         </div>
 

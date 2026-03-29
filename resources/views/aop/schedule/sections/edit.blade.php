@@ -14,11 +14,9 @@
 
   <div class="page-shell">
     <section class="page-header">
-      <span class="page-eyebrow">Section Workspace</span>
+      <span class="page-eyebrow">Section</span>
       <h1 class="page-title">{{ $course->code }} {{ $section->section_code }}</h1>
-      <p class="page-subtitle">
-        Keep section setup, meeting edits, and conflict review in one place. Use this focused editor when you need more room than the schedule studio, then jump back without losing the active term context.
-      </p>
+      <p class="page-subtitle">{{ $course->title }}</p>
 
       <div class="summary-strip">
         <div class="summary-stat">
@@ -44,7 +42,7 @@
       </div>
 
       <div class="toolbar-line">
-        <a class="btn" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Back to Schedule Studio</a>
+        <a class="btn" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Back to Schedule</a>
         <a class="btn secondary" href="{{ route('aop.schedule.sections.index', ['q' => $course->code]) }}">Section Directory</a>
         <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
         <a class="btn secondary" href="{{ route('aop.syllabi.show', $section) }}">Syllabus</a>
@@ -57,7 +55,7 @@
           <div class="workspace-header">
             <div>
               <h2 class="workspace-title">Section setup</h2>
-              <p class="workspace-copy">Update the section identity, instructor, and modality before moving into meeting times.</p>
+              <p class="workspace-copy">Section code, instructor, modality, and notes.</p>
             </div>
           </div>
 
@@ -108,7 +106,7 @@
           <div class="workspace-header">
             <div>
               <h2 class="workspace-title">Current meeting blocks</h2>
-              <p class="workspace-copy">Edit the existing pattern inline so timing, days, and rooms stay visible while you work.</p>
+              <p class="workspace-copy">Edit saved meeting times and rooms.</p>
             </div>
           </div>
 
@@ -203,7 +201,7 @@
           <div class="workspace-header">
             <div>
               <h2 class="workspace-title">Add a meeting block</h2>
-              <p class="workspace-copy">Use a conflict-aware suggestion to move faster, or enter the pattern manually when you already know the slot.</p>
+              <p class="workspace-copy">Find an open slot or enter a new block.</p>
             </div>
           </div>
 
@@ -319,7 +317,7 @@
         </section>
 
         <section class="watchlist">
-          <div class="briefing-kicker">Course context</div>
+          <div class="briefing-kicker">Course</div>
           <h2 class="watchlist-title">{{ $course->code }} · {{ $course->title }}</h2>
           <p class="watchlist-copy">Key course details that affect section planning.</p>
 
@@ -332,9 +330,9 @@
         </section>
 
         <section class="watchlist">
-          <div class="briefing-kicker">Conflict notes</div>
+          <div class="briefing-kicker">Conflicts</div>
           <h2 class="watchlist-title">Current checks</h2>
-          <p class="watchlist-copy">These are the issues currently detected from this section’s saved meeting pattern.</p>
+          <p class="watchlist-copy">Issues found in the saved meeting pattern.</p>
 
           @if(count($conflictNotes) === 0)
             <div class="status-note mt-5">No room or instructor conflicts are currently detected for the existing blocks.</div>
