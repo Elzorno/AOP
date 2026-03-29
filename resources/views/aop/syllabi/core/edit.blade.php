@@ -1,120 +1,121 @@
 @php
   $catalogCourse = $section->offering->catalogCourse ?? null;
   $coreContent = $packet['core_content'] ?? [];
+  $fieldConfig = [
+    'course_description' => [
+      'label' => 'Course Description',
+      'name' => 'course_description_override',
+      'placeholder' => 'Leave blank to use the catalog course description.',
+    ],
+    'course_objectives' => [
+      'label' => 'Course Objectives',
+      'name' => 'course_objectives_override',
+      'placeholder' => 'Leave blank to use the catalog course objectives.',
+    ],
+    'required_materials' => [
+      'label' => 'Required Materials',
+      'name' => 'required_materials_override',
+      'placeholder' => 'Leave blank to use the catalog required materials.',
+    ],
+  ];
 @endphp
 
-<x-aop-layout :activeTermLabel="$term ? 'Active Term: '.$term->code.' — '.$term->name : 'No active term selected'">
+<x-aop-layout :activeTermLabel="$term ? 'Active Term: '.$term->code.' - '.$term->name : 'No active term selected'">
   <x-slot:title>Edit Core Syllabus Content</x-slot:title>
 
-  <div class="row" style="margin-bottom:14px;">
-    <div>
-      <h1>Edit Core Syllabus Content</h1>
-      <p class="muted" style="margin-top:6px; max-width:940px;">
-        {{ $packet['course']['code'] ?? '' }} — Section {{ $packet['section']['code'] ?? '' }}.
-        Use this page to override the fixed top syllabus content for this one section only. Leave a field blank to use the catalog default.
-      </p>
-    </div>
-    <div class="actions">
-      <a class="btn secondary" href="{{ route('aop.syllabi.show', $section) }}">Back to Preview</a>
-      @if($catalogCourse)
-        <a class="btn secondary" href="{{ route('aop.catalog.edit', $catalogCourse) }}">Edit Catalog Course</a>
-      @endif
-    </div>
+  <div class="page-shell">
+    <section class="briefing-grid">
+      <div class="briefing-panel briefing-panel-strong">
+        <div class="briefing-kicker">Core content</div>
+        <h1 class="briefing-title">{{ ($packet['course']['code'] ?? '') . ' - Section ' . ($packet['section']['code'] ?? '') }}</h1>
+        <p class="briefing-copy">Update the fixed top portion of this syllabus. Leave any field blank to use the catalog value.</p>
+
+        <div class="status-ribbon">
+          @foreach($fieldConfig as $key => $config)
+            @php $source = $coreContent[$key]['source'] ?? 'missing'; @endphp
+            <span class="status-ribbon-item">
+              <span class="status-ribbon-dot {{ $source === 'override' ? 'bg-amber-500' : ($source === 'catalog' ? 'bg-blue-500' : 'bg-red-500') }}"></span>
+              {{ $config['label'] }}: {{ $source === 'override' ? 'Override' : ($source === 'catalog' ? 'Catalog' : 'Missing') }}
+            </span>
+          @endforeach
+        </div>
+
+        <div class="mt-8 quick-actions">
+          <a class="btn secondary" href="{{ route('aop.syllabi.show', $section) }}">Back to Preview</a>
+          @if($catalogCourse)
+            <a class="btn secondary" href="{{ route('aop.catalog.edit', $catalogCourse) }}">Edit Catalog Course</a>
+          @endif
+        </div>
+      </div>
+
+      <aside class="briefing-sidebar">
+        <div class="briefing-kicker">Current sources</div>
+        <h2 class="watchlist-title">Field status</h2>
+        <p class="watchlist-copy">Each field can use the catalog value or a section-specific override.</p>
+
+        <div class="watchlist-group">
+          @foreach($fieldConfig as $key => $config)
+            @php $source = $coreContent[$key]['source'] ?? 'missing'; @endphp
+            <div class="watchlist-item">
+              <div>
+                <div class="watchlist-name">{{ $config['label'] }}</div>
+                <div class="watchlist-note">{{ $source === 'override' ? 'Section-specific text saved' : ($source === 'catalog' ? 'Using catalog content' : 'No content available yet') }}</div>
+              </div>
+              <span class="watchlist-value {{ $source === 'override' ? 'warn' : ($source === 'catalog' ? 'good' : 'danger') }}">{{ ucfirst($source) }}</span>
+            </div>
+          @endforeach
+        </div>
+      </aside>
+    </section>
+
+    <form method="POST" action="{{ route('aop.syllabi.core.update', $section) }}" class="form-stack">
+      @csrf
+      @method('PUT')
+
+      @foreach($fieldConfig as $key => $config)
+        @php
+          $field = $coreContent[$key] ?? [];
+          $source = $field['source'] ?? 'missing';
+          $overrideValue = old($config['name'], $syllabus->{$config['name']} ?? '');
+        @endphp
+        <section class="form-card">
+          <div class="form-card-header">
+            <div>
+              <h2 class="form-card-title">{{ $config['label'] }}</h2>
+              <p class="form-card-copy">Save section-specific text here or leave the field blank to use the catalog value.</p>
+            </div>
+            <div class="actions">
+              @if($source === 'override')
+                <span class="badge warn">Per-Syllabus Override</span>
+              @elseif($source === 'catalog')
+                <span class="badge info">Catalog Default</span>
+              @else
+                <span class="badge danger">Missing</span>
+              @endif
+            </div>
+          </div>
+
+          <label for="{{ $config['name'] }}">Override for this syllabus</label>
+          <textarea id="{{ $config['name'] }}" name="{{ $config['name'] }}" rows="10" placeholder="{{ $config['placeholder'] }}">{{ $overrideValue }}</textarea>
+          <div class="mt-2 muted">Blank uses the catalog value for this section.</div>
+
+          <div class="compare-grid">
+            <div class="subcard">
+              <div class="subcard-title">Current effective value</div>
+              <div class="subcard-copy">{{ ($field['value'] ?? '') !== '' ? $field['value'] : 'No content entered yet.' }}</div>
+            </div>
+            <div class="subcard">
+              <div class="subcard-title">Catalog value</div>
+              <div class="subcard-copy">{{ ($field['catalog_value'] ?? '') !== '' ? $field['catalog_value'] : 'No catalog content entered yet.' }}</div>
+            </div>
+          </div>
+        </section>
+      @endforeach
+
+      <div class="actions">
+        <button class="btn" type="submit">Save Core Content</button>
+        <a class="btn secondary" href="{{ route('aop.syllabi.show', $section) }}">Cancel</a>
+      </div>
+    </form>
   </div>
-
-  <div class="card" style="margin-bottom:14px;">
-    <h2>How this works</h2>
-    <p class="muted" style="margin-top:6px; max-width:960px;">
-      The fixed top content in the syllabus can come from either the shared catalog course or a per-syllabus override for this section.
-      Saving non-blank text here creates an override. Clearing a field and saving sends it back to the catalog default.
-    </p>
-  </div>
-
-  <form method="POST" action="{{ route('aop.syllabi.core.update', $section) }}">
-    @csrf
-    @method('PUT')
-
-    <div class="card" style="margin-bottom:14px;">
-      <h2>Course Description</h2>
-      <div class="actions" style="margin-top:8px; gap:8px;">
-        @if(($coreContent['course_description']['source'] ?? '') === 'override')
-          <span class="badge warn">Per-Syllabus Override</span>
-        @elseif(($coreContent['course_description']['source'] ?? '') === 'catalog')
-          <span class="badge info">Catalog Default</span>
-        @else
-          <span class="badge danger">Missing</span>
-        @endif
-      </div>
-      <label>Override for this syllabus</label>
-      <textarea name="course_description_override" rows="10" placeholder="Leave blank to use the catalog course description.">{{ old('course_description_override', $syllabus->course_description_override) }}</textarea>
-      <div class="muted" style="margin-top:8px; font-size:12px;">Blank = use catalog default for this syllabus.</div>
-      <div class="split" style="margin-top:12px;">
-        <div>
-          <h3 style="margin-bottom:6px;">Current Effective Value</h3>
-          <div class="card" style="padding:12px; border-radius:12px; background:#fafafa; white-space:pre-wrap;">{{ ($coreContent['course_description']['value'] ?? '') !== '' ? $coreContent['course_description']['value'] : 'No content entered yet.' }}</div>
-        </div>
-        <div>
-          <h3 style="margin-bottom:6px;">Catalog Default</h3>
-          <div class="card" style="padding:12px; border-radius:12px; background:#fafafa; white-space:pre-wrap;">{{ ($coreContent['course_description']['catalog_value'] ?? '') !== '' ? $coreContent['course_description']['catalog_value'] : 'No catalog content entered yet.' }}</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:14px;">
-      <h2>Course Objectives</h2>
-      <div class="actions" style="margin-top:8px; gap:8px;">
-        @if(($coreContent['course_objectives']['source'] ?? '') === 'override')
-          <span class="badge warn">Per-Syllabus Override</span>
-        @elseif(($coreContent['course_objectives']['source'] ?? '') === 'catalog')
-          <span class="badge info">Catalog Default</span>
-        @else
-          <span class="badge danger">Missing</span>
-        @endif
-      </div>
-      <label>Override for this syllabus</label>
-      <textarea name="course_objectives_override" rows="10" placeholder="Leave blank to use the catalog course objectives.">{{ old('course_objectives_override', $syllabus->course_objectives_override) }}</textarea>
-      <div class="muted" style="margin-top:8px; font-size:12px;">Blank = use catalog default for this syllabus.</div>
-      <div class="split" style="margin-top:12px;">
-        <div>
-          <h3 style="margin-bottom:6px;">Current Effective Value</h3>
-          <div class="card" style="padding:12px; border-radius:12px; background:#fafafa; white-space:pre-wrap;">{{ ($coreContent['course_objectives']['value'] ?? '') !== '' ? $coreContent['course_objectives']['value'] : 'No content entered yet.' }}</div>
-        </div>
-        <div>
-          <h3 style="margin-bottom:6px;">Catalog Default</h3>
-          <div class="card" style="padding:12px; border-radius:12px; background:#fafafa; white-space:pre-wrap;">{{ ($coreContent['course_objectives']['catalog_value'] ?? '') !== '' ? $coreContent['course_objectives']['catalog_value'] : 'No catalog content entered yet.' }}</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:14px;">
-      <h2>Required Materials</h2>
-      <div class="actions" style="margin-top:8px; gap:8px;">
-        @if(($coreContent['required_materials']['source'] ?? '') === 'override')
-          <span class="badge warn">Per-Syllabus Override</span>
-        @elseif(($coreContent['required_materials']['source'] ?? '') === 'catalog')
-          <span class="badge info">Catalog Default</span>
-        @else
-          <span class="badge danger">Missing</span>
-        @endif
-      </div>
-      <label>Override for this syllabus</label>
-      <textarea name="required_materials_override" rows="10" placeholder="Leave blank to use the catalog required materials.">{{ old('required_materials_override', $syllabus->required_materials_override) }}</textarea>
-      <div class="muted" style="margin-top:8px; font-size:12px;">Blank = use catalog default for this syllabus.</div>
-      <div class="split" style="margin-top:12px;">
-        <div>
-          <h3 style="margin-bottom:6px;">Current Effective Value</h3>
-          <div class="card" style="padding:12px; border-radius:12px; background:#fafafa; white-space:pre-wrap;">{{ ($coreContent['required_materials']['value'] ?? '') !== '' ? $coreContent['required_materials']['value'] : 'No content entered yet.' }}</div>
-        </div>
-        <div>
-          <h3 style="margin-bottom:6px;">Catalog Default</h3>
-          <div class="card" style="padding:12px; border-radius:12px; background:#fafafa; white-space:pre-wrap;">{{ ($coreContent['required_materials']['catalog_value'] ?? '') !== '' ? $coreContent['required_materials']['catalog_value'] : 'No catalog content entered yet.' }}</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="actions">
-      <button class="btn" type="submit">Save Core Content</button>
-      <a class="btn secondary" href="{{ route('aop.syllabi.show', $section) }}">Cancel</a>
-    </div>
-  </form>
 </x-aop-layout>

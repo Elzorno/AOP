@@ -1,287 +1,338 @@
-<x-aop-layout :activeTermLabel="$term ? 'Active Term: '.$term->code.' — '.$term->name : 'No active term selected'">
+<x-aop-layout :activeTermLabel="$term ? 'Active Term: '.$term->code.' - '.$term->name : 'No active term selected'">
   <x-slot:title>Syllabi</x-slot:title>
 
-  <div class="row" style="margin-bottom:14px;">
-    <div>
-      <h1>Syllabi</h1>
-      @if($term)
-        <p style="margin-top:6px;"><strong>{{ $term->code }}</strong> — {{ $term->name }}</p>
+  @php
+    $definitionsCount = ($definitions ?? collect())->count();
+    $blocksCount = ($blocks ?? collect())->count();
+    $sectionsCount = ($sections ?? collect())->count();
+  @endphp
+
+  <div class="page-shell">
+    <section class="briefing-grid">
+      <div class="briefing-panel briefing-panel-strong">
+        <div class="briefing-kicker">Syllabi workspace</div>
+        <h1 class="briefing-title">{{ $term ? 'Manage syllabus content and exports for '.$term->code.'.' : 'Set an active term to work with syllabi.' }}</h1>
+        <p class="briefing-copy">
+          {{ $term
+              ? 'Manage the export template, structure sections, shared blocks, and section outputs from one place.'
+              : 'Choose the active term first, then return here to manage section syllabi and exports.' }}
+        </p>
+
+        <div class="status-ribbon">
+          <span class="status-ribbon-item">
+            <span class="status-ribbon-dot bg-blue-500"></span>
+            Export mode {{ strtoupper($exportEngine ?? 'auto') }}
+          </span>
+          <span class="status-ribbon-item">
+            <span class="status-ribbon-dot {{ $templateExists ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>
+            {{ $templateExists ? 'Template installed' : 'Template missing' }}
+          </span>
+          <span class="status-ribbon-item">
+            <span class="status-ribbon-dot bg-slate-500"></span>
+            {{ $definitionsCount }} structure sections
+          </span>
+          <span class="status-ribbon-item">
+            <span class="status-ribbon-dot bg-slate-500"></span>
+            {{ $sectionsCount }} sections
+          </span>
+        </div>
+
+        <div class="mt-8 quick-actions">
+          <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
+          <a class="btn" href="{{ route('aop.syllabi.structure.create') }}">New Structure Section</a>
+          <a class="btn secondary" href="{{ route('aop.syllabi.blocks.create') }}">New Shared Block</a>
+        </div>
+      </div>
+
+      <aside class="briefing-sidebar">
+        <div class="briefing-kicker">At a glance</div>
+        <h2 class="watchlist-title">Current syllabus setup</h2>
+        <p class="watchlist-copy">Template status, structure coverage, and section volume for the active term.</p>
+
+        <div class="watchlist-group">
+          <div class="watchlist-item">
+            <div>
+              <div class="watchlist-name">Active term</div>
+              <div class="watchlist-note">{{ $term ? $term->name : 'Required before generating section syllabi' }}</div>
+            </div>
+            <span class="watchlist-value {{ $term ? 'good' : 'warn' }}">{{ $term ? $term->code : 'Unset' }}</span>
+          </div>
+          <div class="watchlist-item">
+            <div>
+              <div class="watchlist-name">Template</div>
+              <div class="watchlist-note">DOCX fallback availability</div>
+            </div>
+            <span class="watchlist-value {{ $templateExists ? 'good' : 'warn' }}">{{ $templateExists ? 'Installed' : 'Missing' }}</span>
+          </div>
+          <div class="watchlist-item">
+            <div>
+              <div class="watchlist-name">Structure sections</div>
+              <div class="watchlist-note">Ordered sections available to all syllabi</div>
+            </div>
+            <span class="watchlist-value good">{{ $definitionsCount }}</span>
+          </div>
+          <div class="watchlist-item">
+            <div>
+              <div class="watchlist-name">Shared blocks</div>
+              <div class="watchlist-note">Reusable legacy content blocks</div>
+            </div>
+            <span class="watchlist-value good">{{ $blocksCount }}</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="ledger-shell">
+      <div class="ledger-header">
+        <div>
+          <div class="briefing-kicker">Export template</div>
+          <h2 class="ledger-title">DOCX template</h2>
+          <p class="ledger-copy">Upload the fallback DOCX template used when HTML-aligned export is unavailable.</p>
+        </div>
+      </div>
+
+      <div class="stack-grid-2 mt-5">
+        <div class="surface-note">
+          <strong class="text-slate-900">Current configuration</strong>
+          <div class="mt-2 text-sm text-slate-600">Export mode: {{ strtoupper($exportEngine ?? 'auto') }}</div>
+          <div class="mt-1 text-sm text-slate-600">Template: {{ $templateExists ? 'Installed' : 'Missing' }}</div>
+        </div>
+        <form method="POST" action="{{ route('aop.syllabi.template.upload') }}" enctype="multipart/form-data" class="surface-note">
+          @csrf
+          <label for="template">Upload template</label>
+          <input id="template" type="file" name="template" accept=".docx" required>
+          <div class="mt-4 actions">
+            <button class="btn" type="submit">Upload Template</button>
+          </div>
+          @error('template')
+            <div class="mt-3 text-sm text-red-700">{{ $message }}</div>
+          @enderror
+        </form>
+      </div>
+    </section>
+
+    <section class="ledger-shell">
+      <div class="ledger-header">
+        <div>
+          <div class="briefing-kicker">Structure builder</div>
+          <h2 class="ledger-title">Ordered syllabus sections</h2>
+          <p class="ledger-copy">Manage the shared structure used below the fixed top portion of each syllabus.</p>
+        </div>
+        <div class="actions">
+          <a class="btn" href="{{ route('aop.syllabi.structure.create') }}">New Structure Section</a>
+        </div>
+      </div>
+
+      @if(($definitions ?? collect())->count() === 0)
+        <p class="mt-5 muted">No structure sections have been created yet.</p>
       @else
-        <p class="muted">No active term is set.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Section</th>
+                <th>Scope</th>
+                <th>Order</th>
+                <th>Default Content</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @foreach($definitions as $definition)
+                <tr>
+                  <td>
+                    <div class="font-semibold text-slate-900">{{ $definition->title }}</div>
+                    <div class="muted">Slug: {{ $definition->slug }}</div>
+                    @if($definition->category)
+                      <div class="muted">Category: {{ $definition->category }}</div>
+                    @endif
+                    @if($definition->description)
+                      <div class="mt-2 text-sm text-slate-600">{{ $definition->description }}</div>
+                    @endif
+                  </td>
+                  <td>
+                    <span class="badge">{{ $definition->scope === 'syllabus' ? 'Per-Syllabus' : 'Global' }}</span>
+                  </td>
+                  <td>{{ $definition->sort_order }}</td>
+                  <td>
+                    <div class="markdown-body markdown-preview compact">{!! $definition->content_rendered !!}</div>
+                    <div class="mt-2 text-sm text-slate-500">{{ $definition->content_preview_text }}</div>
+                  </td>
+                  <td>
+                    <div class="stack-grid">
+                      @if($definition->is_required)
+                        <span class="badge info">Required</span>
+                      @else
+                        <span class="badge muted">Optional</span>
+                      @endif
+
+                      @if($definition->is_active)
+                        <span class="badge success">Active</span>
+                      @else
+                        <span class="badge danger">Inactive</span>
+                      @endif
+
+                      @if($definition->is_locked)
+                        <span class="badge warn">Protected</span>
+                      @endif
+                    </div>
+                  </td>
+                  <td>
+                    <div class="actions">
+                      <a class="btn secondary sm" href="{{ route('aop.syllabi.structure.edit', $definition) }}">Edit</a>
+                      @if(!$definition->is_locked)
+                        <form method="POST" action="{{ route('aop.syllabi.structure.destroy', $definition) }}" onsubmit="return confirm('Delete this syllabus structure section?');">
+                          @csrf
+                          @method('DELETE')
+                          <button class="btn secondary sm" type="submit">Delete</button>
+                        </form>
+                      @endif
+                    </div>
+                  </td>
+                </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
       @endif
-    </div>
-    <div class="actions">
-      <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
-    </div>
-  </div>
+    </section>
 
-  @if(session('status'))
-    <div class="card panel-success">
-      <strong>{{ session('status') }}</strong>
-    </div>
-    <div class="stack-sm"></div>
-  @endif
-
-  <div class="card" style="margin-bottom:14px;">
-    <h2>Authoring Quick Guide</h2>
-    <p class="muted" style="margin-top:6px; max-width:920px;">
-      Open an individual syllabus to manage section-specific content. The <strong>Core Content</strong> editor controls Course Description, Course Objectives, and Required Materials for one section.
-      Structured sections handle ordered syllabus sections below the fixed top content. Legacy shared blocks are still available during the transition.
-    </p>
-  </div>
-
-  <div class="card">
-    <h2>Template</h2>
-    <p class="muted">AOP can now prefer HTML-aligned syllabus exports so DOCX/PDF output tracks the cleaner in-app layout more closely. Template-based export remains available for compatibility and fallback.</p>
-
-    <div style="margin-top:10px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-      <div>
-        <span class="badge">Export Mode: {{ strtoupper($exportEngine ?? 'AUTO') }}</span>
-      </div>
-      <div>
-        @if($templateExists)
-          <span class="badge">Template: Installed</span>
-        @else
-          <span class="badge danger">Template: Missing</span>
-        @endif
+    <section class="ledger-shell">
+      <div class="ledger-header">
+        <div>
+          <div class="briefing-kicker">Shared blocks</div>
+          <h2 class="ledger-title">Legacy content blocks</h2>
+          <p class="ledger-copy">Reusable shared blocks that still appear in syllabus packets and exports.</p>
+        </div>
+        <div class="actions">
+          <a class="btn" href="{{ route('aop.syllabi.blocks.create') }}">New Block</a>
+        </div>
       </div>
 
-      <form method="POST" action="{{ route('aop.syllabi.template.upload') }}" enctype="multipart/form-data" style="display:flex; gap:10px; align-items:center; margin:0; flex-wrap:wrap;">
-        @csrf
-        <input type="file" name="template" accept=".docx" required>
-        <button class="btn" type="submit">Upload Template</button>
-      </form>
-    </div>
+      @if(($blocks ?? collect())->count() === 0)
+        <p class="mt-5 muted">No shared syllabus blocks have been created yet.</p>
+      @else
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Block</th>
+                <th>Category</th>
+                <th>Content Preview</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @foreach($blocks as $block)
+                <tr>
+                  <td>
+                    <div class="font-semibold text-slate-900">{{ $block->title }}</div>
+                    @if($block->version)
+                      <div class="muted">Version: {{ $block->version }}</div>
+                    @endif
+                    <div class="muted">Updated {{ $block->updated_at?->format('Y-m-d H:i') }}</div>
+                  </td>
+                  <td>{{ $block->category ?: '—' }}</td>
+                  <td>
+                    <div class="markdown-body markdown-preview compact">{!! $block->content_rendered !!}</div>
+                    <div class="mt-2 text-sm text-slate-500">{{ $block->content_preview_text }}</div>
+                  </td>
+                  <td>
+                    @if($block->is_locked)
+                      <span class="badge warn">Protected</span>
+                    @else
+                      <span class="badge muted">Editable</span>
+                    @endif
+                  </td>
+                  <td>
+                    <div class="actions">
+                      <a class="btn secondary sm" href="{{ route('aop.syllabi.blocks.edit', $block) }}">Edit</a>
+                      @if(!$block->is_locked)
+                        <form method="POST" action="{{ route('aop.syllabi.blocks.destroy', $block) }}" onsubmit="return confirm('Delete this syllabus block?');">
+                          @csrf
+                          @method('DELETE')
+                          <button class="btn secondary sm" type="submit">Delete</button>
+                        </form>
+                      @endif
+                    </div>
+                  </td>
+                </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
+      @endif
+    </section>
 
-    @error('template')
-      <div class="muted" style="margin-top:8px; color:#b00020;">{{ $message }}</div>
-    @enderror
-
-    <div class="muted" style="margin-top:10px; font-size:12px;">
-      In <code>AOP_SYLLABUS_EXPORT_ENGINE=auto</code>, AOP tries HTML-aligned DOCX/PDF export first and falls back to the uploaded DOCX template when needed.
-      Install <code>pandoc</code> and/or <code>libreoffice</code> for the broadest export support.
-    </div>
-  </div>
-
-  <div style="height:14px;"></div>
-
-  <div class="card">
-    <div class="row" style="margin-bottom:10px; align-items:flex-start;">
-      <div>
-        <h2>Syllabus Structure Builder</h2>
-        <p class="muted" style="margin-top:6px; max-width:900px;">
-          Define the sections that make up a syllabus and decide whether each section is global for every syllabus or editable per section syllabus.
-          Global sections share the same content everywhere; per-syllabus sections use a shared starter template but can be customized from each syllabus preview.
-        </p>
+    <section class="ledger-shell">
+      <div class="ledger-header">
+        <div>
+          <div class="briefing-kicker">Section outputs</div>
+          <h2 class="ledger-title">Sections in the active term</h2>
+          <p class="ledger-copy">Open a syllabus, update section content, and export files for each section.</p>
+        </div>
       </div>
-      <div class="actions">
-        <a class="btn" href="{{ route('aop.syllabi.structure.create') }}">New Structure Section</a>
-      </div>
-    </div>
 
-    @if(($definitions ?? collect())->count() === 0)
-      <p class="muted">No syllabus structure sections have been created yet.</p>
-    @else
-      <table style="margin-top:8px;">
-        <thead>
-          <tr>
-            <th style="width:240px;">Section</th>
-            <th style="width:130px;">Scope</th>
-            <th style="width:90px;">Order</th>
-            <th>Default Content Preview</th>
-            <th style="width:150px;">Status</th>
-            <th style="width:180px;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @foreach($definitions as $definition)
-            <tr>
-              <td>
-                <strong>{{ $definition->title }}</strong>
-                <div class="muted">Slug: {{ $definition->slug }}</div>
-                @if($definition->category)
-                  <div class="muted">Category: {{ $definition->category }}</div>
-                @endif
-                @if($definition->description)
-                  <div class="muted" style="margin-top:4px;">{{ $definition->description }}</div>
-                @endif
-              </td>
-              <td>
-                <span class="badge">{{ $definition->scope === 'syllabus' ? 'Per-Syllabus' : 'Global' }}</span>
-              </td>
-              <td>{{ $definition->sort_order }}</td>
-              <td>
-                <div class="markdown-body markdown-preview compact">{!! $definition->content_rendered !!}</div>
-                <div class="muted" style="margin-top:8px; font-size:12px;">{{ $definition->content_preview_text }}</div>
-              </td>
-              <td>
-                <div style="display:grid; gap:6px;">
-                  @if($definition->is_required)
-                    <span class="badge info">Required</span>
-                  @else
-                    <span class="badge muted">Optional</span>
-                  @endif
+      @if(!$term)
+        <p class="mt-5 muted">Set an active term to generate syllabi.</p>
+      @elseif($sections->count() === 0)
+        <p class="mt-5 muted">No sections found for the active term.</p>
+      @else
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Course</th>
+                <th>Section</th>
+                <th>Instructor</th>
+                <th>Outputs</th>
+              </tr>
+            </thead>
+            <tbody>
+              @foreach($sections as $s)
+                <tr>
+                  <td>
+                    <div class="font-semibold text-slate-900">{{ $s->offering->catalogCourse->code }}</div>
+                    <div class="muted">{{ $s->offering->catalogCourse->title }}</div>
+                  </td>
+                  <td>
+                    <span class="badge">{{ $s->section_code }}</span>
+                    <div class="muted">{{ $s->modality }}</div>
+                  </td>
+                  <td>
+                    <div class="text-slate-900">{{ $s->instructor?->name ?? 'TBD' }}</div>
+                    <div class="muted">{{ $s->instructor?->email ?? '' }}</div>
+                  </td>
+                  <td>
+                    <div class="actions">
+                      <a class="btn secondary sm" href="{{ route('aop.syllabi.show', $s) }}">Open</a>
+                      <a class="btn secondary sm" href="{{ route('aop.syllabi.core.edit', $s) }}">Core Content</a>
+                      <a class="btn secondary sm" href="{{ route('aop.syllabi.downloadHtml', $s) }}">HTML</a>
+                      <a class="btn secondary sm" href="{{ route('aop.syllabi.downloadJson', $s) }}">JSON</a>
+                      <a class="btn sm" href="{{ route('aop.syllabi.downloadDocx', $s) }}">DOCX</a>
+                      <a class="btn sm" href="{{ route('aop.syllabi.downloadPdf', $s) }}">PDF</a>
+                    </div>
 
-                  @if($definition->is_active)
-                    <span class="badge success">Active</span>
-                  @else
-                    <span class="badge danger">Inactive</span>
-                  @endif
-
-                  @if($definition->is_locked)
-                    <span class="badge warn">Protected</span>
-                  @endif
-                </div>
-              </td>
-              <td>
-                <div class="actions" style="gap:8px; flex-wrap:wrap;">
-                  <a class="btn secondary" href="{{ route('aop.syllabi.structure.edit', $definition) }}">Edit</a>
-                  @if(!$definition->is_locked)
-                    <form method="POST" action="{{ route('aop.syllabi.structure.destroy', $definition) }}" style="display:inline; margin:0;" onsubmit="return confirm('Delete this syllabus structure section?');">
-                      @csrf
-                      @method('DELETE')
-                      <button class="btn secondary" type="submit">Delete</button>
-                    </form>
-                  @endif
-                </div>
-              </td>
-            </tr>
-          @endforeach
-        </tbody>
-      </table>
-    @endif
-  </div>
-
-  <div style="height:14px;"></div>
-
-  <div class="card">
-    <div class="row" style="margin-bottom:10px; align-items:flex-start;">
-      <div>
-        <h2>Legacy Shared Syllabus Blocks</h2>
-        <p class="muted" style="margin-top:6px; max-width:850px;">
-          These shared blocks remain available and still flow into JSON, preview, and export replacement data.
-          The new structure builder should be used for intentional section ordering and global-versus-per-syllabus control.
-        </p>
-      </div>
-      <div class="actions">
-        <a class="btn" href="{{ route('aop.syllabi.blocks.create') }}">New Block</a>
-      </div>
-    </div>
-
-    @if(($blocks ?? collect())->count() === 0)
-      <p class="muted">No syllabus blocks have been created yet.</p>
-    @else
-      <table style="margin-top:8px;">
-        <thead>
-          <tr>
-            <th style="width:220px;">Block</th>
-            <th style="width:150px;">Category</th>
-            <th>Content Preview</th>
-            <th style="width:120px;">Status</th>
-            <th style="width:170px;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @foreach($blocks as $block)
-            <tr>
-              <td>
-                <strong>{{ $block->title }}</strong>
-                @if($block->version)
-                  <div class="muted">Version: {{ $block->version }}</div>
-                @endif
-                <div class="muted">Updated {{ $block->updated_at?->format('Y-m-d H:i') }}</div>
-              </td>
-              <td>{{ $block->category ?: '—' }}</td>
-              <td>
-                <div class="markdown-body markdown-preview compact">{!! $block->content_rendered !!}</div>
-                <div class="muted" style="margin-top:8px; font-size:12px;">{{ $block->content_preview_text }}</div>
-              </td>
-              <td>
-                @if($block->is_locked)
-                  <span class="badge warn">Protected</span>
-                @else
-                  <span class="badge muted">Editable</span>
-                @endif
-              </td>
-              <td>
-                <div class="actions" style="gap:8px; flex-wrap:wrap;">
-                  <a class="btn secondary" href="{{ route('aop.syllabi.blocks.edit', $block) }}">Edit</a>
-                  @if(!$block->is_locked)
-                    <form method="POST" action="{{ route('aop.syllabi.blocks.destroy', $block) }}" style="display:inline; margin:0;" onsubmit="return confirm('Delete this syllabus block?');">
-                      @csrf
-                      @method('DELETE')
-                      <button class="btn secondary" type="submit">Delete</button>
-                    </form>
-                  @endif
-                </div>
-              </td>
-            </tr>
-          @endforeach
-        </tbody>
-      </table>
-    @endif
-  </div>
-
-  <div style="height:14px;"></div>
-
-  <div class="card">
-    <h2>Sections</h2>
-
-    @if(!$term)
-      <p class="muted">Set an active term to generate syllabi.</p>
-    @elseif($sections->count() === 0)
-      <p class="muted">No sections found for the active term.</p>
-    @else
-      <table style="margin-top:8px;">
-        <thead>
-          <tr>
-            <th>Course</th>
-            <th>Section</th>
-            <th>Instructor</th>
-            <th style="width:360px;">Outputs</th>
-          </tr>
-        </thead>
-        <tbody>
-          @foreach($sections as $s)
-            <tr>
-              <td>
-                <strong>{{ $s->offering->catalogCourse->code }}</strong>
-                <div class="muted">{{ $s->offering->catalogCourse->title }}</div>
-              </td>
-              <td>
-                <span class="badge">{{ $s->section_code }}</span>
-                <div class="muted">{{ $s->modality }}</div>
-              </td>
-              <td>
-                {{ $s->instructor?->name ?? 'TBD' }}
-                <div class="muted">{{ $s->instructor?->email ?? '' }}</div>
-              </td>
-              <td>
-                <div class="actions" style="gap:8px; flex-wrap:wrap;">
-                  <a class="btn secondary" href="{{ route('aop.syllabi.show', $s) }}">View</a>
-                  <a class="btn secondary" href="{{ route('aop.syllabi.core.edit', $s) }}">Core Content</a>
-                  <a class="btn secondary" href="{{ route('aop.syllabi.downloadHtml', $s) }}">HTML</a>
-                  <a class="btn secondary" href="{{ route('aop.syllabi.downloadJson', $s) }}">JSON</a>
-                  <a class="btn" href="{{ route('aop.syllabi.downloadDocx', $s) }}">DOCX</a>
-                  <a class="btn" href="{{ route('aop.syllabi.downloadPdf', $s) }}">PDF</a>
-                </div>
-
-                @php
-                  $renderMap = $latestBySection ?? [];
-                  $docxRender = $renderMap[$s->id . ':docx'] ?? null;
-                  $pdfRender = $renderMap[$s->id . ':pdf'] ?? null;
-                  $docxAt = ($docxRender?->completed_at ?? $docxRender?->created_at);
-                  $pdfAt = ($pdfRender?->completed_at ?? $pdfRender?->created_at);
-                @endphp
-                <div class="muted" style="margin-top:8px; font-size:12px;">
-                  <div>Last DOCX: {{ $docxAt?->format('Y-m-d H:i') ?? '—' }}</div>
-                  <div>Last PDF: {{ $pdfAt?->format('Y-m-d H:i') ?? '—' }}</div>
-                </div>
-              </td>
-            </tr>
-          @endforeach
-        </tbody>
-      </table>
-    @endif
+                    @php
+                      $renderMap = $latestBySection ?? [];
+                      $docxRender = $renderMap[$s->id . ':docx'] ?? null;
+                      $pdfRender = $renderMap[$s->id . ':pdf'] ?? null;
+                      $docxAt = ($docxRender?->completed_at ?? $docxRender?->created_at);
+                      $pdfAt = ($pdfRender?->completed_at ?? $pdfRender?->created_at);
+                    @endphp
+                    <div class="mt-3 text-sm text-slate-500">
+                      <div>Last DOCX: {{ $docxAt?->format('Y-m-d H:i') ?? '—' }}</div>
+                      <div>Last PDF: {{ $pdfAt?->format('Y-m-d H:i') ?? '—' }}</div>
+                    </div>
+                  </td>
+                </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
+      @endif
+    </section>
   </div>
 </x-aop-layout>

@@ -22,108 +22,148 @@
     .toastui-editor-defaultUI-toolbar { border-top-left-radius: 0.75rem; border-top-right-radius: 0.75rem; }
   </style>
 </head>
-<body class="font-sans antialiased text-slate-900 bg-slate-50 min-h-screen flex selection:bg-indigo-100 selection:text-indigo-900">
+<body class="font-sans antialiased text-slate-900 min-h-screen selection:bg-blue-100 selection:text-blue-900">
+@php
+  $navGroups = [
+    [
+      'label' => 'Core',
+      'items' => [
+        ['route' => 'dashboard', 'label' => 'Dashboard', 'match' => 'dashboard'],
+        ['route' => 'aop.schedule.home', 'label' => 'Schedule', 'match' => 'aop.schedule.*'],
+        ['route' => 'aop.syllabi.index', 'label' => 'Syllabi', 'match' => 'aop.syllabi.*'],
+      ],
+    ],
+    [
+      'label' => 'Setup',
+      'items' => [
+        ['route' => 'aop.terms.index', 'label' => 'Terms', 'match' => 'aop.terms.*'],
+        ['route' => 'aop.catalog.index', 'label' => 'Catalog', 'match' => 'aop.catalog.*'],
+        ['route' => 'aop.instructors.index', 'label' => 'Instructors', 'match' => 'aop.instructors.*'],
+        ['route' => 'aop.rooms.index', 'label' => 'Rooms', 'match' => 'aop.rooms.*'],
+      ],
+    ],
+  ];
+@endphp
 
-<!-- Sidebar -->
-<aside class="w-64 flex-shrink-0 bg-slate-900 text-white flex flex-col justify-between hidden md:flex sticky top-0 h-screen shadow-xl z-20">
-  <div>
-    <!-- Brand -->
-    <div class="p-6 border-b border-white/10">
-      <h1 class="text-xl font-extrabold tracking-tight text-white mb-1">Academic Ops Platform</h1>
-      <div class="text-xs font-medium text-emerald-400 flex items-center gap-1.5">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        {{ $activeTermLabel ?? 'No active term selected' }}
+<div class="min-h-screen md:flex">
+  <aside class="hidden md:flex md:w-80 md:flex-shrink-0">
+    <div class="sticky top-0 flex h-screen w-full flex-col border-r border-slate-200/70 bg-slate-950 px-6 py-6 text-white shadow-2xl shadow-slate-950/20">
+      <div class="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-5">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Academic Ops</p>
+            <h1 class="mt-2 text-2xl font-semibold tracking-tight text-white">Operations Hub</h1>
+          </div>
+          <div class="rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-200">Admin</div>
+        </div>
+
+        <div class="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+          <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+            <span class="h-2 w-2 rounded-full bg-emerald-300"></span>
+            Active term
+          </div>
+          <p class="mt-2 text-sm leading-6 text-emerald-50">{{ $activeTermLabel ?? 'No active term selected' }}</p>
+        </div>
       </div>
-    </div>
 
-    <!-- Navigation -->
-    <nav class="p-4 space-y-1">
-      @php
-        $navItems = [
-          ['route' => 'dashboard', 'label' => 'Dashboard', 'match' => 'dashboard'],
-          ['route' => 'aop.terms.index', 'label' => 'Terms', 'match' => 'aop.terms.*'],
-          ['route' => 'aop.instructors.index', 'label' => 'Instructors', 'match' => 'aop.instructors.*'],
-          ['route' => 'aop.rooms.index', 'label' => 'Rooms', 'match' => 'aop.rooms.*'],
-          ['route' => 'aop.catalog.index', 'label' => 'Catalog', 'match' => 'aop.catalog.*'],
-          ['route' => 'aop.schedule.home', 'label' => 'Schedule', 'match' => 'aop.schedule.*'],
-        ];
-      @endphp
+      <nav class="mt-8 flex-1 space-y-6 overflow-y-auto pr-1">
+        @foreach ($navGroups as $group)
+          <div>
+            <p class="px-3 text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">{{ $group['label'] }}</p>
+            <div class="mt-3 space-y-1">
+              @foreach ($group['items'] as $item)
+                <a
+                  href="{{ route($item['route']) }}"
+                  class="flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 {{ request()->routeIs($item['match']) ? 'bg-white/10 text-white shadow-lg shadow-slate-950/20' : 'text-slate-300 hover:bg-white/5 hover:text-white' }}"
+                >
+                  <span>{{ $item['label'] }}</span>
+                  @if (request()->routeIs($item['match']))
+                    <span class="h-2.5 w-2.5 rounded-full bg-blue-400"></span>
+                  @endif
+                </a>
+              @endforeach
+            </div>
+          </div>
+        @endforeach
+      </nav>
 
-      @foreach($navItems as $item)
-        <a href="{{ route($item['route']) }}" 
-           class="block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 {{ request()->routeIs($item['match']) ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
-          {{ $item['label'] }}
+      <div class="mt-6 rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-4">
+        <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 rounded-2xl px-3 py-2 transition-colors hover:bg-white/5 {{ request()->routeIs('profile.*') ? 'bg-white/5' : '' }}">
+          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/20 text-sm font-semibold text-blue-100">
+            {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+          </div>
+          <div class="min-w-0">
+            <div class="truncate text-sm font-semibold text-white">{{ auth()->user()->name }}</div>
+            <div class="text-xs text-slate-400">Profile and account</div>
+          </div>
         </a>
-      @endforeach
-    </nav>
-  </div>
 
-  <!-- Footer Info / Profile -->
-  <div class="p-4 border-t border-white/10">
-    <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition-colors duration-200 mb-2 {{ request()->routeIs('profile.*') ? 'bg-slate-800 text-white' : 'text-slate-300' }}">
-      <div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-inner">
-        {{ substr(auth()->user()->name, 0, 1) }}
+        <form method="POST" action="{{ route('logout') }}" class="mt-3">
+          @csrf
+          <button type="submit" class="flex w-full items-center justify-between rounded-2xl px-3 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">
+            <span>Log out</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          </button>
+        </form>
+
+        <div class="mt-4 px-3 text-xs font-medium text-slate-500">
+          Platform version {{ config('aop.version', '1.0.0') }}
+        </div>
       </div>
-      <div>
-        <div class="text-sm font-semibold text-white">{{ auth()->user()->name }}</div>
-        <div class="text-xs text-slate-400">View Profile</div>
+    </div>
+  </aside>
+
+  <div class="min-w-0 flex-1">
+    <header class="border-b border-white/50 bg-white/80 backdrop-blur-xl">
+      <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+        <div class="md:hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Academic Ops</p>
+              <p class="mt-1 text-sm font-medium text-slate-600">{{ $activeTermLabel ?? 'No active term selected' }}</p>
+            </div>
+            <a href="{{ route('dashboard') }}" class="btn secondary sm">Dashboard</a>
+          </div>
+
+          <div class="mt-4 flex gap-2 overflow-x-auto pb-1">
+            @foreach ($navGroups as $group)
+              @foreach ($group['items'] as $item)
+                <a
+                  href="{{ route($item['route']) }}"
+                  class="nav-pill whitespace-nowrap {{ request()->routeIs($item['match']) ? 'nav-pill-active bg-slate-900 text-white border-slate-900' : 'nav-pill-idle bg-white text-slate-600 border-slate-200' }}"
+                >
+                  {{ $item['label'] }}
+                </a>
+              @endforeach
+            @endforeach
+          </div>
+        </div>
+
+        <div class="hidden md:flex md:items-center md:justify-between md:gap-6">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Overview</p>
+            <p class="mt-2 text-sm font-medium text-slate-600">{{ $activeTermLabel ?? 'No active term selected' }}</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <a href="{{ route('aop.schedule.home') }}" class="btn secondary">Open Schedule</a>
+            <a href="{{ route('aop.terms.index') }}" class="btn secondary">Manage Terms</a>
+          </div>
+        </div>
       </div>
-    </a>
-    
-    <form method="POST" action="{{ route('logout') }}" class="mt-2">
-      @csrf
-      <button type="submit" class="w-full text-left px-3 py-2 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors flex justify-between items-center group">
-        Log out
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-      </button>
-    </form>
-    
-    <div class="mt-6 px-2 text-xs text-slate-500 font-mono">
-      v{{ config('aop.version', '1.0.0') }}
-    </div>
-  </div>
-</aside>
+    </header>
 
-<!-- Mobile Header (Visible only on small screens) -->
-<div class="md:hidden flex flex-col w-full">
-  <header class="bg-slate-900 text-white p-4 flex justify-between items-center z-20 shadow-md">
-    <div>
-      <h1 class="text-lg font-bold">AOP</h1>
-      <div class="text-xs text-emerald-400">{{ $activeTermLabel ?? 'No active term selected' }}</div>
-    </div>
-    
-    <!-- Simplified Mobile Nav Dropdown (Optional improvement, keeping standard links for now) -->
-    <div class="flex gap-2 text-sm overflow-x-auto pb-1 max-w-[60vw]">
-      <a href="{{ route('dashboard') }}" class="text-slate-300">Dashboard</a>
-      <a href="{{ route('aop.terms.index') }}" class="text-slate-300">Terms</a>
-      <!-- Add others as needed -->
-    </div>
-  </header>
-  
-  <main class="flex-1 w-full relative">
-    @yield('main-content')
-  </main>
-</div>
-
-
-<!-- Main Content Wrapper (Desktop) -->
-<div class="flex-1 flex flex-col min-w-0 hidden md:flex relative h-screen overflow-hidden">
-  
-  <!-- Content Area -->
-  <main class="flex-1 overflow-y-auto w-full">
-    <div class="max-w-6xl mx-auto p-4 md:p-8">
-      
+    <main class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       @if (session('status') && !in_array(session('status'), ['profile-updated', 'password-updated'], true))
-        <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 mb-6 shadow-sm flex items-start gap-3">
-          <svg class="w-5 h-5 text-emerald-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <div class="mb-6 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/95 p-4 shadow-sm">
+          <svg class="mt-0.5 h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
           <div class="text-sm font-medium text-emerald-800">{{ session('status') }}</div>
         </div>
       @endif
 
       @if ($errors->any() && !request()->routeIs('profile.*'))
-        <div class="rounded-xl border border-red-200 bg-red-50 p-4 mb-6 shadow-sm">
+        <div class="mb-6 rounded-2xl border border-red-200 bg-red-50/95 p-4 shadow-sm">
           <div class="flex items-start gap-3">
-            <svg class="w-5 h-5 text-red-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <svg class="mt-0.5 h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             <div>
               <div class="text-sm font-bold text-red-800 mb-1">Please fix the following issues:</div>
               <ul class="list-disc list-inside text-sm text-red-700 marker:text-red-400 space-y-1">
@@ -136,12 +176,11 @@
         </div>
       @endif
 
-      <!-- Page Content Injected Here -->
-      <div class="pb-16">
+      <div class="pb-12">
         {{ $slot }}
       </div>
-    </div>
-  </main>
+    </main>
+  </div>
 </div>
 
 </body>
