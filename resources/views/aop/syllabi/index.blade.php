@@ -1,60 +1,78 @@
-<x-aop-layout :activeTermLabel="$term ? 'Active Term: '.$term->code.' - '.$term->name : 'No active term selected'">
+<x-aop-layout :activeTermLabel="$activeTerm ? 'Active Term: '.$activeTerm->code.' - '.$activeTerm->name : 'No active term selected'">
   <x-slot:title>Syllabi</x-slot:title>
 
   @php
     $definitionsCount = ($definitions ?? collect())->count();
-    $sectionsCount = ($sections ?? collect())->count();
+    $sectionsCount    = ($sections ?? collect())->count();
+    $viewingActive    = $activeTerm && $term && $activeTerm->id === $term->id;
   @endphp
 
   <div class="page-shell">
     <section class="briefing-grid">
       <div class="briefing-panel briefing-panel-strong">
         <div class="briefing-kicker">Syllabi</div>
-        <h1 class="briefing-title">{{ $term ? $term->code.' syllabi' : 'Set an active term' }}</h1>
+        <h1 class="briefing-title">
+          {{ $term ? $term->code.' syllabi' : 'No term selected' }}
+        </h1>
         <p class="briefing-copy">
           {{ $term
               ? 'Manage the template, structure, and section exports.'
-              : 'Choose an active term to begin.' }}
+              : 'Select a term to view section syllabi.' }}
         </p>
 
         <div class="status-ribbon">
           <span class="status-ribbon-item">
-            <span class="status-ribbon-dot bg-blue-500"></span>
+            <span class="status-ribbon-dot bg-blue-400"></span>
             Export mode {{ strtoupper($exportEngine ?? 'auto') }}
           </span>
           <span class="status-ribbon-item">
-            <span class="status-ribbon-dot {{ $templateExists ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>
+            <span class="status-ribbon-dot {{ $templateExists ? 'bg-emerald-400' : 'bg-amber-400' }}"></span>
             {{ $templateExists ? 'Template installed' : 'Template missing' }}
           </span>
           <span class="status-ribbon-item">
-            <span class="status-ribbon-dot bg-slate-500"></span>
-            {{ $definitionsCount }} structure sections
+            <span class="status-ribbon-dot bg-slate-400"></span>
+            {{ $definitionsCount }} structure section{{ $definitionsCount === 1 ? '' : 's' }}
           </span>
           <span class="status-ribbon-item">
-            <span class="status-ribbon-dot bg-slate-500"></span>
-            {{ $sectionsCount }} sections
+            <span class="status-ribbon-dot bg-slate-400"></span>
+            {{ $sectionsCount }} section{{ $sectionsCount === 1 ? '' : 's' }}
           </span>
+          @if ($term && !$viewingActive)
+            <span class="status-ribbon-item">
+              <span class="status-ribbon-dot bg-amber-400"></span>
+              Browsing past term
+            </span>
+          @endif
         </div>
 
-        <div class="mt-8 quick-actions">
-          <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
+        <div class="mt-6 quick-actions">
+          <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Schedule Studio</a>
           <a class="btn" href="{{ route('aop.syllabi.structure.create') }}">New Structure Section</a>
         </div>
       </div>
 
       <aside class="briefing-sidebar">
         <div class="briefing-kicker">Status</div>
-        <h2 class="watchlist-title">Current setup</h2>
+        <h2 class="watchlist-title">{{ $term ? ($viewingActive ? 'Active term' : 'Past term') : 'No term selected' }}</h2>
         <p class="watchlist-copy">Template, structure, and section counts.</p>
 
         <div class="watchlist-group">
           <div class="watchlist-item">
             <div>
-              <div class="watchlist-name">Active term</div>
-              <div class="watchlist-note">{{ $term ? $term->name : 'Required before generating section syllabi' }}</div>
+              <div class="watchlist-name">Viewing</div>
+              <div class="watchlist-note">{{ $term ? $term->name : 'Select a term below' }}</div>
             </div>
-            <span class="watchlist-value {{ $term ? 'good' : 'warn' }}">{{ $term ? $term->code : 'Unset' }}</span>
+            <span class="watchlist-value {{ $term ? ($viewingActive ? 'good' : 'warn') : 'warn' }}">{{ $term ? $term->code : 'None' }}</span>
           </div>
+          @if (!$viewingActive && $activeTerm)
+            <div class="watchlist-item">
+              <div>
+                <div class="watchlist-name">Active term</div>
+                <div class="watchlist-note">{{ $activeTerm->name }}</div>
+              </div>
+              <span class="watchlist-value good">{{ $activeTerm->code }}</span>
+            </div>
+          @endif
           <div class="watchlist-item">
             <div>
               <div class="watchlist-name">Template</div>
@@ -193,15 +211,27 @@
       <div class="ledger-header">
         <div>
           <div class="briefing-kicker">Section outputs</div>
-          <h2 class="ledger-title">Sections in the active term</h2>
+          <h2 class="ledger-title">Sections in {{ $term ? $term->code : 'selected term' }}</h2>
           <p class="ledger-copy">Open, edit, and export section syllabi.</p>
+        </div>
+        <div class="actions">
+          <form method="GET" action="{{ route('aop.syllabi.index') }}" class="flex items-center gap-2">
+            <select name="term_id" class="text-sm" onchange="this.form.submit()">
+              <option value="">Select a term…</option>
+              @foreach ($allTerms as $t)
+                <option value="{{ $t->id }}" {{ $term && $term->id === $t->id ? 'selected' : '' }}>
+                  {{ $t->code }} — {{ $t->name }}{{ $activeTerm && $activeTerm->id === $t->id ? ' (active)' : '' }}
+                </option>
+              @endforeach
+            </select>
+          </form>
         </div>
       </div>
 
       @if(!$term)
-        <p class="mt-5 muted">Set an active term to generate syllabi.</p>
+        <p class="mt-5 muted">Select a term above to view section syllabi.</p>
       @elseif($sections->count() === 0)
-        <p class="mt-5 muted">No sections found for the active term.</p>
+        <p class="mt-5 muted">No sections found for {{ $term->code }}.</p>
       @else
         <div class="table-wrap">
           <table>

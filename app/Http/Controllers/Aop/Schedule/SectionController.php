@@ -228,10 +228,12 @@ class SectionController extends Controller
         $term = $this->activeTermOrFail();
         abort_if($section->offering->term_id !== $term->id, 400, 'Section not in active term.');
 
-        $duration = $request->integer('duration', 60); // default to 60 mins
-        $days = $request->input('days'); // e.g., 'Mon,Wed,Fri'
+        $blockType = strtoupper((string) $request->input('block_type', 'LECTURE'));
+        if (!in_array($blockType, ['LECTURE', 'LAB'], true)) {
+            $blockType = 'LECTURE';
+        }
 
-        $suggestions = $service->suggestSlots($section, $duration, $days);
+        $suggestions = $service->suggestSlots($section, $blockType);
 
         return response()->json(['suggestions' => $suggestions]);
     }

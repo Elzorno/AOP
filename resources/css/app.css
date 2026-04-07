@@ -134,6 +134,18 @@
         @apply border-l-4 border-amber-500;
     }
 
+    .schedule-warnings {
+        @apply rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900;
+    }
+
+    .schedule-warnings-title {
+        @apply mb-1.5 font-semibold;
+    }
+
+    .schedule-warnings ul {
+        @apply list-disc space-y-0.5 pl-4;
+    }
+
     .stack-sm {
         @apply mt-2.5;
     }
@@ -1149,5 +1161,393 @@
     }
     .field-error {
         @apply text-red-600 text-xs mt-1;
+    }
+
+    /* ── Stage Track ─────────────────────────────────────────────────── */
+
+    .stage-track {
+        @apply flex overflow-hidden rounded-[1.5rem] border;
+        background: rgba(255, 255, 255, 0.92);
+        border-color: var(--aop-line);
+        box-shadow: 0 10px 28px -20px rgba(15, 23, 42, 0.28);
+    }
+
+    .stage-step {
+        @apply relative flex flex-1 flex-col items-center justify-center gap-1.5 px-3 py-4 text-center text-sm font-medium transition-all duration-200;
+        color: #94a3b8;
+    }
+
+    .stage-step + .stage-step {
+        border-left: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .stage-step-active {
+        color: #1d4ed8;
+        background: linear-gradient(180deg, rgba(239, 246, 255, 0.9), rgba(219, 234, 254, 0.55));
+    }
+
+    .stage-step-done {
+        color: #065f46;
+        background: rgba(236, 253, 245, 0.6);
+    }
+
+    .stage-step-icon {
+        @apply flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold;
+        background: #e2e8f0;
+        color: #94a3b8;
+    }
+
+    .stage-step-active .stage-step-icon {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: white;
+        box-shadow: 0 6px 16px -6px rgba(37, 99, 235, 0.6);
+    }
+
+    .stage-step-done .stage-step-icon {
+        background: #10b981;
+        color: white;
+    }
+
+    .stage-step-label {
+        @apply text-xs font-semibold uppercase tracking-[0.18em];
+    }
+
+    .stage-step-note {
+        @apply hidden text-[11px] xl:block;
+        opacity: 0.7;
+    }
+
+    /* ── Readiness Pulse Bar ─────────────────────────────────────────── */
+
+    .readiness-bar {
+        @apply flex flex-wrap items-center gap-2 rounded-[1.5rem] border px-5 py-3.5;
+        background: rgba(255, 255, 255, 0.92);
+        border-color: var(--aop-line);
+        box-shadow: 0 10px 28px -20px rgba(15, 23, 42, 0.28);
+    }
+
+    .readiness-bar-label {
+        @apply text-xs font-semibold uppercase tracking-[0.18em] text-slate-400;
+    }
+
+    .readiness-stat {
+        @apply inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium;
+        background: rgba(248, 250, 252, 0.9);
+        border-color: rgba(148, 163, 184, 0.18);
+        color: #334155;
+    }
+
+    .readiness-stat-dot {
+        @apply h-2 w-2 flex-shrink-0 rounded-full;
+    }
+
+    .readiness-stat.r-good {
+        background: rgba(236, 253, 245, 0.9);
+        border-color: rgba(52, 211, 153, 0.24);
+        color: #065f46;
+    }
+
+    .readiness-stat.r-warn {
+        background: rgba(255, 251, 235, 0.9);
+        border-color: rgba(251, 191, 36, 0.28);
+        color: #78350f;
+    }
+
+    .readiness-stat.r-danger {
+        background: rgba(254, 242, 242, 0.9);
+        border-color: rgba(248, 113, 113, 0.24);
+        color: #991b1b;
+    }
+
+    .readiness-bar-actions {
+        @apply ml-auto flex items-center gap-2;
+    }
+
+    .readiness-stat-grid {
+        @apply grid gap-4 sm:grid-cols-2 xl:grid-cols-4;
+    }
+
+    .readiness-stat-value {
+        @apply text-2xl font-bold tracking-tight;
+    }
+
+    .readiness-stat-label {
+        @apply mt-0.5 text-sm font-medium;
+    }
+
+    .readiness-stat-note {
+        @apply mt-0.5 text-xs opacity-75;
+    }
+
+    /* Override pill style when used as card */
+    .readiness-stat-grid .readiness-stat {
+        @apply flex-col items-start rounded-2xl px-4 py-3.5;
+    }
+
+    /* ── Offering Card State Left Borders ────────────────────────────── */
+
+    .offering-card-ready {
+        border-left-width: 4px;
+        border-left-color: #10b981;
+        padding-left: calc(1.5rem - 4px);
+    }
+
+    .offering-card-warn {
+        border-left-width: 4px;
+        border-left-color: #f59e0b;
+        padding-left: calc(1.5rem - 4px);
+    }
+
+    .offering-card-danger {
+        border-left-width: 4px;
+        border-left-color: #ef4444;
+        padding-left: calc(1.5rem - 4px);
+    }
+
+    @media (min-width: 768px) {
+        .offering-card-ready,
+        .offering-card-warn,
+        .offering-card-danger {
+            padding-left: calc(1.5rem - 4px);
+        }
+    }
+
+    /* ── Meeting Chips ───────────────────────────────────────────────── */
+
+    .meeting-chip-stack {
+        @apply mt-3 flex flex-wrap gap-2;
+    }
+
+    .meeting-chip {
+        @apply inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors;
+        background: rgba(248, 250, 252, 0.92);
+        border-color: rgba(148, 163, 184, 0.18);
+        color: #334155;
+    }
+
+    .meeting-chip.chip-conflict {
+        background: rgba(254, 242, 242, 0.92);
+        border-color: rgba(248, 113, 113, 0.28);
+        color: #991b1b;
+    }
+
+    .meeting-chip.chip-missing-room {
+        background: rgba(255, 251, 235, 0.92);
+        border-color: rgba(251, 191, 36, 0.3);
+        color: #78350f;
+    }
+
+    .meeting-chip-type {
+        @apply font-semibold text-xs uppercase tracking-[0.12em];
+    }
+
+    .meeting-chip-sep {
+        @apply text-slate-300;
+    }
+
+    .meeting-chip-days {
+        @apply font-medium;
+    }
+
+    .meeting-chip-time {
+        font-size: 0.75rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        opacity: 0.8;
+    }
+
+    .meeting-chip-room {
+        @apply text-xs border-l border-slate-300/50 pl-2 ml-0.5;
+        opacity: 0.75;
+    }
+
+    /* ── Section Info Chips (instructor, modality) ───────────────────── */
+
+    .section-info-row {
+        @apply flex flex-wrap items-center gap-1.5 mt-2;
+    }
+
+    .section-info-chip {
+        @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium;
+        background: rgba(248, 250, 252, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        color: #475569;
+    }
+
+    .section-info-chip.chip-unset {
+        color: #b45309;
+        background: rgba(255, 251, 235, 0.9);
+        border-color: rgba(251, 191, 36, 0.22);
+    }
+
+    /* ── Issue Callout (more prominent than status-note) ─────────────── */
+
+    .issue-callout {
+        @apply mt-3 rounded-2xl px-4 py-3;
+        background: rgba(254, 242, 242, 0.88);
+        border: 1px solid rgba(248, 113, 113, 0.22);
+        border-left: 3px solid #ef4444;
+    }
+
+    .issue-callout-title {
+        @apply text-xs font-semibold uppercase tracking-[0.16em] text-red-700;
+    }
+
+    .issue-callout-list {
+        @apply mt-2 space-y-1 text-sm text-red-800;
+    }
+
+    .issue-callout-list li::before {
+        content: "→ ";
+        opacity: 0.6;
+    }
+
+    /* ── Section Toolbar ─────────────────────────────────────────────── */
+
+    .section-toolbar {
+        @apply mt-4 flex flex-wrap items-center gap-2 border-t border-slate-200/60 pt-3.5;
+    }
+
+    /* ── Compact Offering Header ─────────────────────────────────────── */
+
+    .offering-compact-head {
+        @apply flex flex-col gap-3 md:flex-row md:items-center md:justify-between;
+    }
+
+    .offering-course-code {
+        @apply text-xs font-semibold uppercase tracking-[0.2em] text-slate-500;
+    }
+
+    .offering-course-title {
+        @apply mt-1 text-xl font-semibold tracking-tight text-slate-950;
+    }
+
+    .offering-course-sub {
+        @apply mt-1 text-sm text-slate-500;
+    }
+
+    .offering-pill-row {
+        @apply flex flex-wrap items-center gap-2;
+    }
+
+    .offering-pill {
+        @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold;
+        background: rgba(248, 250, 252, 0.88);
+        border-color: rgba(148, 163, 184, 0.16);
+        color: #475569;
+    }
+
+    /* ── Lock Warning Banner ─────────────────────────────────────────── */
+
+    .lock-banner {
+        @apply flex items-center gap-3 rounded-2xl border px-5 py-3.5;
+        background: rgba(255, 251, 235, 0.92);
+        border-color: rgba(251, 191, 36, 0.28);
+        border-left: 3px solid #f59e0b;
+        color: #78350f;
+    }
+
+    .lock-banner-icon {
+        @apply h-5 w-5 flex-shrink-0 text-amber-600;
+    }
+
+    .lock-banner-text {
+        @apply text-sm font-medium;
+    }
+
+    /* ── Stage step active: bottom-border anchor so active position reads clearly */
+
+    .stage-step-active {
+        color: #1d4ed8;
+        background: linear-gradient(180deg, rgba(239, 246, 255, 0.9), rgba(219, 234, 254, 0.55));
+        box-shadow: inset 0 -3px 0 0 #2563eb;
+    }
+
+    /* ── Block Edit Rows — compact grouped disclosure tray ─────────── */
+
+    .block-edit-rows {
+        @apply mt-4 space-y-1.5 rounded-[1.35rem] border p-2;
+        background: rgba(248, 250, 252, 0.55);
+        border-color: rgba(148, 163, 184, 0.12);
+    }
+
+    .block-edit-row {
+        @apply overflow-hidden rounded-[0.85rem] border;
+        background: rgba(255, 255, 255, 0.72);
+        border-color: rgba(148, 163, 184, 0.14);
+    }
+
+    .block-edit-row .disclosure-summary {
+        @apply px-3.5 py-2.5 text-xs text-slate-500;
+    }
+
+    .block-edit-row[open] > .disclosure-summary {
+        @apply text-slate-700;
+        background: rgba(239, 246, 255, 0.5);
+    }
+
+    .block-edit-row .disclosure-body {
+        @apply border-t border-slate-200/60 px-3.5 py-4;
+    }
+
+    /* ── Add Offering Collapsible ────────────────────────────────────── */
+
+    .add-offering-disclosure {
+        @apply rounded-[2rem] border;
+        background: rgba(255, 255, 255, 0.92);
+        border-color: var(--aop-line);
+        box-shadow: var(--aop-shadow);
+        backdrop-filter: blur(16px);
+        overflow: hidden;
+    }
+
+    .add-offering-summary {
+        @apply flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-5;
+    }
+
+    .add-offering-summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .add-offering-summary-inner {
+        @apply flex items-center gap-3;
+    }
+
+    .add-offering-summary-icon {
+        @apply flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white;
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        box-shadow: 0 6px 16px -6px rgba(37, 99, 235, 0.55);
+    }
+
+    .add-offering-disclosure[open] .add-offering-summary-icon {
+        content: "−";
+        background: rgba(226, 232, 240, 0.9);
+        color: #475569;
+        box-shadow: none;
+    }
+
+    .add-offering-summary-title {
+        @apply text-sm font-semibold text-slate-900;
+    }
+
+    .add-offering-summary-note {
+        @apply text-xs text-slate-500;
+    }
+
+    .add-offering-summary-chevron {
+        @apply text-lg font-semibold leading-none text-slate-400 transition-transform duration-200;
+    }
+
+    .add-offering-disclosure[open] .add-offering-summary-chevron {
+        transform: rotate(45deg);
+    }
+
+    .add-offering-body {
+        @apply border-t border-slate-200/70 p-6;
+    }
+
+    /* ── Issue callout action row ────────────────────────────────────── */
+
+    .issue-callout-actions {
+        @apply mt-3 flex flex-wrap items-center gap-2 border-t border-red-200/60 pt-3;
     }
 }

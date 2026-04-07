@@ -9,6 +9,7 @@ use App\Models\Section;
 use App\Models\Term;
 use App\Services\MeetingBlockMutationService;
 use App\Services\ScheduleConflictService;
+use App\Services\ScheduleRuleWarningService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -36,7 +37,7 @@ class MeetingBlockController extends Controller
         abort_if($term->schedule_locked, 403, 'Schedule is locked for the active term. Unlock it before making schedule changes.');
     }
 
-    public function store(Request $request, Section $section, ScheduleConflictService $conflicts)
+    public function store(Request $request, Section $section, ScheduleConflictService $conflicts, ScheduleRuleWarningService $ruleWarnings)
     {
         $term = $this->ensureSectionInActiveTerm($section);
         $this->ensureScheduleUnlocked($term);
@@ -91,6 +92,15 @@ class MeetingBlockController extends Controller
             }
         }
 
+        // Rule warnings (soft or hard depending on term enforcement flag)
+        $ruleWarns = $ruleWarnings->warnForBlock($days, $data['starts_at'], $data['ends_at'], $data['type'], $term);
+        if (!empty($ruleWarns)) {
+            if ($ruleWarnings->isEnforced($term)) {
+                return back()->withErrors(['schedule_rules' => implode(' | ', $ruleWarns)])->withInput();
+            }
+            session()->flash('schedule_warnings', $ruleWarns);
+        }
+
         MeetingBlock::create([
             'section_id' => $section->id,
             'type' => $data['type'],
@@ -108,7 +118,7 @@ class MeetingBlockController extends Controller
         return redirect()->route('aop.schedule.sections.edit', $section)->with('status', 'Meeting block added.');
     }
 
-    public function update(Request $request, Section $section, MeetingBlock $meetingBlock, MeetingBlockMutationService $mutationService)
+    public function update(Request $request, Section $section, MeetingBlock $meetingBlock, MeetingBlockMutationService $mutationService, ScheduleRuleWarningService $ruleWarnings)
     {
         $term = $this->ensureSectionInActiveTerm($section);
         abort_if($meetingBlock->section_id !== $section->id, 400, 'Meeting block not in section.');
@@ -122,6 +132,16 @@ class MeetingBlockController extends Controller
             'room_id' => ['nullable','integer','exists:rooms,id'],
             'notes' => ['nullable','string'],
         ]);
+
+        // Rule warnings (soft or hard depending on term enforcement flag)
+        $days = array_values(array_unique($data['days']));
+        $ruleWarns = $ruleWarnings->warnForBlock($days, $data['starts_at'], $data['ends_at'], $data['type'], $term);
+        if (!empty($ruleWarns)) {
+            if ($ruleWarnings->isEnforced($term)) {
+                return back()->withErrors(['schedule_rules' => implode(' | ', $ruleWarns)])->withInput();
+            }
+            session()->flash('schedule_warnings', $ruleWarns);
+        }
 
         $mutationService->update($term, $meetingBlock, [
             'type' => $data['type'],

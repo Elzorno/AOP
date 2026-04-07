@@ -5,115 +5,137 @@ namespace App\Services;
 use App\Models\MeetingBlock;
 use App\Models\Room;
 use App\Models\Section;
-use App\Models\Term;
-use Carbon\Carbon;
 
+/**
+ * Suggests canonical schedule blocks for a section.
+ *
+ * Replaces the previous brute-force 30-minute-interval search with a lookup
+ * against the ScheduleBlockLibrary canonical block list, so every suggestion
+ * conforms to the institution's published semester schedule blocks PDF.
+ *
+ * Suggestion ranking:
+ *   1. Canonical blocks whose day pattern fits the course's credit/hour profile
+ *   2. Filtered by instructor availability (existing meeting blocks in the term)
+ *   3. Filtered by room availability (at least one room free)
+ *   4. Sorted chronologically within each day pattern
+ *   5. Returned in the order: preferred pattern first, then alternates
+ */
 class ScheduleSuggestionService
 {
-    private const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-
-    public function suggestSlots(Section $section, int $durationMinutes, ?string $preferredDays = null): array
+    /**
+     * Returns up to $limit canonical slot suggestions for $section.
+     *
+     * @param  Section  $section
+     * @param  string   $blockType      'LECTURE' | 'LAB'
+     * @param  int      $limit
+     * @return array    [ {days, starts_at, ends_at, credit_label, available_rooms[]} ]
+     */
+    public function suggestSlots(Section $section, string $blockType = 'LECTURE', int $limit = 10): array
     {
-        $term = $section->offering->term;
-        $instructorId = $section->instructor_id;
-        
+        $section->loadMissing('offering.catalogCourse', 'offering.term');
+
+        $course = $section->offering->catalogCourse;
+        $term   = $section->offering->term;
+
+        $creditHours       = (int) round((float) ($course?->credits ?? 3));
+        $lectureHrsPerWeek = (float) ($course?->lecture_hours_per_week ?? 0);
+        $labHrsPerWeek     = (float) ($course?->lab_hours_per_week ?? 0);
+
+        // If the course doesn't have a lecture/lab split, use credits as a proxy
+        if (($lectureHrsPerWeek + $labHrsPerWeek) <= 0) {
+            $lectureHrsPerWeek = (float) ($course?->contact_hours_per_week ?? $creditHours);
+        }
+
+        // Candidate blocks from the canonical library
+        $candidates = ScheduleBlockLibrary::suggestionsFor(
+            $creditHours,
+            $lectureHrsPerWeek,
+            $labHrsPerWeek,
+            $blockType
+        );
+
+        if (empty($candidates)) {
+            return [];
+        }
+
+        // Load all existing blocks in the term for conflict checking
+        $existingBlocks = MeetingBlock::query()
+            ->whereHas('section.offering', fn ($q) => $q->where('term_id', $term->id))
+            ->get();
+
+        // Load active rooms
         $rooms = Room::where('is_active', true)->get();
-        
-        // Find all existing blocks in the term
-        $existingBlocks = MeetingBlock::whereHas('section.offering', function ($q) use ($term) {
-            $q->where('term_id', $term->id);
-        })->get();
+
+        $instructorId = $section->instructor_id;
+        $buffer       = (int) ($term->buffer_minutes ?? 0);
 
         $suggestions = [];
 
-        // Define search boundaries
-        $startHour = 8;
-        $endHour = 20;
-        $intervalMinutes = 30;
+        foreach ($candidates as $candidate) {
+            $days     = $candidate['days'];
+            $startsAt = $candidate['starts_at'];
+            $endsAt   = $candidate['ends_at'];
 
-        $targetDaysCombinations = $preferredDays ? [explode(',', $preferredDays)] : [['Mon', 'Wed', 'Fri'], ['Tue', 'Thu']];
-
-        foreach ($targetDaysCombinations as $daysPattern) {
-            for ($hour = $startHour; $hour < $endHour; $hour++) {
-                for ($minute = 0; $minute < 60; $minute += $intervalMinutes) {
-                    $startMin = ($hour * 60) + $minute;
-                    $endMin = $startMin + $durationMinutes;
-
-                    if ($endMin > ($endHour * 60)) {
+            // 1. Check instructor availability
+            if ($instructorId) {
+                $conflict = false;
+                foreach ($existingBlocks as $block) {
+                    if ((int) $block->section->instructor_id !== (int) $instructorId) {
                         continue;
                     }
-
-                    $startStr = sprintf('%02d:%02d', $hour, $minute);
-                    $endStr = sprintf('%02d:%02d', intdiv($endMin, 60), $endMin % 60);
-
-                    // 1. Check if the instructor is available
-                    $instructorConflict = false;
-                    if ($instructorId) {
-                        foreach ($existingBlocks as $block) {
-                            if ($block->section->instructor_id === $instructorId) {
-                                if ($this->hasConflict($daysPattern, $startMin, $endMin, $block)) {
-                                    $instructorConflict = true;
-                                    break;
-                                }
-                            }
-                        }
+                    if (!ScheduleConflictService::dayOverlap($days, $block->days_json ?? [])) {
+                        continue;
                     }
-
-                    if ($instructorConflict) continue;
-
-                    // 2. Find available rooms
-                    $availableRooms = [];
-                    foreach ($rooms as $room) {
-                        $roomConflict = false;
-                        foreach ($existingBlocks as $block) {
-                            if ($block->room_id === $room->id) {
-                                if ($this->hasConflict($daysPattern, $startMin, $endMin, $block)) {
-                                    $roomConflict = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if (!$roomConflict) {
-                            $availableRooms[] = $room;
-                        }
-                    }
-
-                    if (count($availableRooms) > 0) {
-                        $suggestions[] = [
-                            'days' => $daysPattern,
-                            'starts_at' => $startStr,
-                            'ends_at' => $endStr,
-                            'available_rooms' => array_slice($availableRooms, 0, 3) // suggest up to 3 rooms
-                        ];
-                    }
-
-                    if (count($suggestions) >= 10) {
-                        break 3; // Limit to 10 suggestions total
+                    if (ScheduleConflictService::timesOverlap($startsAt, $endsAt, $block->starts_at, $block->ends_at, $buffer)) {
+                        $conflict = true;
+                        break;
                     }
                 }
+                if ($conflict) {
+                    continue;
+                }
+            }
+
+            // 2. Find available rooms
+            $availableRooms = [];
+            foreach ($rooms as $room) {
+                $roomConflict = false;
+                foreach ($existingBlocks as $block) {
+                    if ((int) $block->room_id !== (int) $room->id) {
+                        continue;
+                    }
+                    if (!ScheduleConflictService::dayOverlap($days, $block->days_json ?? [])) {
+                        continue;
+                    }
+                    if (ScheduleConflictService::timesOverlap($startsAt, $endsAt, $block->starts_at, $block->ends_at, $buffer)) {
+                        $roomConflict = true;
+                        break;
+                    }
+                }
+                if (!$roomConflict) {
+                    $availableRooms[] = ['id' => $room->id, 'name' => $room->name];
+                }
+            }
+
+            // Only suggest this slot if at least one room is free (or modality is online)
+            $modality = $section->modality?->value ?? 'IN_PERSON';
+            if ($modality !== 'ONLINE' && empty($availableRooms)) {
+                continue;
+            }
+
+            $suggestions[] = [
+                'days'            => $days,
+                'starts_at'       => $startsAt,
+                'ends_at'         => $endsAt,
+                'credit_label'    => $candidate['credit_label'],
+                'available_rooms' => array_slice($availableRooms, 0, 5),
+            ];
+
+            if (count($suggestions) >= $limit) {
+                break;
             }
         }
 
         return $suggestions;
-    }
-
-    private function hasConflict(array $days, int $startMin, int $endMin, MeetingBlock $block): bool
-    {
-        $blockDays = $block->days_json ?? [];
-        if (empty(array_intersect($days, $blockDays))) {
-            return false;
-        }
-
-        $blockStartMin = $this->timeToMinutes($block->starts_at);
-        $blockEndMin = $this->timeToMinutes($block->ends_at);
-
-        // Conflict strictly: overlap means max(start1, start2) < min(end1, end2)
-        return max($startMin, $blockStartMin) < min($endMin, $blockEndMin);
-    }
-
-    private function timeToMinutes(string $time): int
-    {
-        [$h, $m] = array_map('intval', explode(':', $time));
-        return ($h * 60) + $m;
     }
 }

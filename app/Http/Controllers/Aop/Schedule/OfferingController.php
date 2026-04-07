@@ -86,4 +86,29 @@ class OfferingController extends Controller
 
         return redirect()->route('aop.schedule.offerings.index')->with('status', 'Offering created.');
     }
+
+    public function destroy(Request $request, Offering $offering)
+    {
+        $term = $this->activeTermOrFail();
+        $this->ensureScheduleUnlocked($term);
+
+        abort_if($offering->term_id !== $term->id, 403, 'Offering does not belong to the active term.');
+
+        if ($offering->sections()->exists()) {
+            $count = $offering->sections()->count();
+            $redirect = $request->boolean('from_schedule_home')
+                ? redirect()->route('aop.schedule.home', ['focus_offering' => $offering->id])
+                : redirect()->route('aop.schedule.offerings.index');
+
+            return $redirect->withErrors(['delete' => "Cannot remove this offering — it has {$count} section(s). Remove all sections first."]);
+        }
+
+        $offering->delete();
+
+        if ($request->boolean('from_schedule_home')) {
+            return redirect()->route('aop.schedule.home')->with('status', 'Offering removed.');
+        }
+
+        return redirect()->route('aop.schedule.offerings.index')->with('status', 'Offering removed.');
+    }
 }

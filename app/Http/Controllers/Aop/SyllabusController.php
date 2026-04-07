@@ -31,13 +31,23 @@ class SyllabusController extends Controller
         return $term;
     }
 
-    private function ensureSectionInActiveTerm(Section $section): Term
+    /**
+     * Derive the term from the section's offering instead of requiring the active term.
+     * This allows editing syllabi for any term, not just the currently active one.
+     */
+    private function termForSection(Section $section): Term
     {
-        $term = $this->activeTermOrFail();
-        $section->loadMissing('offering');
-        abort_if(!$section->offering || $section->offering->term_id !== $term->id, 404, 'Section not found in active term.');
+        $section->loadMissing('offering.term');
+        $term = $section->offering?->term;
+        abort_if(!$term, 404, 'Section is not associated with a term.');
 
         return $term;
+    }
+
+    /** @deprecated Use termForSection() — kept for reference only. */
+    private function ensureSectionInActiveTerm(Section $section): Term
+    {
+        return $this->termForSection($section);
     }
 
     private function syllabusBlocks()
@@ -190,9 +200,14 @@ class SyllabusController extends Controller
         return $rendered !== '' ? Str::limit($rendered, $limit) : '—';
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $term = Term::where('is_active', true)->first();
+        $activeTerm = Term::where('is_active', true)->first();
+        $allTerms   = Term::orderByDesc('id')->get();
+
+        // Allow browsing any term via ?term_id=X; default to active term.
+        $selectedTermId = $request->filled('term_id') ? (int) $request->input('term_id') : $activeTerm?->id;
+        $term = $selectedTermId ? Term::find($selectedTermId) : null;
 
         $sections = collect();
         if ($term) {
@@ -211,12 +226,14 @@ class SyllabusController extends Controller
         }
 
         return view('aop.syllabi.index', [
-            'term' => $term,
-            'sections' => $sections,
+            'term'          => $term,
+            'activeTerm'    => $activeTerm,
+            'allTerms'      => $allTerms,
+            'sections'      => $sections,
             'templateExists' => $templateExists,
             'latestBySection' => $latestBySection,
-            'definitions' => $this->syllabusStructureDefinitions(),
-            'exportEngine' => $this->configuredSyllabusExportEngine(),
+            'definitions'   => $this->syllabusStructureDefinitions(),
+            'exportEngine'  => $this->configuredSyllabusExportEngine(),
         ]);
     }
 

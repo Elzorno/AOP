@@ -225,6 +225,48 @@
             @endif
           </article>
         </section>
+
+        {{-- Distribution metrics (informational only) --}}
+        <section class="workspace-card">
+          <div class="workspace-header">
+            <div>
+              <div class="briefing-kicker">Schedule distribution</div>
+              <h2 class="workspace-title">Day and time spread</h2>
+              <p class="workspace-copy">Informational targets — not a publish gate. Targets based on institutional scheduling rules.</p>
+            </div>
+          </div>
+
+          @php $d = $distributionStats; @endphp
+
+          <div class="readiness-stat-grid">
+            <div class="readiness-stat {{ $d['flags']['friday_low'] ? 'r-warn' : 'r-good' }}">
+              <div class="readiness-stat-value">{{ $d['friday_pct'] }}%</div>
+              <div class="readiness-stat-label">Sections with a Friday</div>
+              <div class="readiness-stat-note">Target: ≥ 12%</div>
+            </div>
+            <div class="readiness-stat {{ $d['flags']['peak_high'] ? 'r-warn' : 'r-good' }}">
+              <div class="readiness-stat-value">{{ $d['peak_hour_pct'] }}%</div>
+              <div class="readiness-stat-label">Classroom hours 9:30 am – 3:00 pm</div>
+              <div class="readiness-stat-note">Target: ≤ 60%</div>
+            </div>
+            <div class="readiness-stat {{ $d['flags']['mwf_high'] ? 'r-warn' : 'r-good' }}">
+              <div class="readiness-stat-value">{{ $d['mwf_pct'] }}%</div>
+              <div class="readiness-stat-label">Classroom hours on M/W/F</div>
+              <div class="readiness-stat-note">Target: ≤ 60%</div>
+            </div>
+            <div class="readiness-stat {{ $d['flags']['tr_high'] ? 'r-warn' : 'r-good' }}">
+              <div class="readiness-stat-value">{{ $d['tr_pct'] }}%</div>
+              <div class="readiness-stat-label">Classroom hours on T/R</div>
+              <div class="readiness-stat-note">Target: ≤ 60%</div>
+            </div>
+          </div>
+
+          <p class="table-note mt-4">
+            Based on {{ number_format($d['totals']['total_minutes']) }} total scheduled classroom minutes across
+            {{ $d['totals']['sections'] }} section{{ $d['totals']['sections'] === 1 ? '' : 's' }}.
+            These metrics are advisory only and do not affect publishing eligibility.
+          </p>
+        </section>
       </div>
 
       <aside class="insight-side">

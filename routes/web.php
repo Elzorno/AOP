@@ -93,6 +93,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/schedule/offerings', [OfferingController::class, 'index'])->name('schedule.offerings.index');
         Route::get('/schedule/offerings/create', [OfferingController::class, 'create'])->name('schedule.offerings.create');
         Route::post('/schedule/offerings', [OfferingController::class, 'store'])->name('schedule.offerings.store');
+        Route::delete('/schedule/offerings/{offering}', [OfferingController::class, 'destroy'])->name('schedule.offerings.destroy');
 
         // Sections
         Route::get('/schedule/sections', [SectionController::class, 'index'])->name('schedule.sections.index');

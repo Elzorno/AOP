@@ -43,6 +43,16 @@
       ],
     ],
   ];
+
+  /* Schedule sub-nav: visible when inside any schedule.* route */
+  $scheduleSubNav = [
+    ['route' => 'aop.schedule.home',            'label' => 'Studio',    'match' => 'aop.schedule.home'],
+    ['route' => 'aop.schedule.readiness.index', 'label' => 'Readiness', 'match' => 'aop.schedule.readiness.*'],
+    ['route' => 'aop.schedule.calendar.index',  'label' => 'Calendar',  'match' => 'aop.schedule.calendar.*'],
+    ['route' => 'aop.schedule.grids.index',     'label' => 'Grids',     'match' => 'aop.schedule.grids.*'],
+    ['route' => 'aop.schedule.publish.index',   'label' => 'Publish',   'match' => 'aop.schedule.publish.*'],
+  ];
+  $inSchedule = request()->routeIs('aop.schedule.*');
 @endphp
 
 <div class="min-h-screen md:flex">
@@ -81,6 +91,23 @@
                     <span class="h-2.5 w-2.5 rounded-full bg-blue-400"></span>
                   @endif
                 </a>
+
+                {{-- Schedule sub-nav: shown when inside schedule pages --}}
+                @if ($item['route'] === 'aop.schedule.home' && $inSchedule)
+                  <div class="ml-3 mt-1 space-y-0.5 border-l border-white/10 pl-3">
+                    @foreach ($scheduleSubNav as $sub)
+                      <a
+                        href="{{ route($sub['route']) }}"
+                        class="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition-all duration-150 {{ request()->routeIs($sub['match']) ? 'text-blue-200 bg-white/[0.07]' : 'text-slate-400 hover:text-white hover:bg-white/5' }}"
+                      >
+                        {{ $sub['label'] }}
+                        @if (request()->routeIs($sub['match']))
+                          <span class="h-1.5 w-1.5 rounded-full bg-blue-400"></span>
+                        @endif
+                      </a>
+                    @endforeach
+                  </div>
+                @endif
               @endforeach
             </div>
           </div>
@@ -153,6 +180,21 @@
     </header>
 
     <main class="mx-auto w-full max-w-[1680px] px-6 py-8 xl:px-10">
+      @if (session('schedule_warnings'))
+        <div class="mb-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50/95 p-4 shadow-sm">
+          <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>
+          <div>
+            <div class="text-sm font-bold text-amber-900 mb-1">Scheduling rule advisory</div>
+            <ul class="list-disc list-inside text-sm text-amber-800 space-y-0.5 marker:text-amber-500">
+              @foreach (session('schedule_warnings') as $warning)
+                <li>{{ $warning }}</li>
+              @endforeach
+            </ul>
+            <p class="mt-2 text-xs text-amber-700">The block was saved. These are advisory notices — not errors. Rules will be enforced once the institution finalises its compliance timeline.</p>
+          </div>
+        </div>
+      @endif
+
       @if (session('status') && !in_array(session('status'), ['profile-updated', 'password-updated'], true))
         <div class="mb-6 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/95 p-4 shadow-sm">
           <svg class="mt-0.5 h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>

@@ -10,6 +10,7 @@ use App\Models\OfficeHourBlock;
 use App\Models\Section;
 use App\Models\Term;
 use App\Services\ScheduleConflictService;
+use App\Services\ScheduleDistributionService;
 use Carbon\Carbon;
 
 class ScheduleReadinessController extends Controller
@@ -40,7 +41,7 @@ class ScheduleReadinessController extends Controller
         return $term;
     }
 
-    public function index()
+    public function index(ScheduleDistributionService $distribution)
     {
         $term = $this->activeTermOrFail();
 
@@ -78,6 +79,8 @@ class ScheduleReadinessController extends Controller
         $instructionalMinutes = $this->computeInstructionalMinutes($term, $sections);
         $minutesFailing = collect($instructionalMinutes)->where('pass', false)->values();
 
+        $distributionStats = $distribution->compute($term);
+
         return view('aop.schedule.readiness.index', [
             'term' => $term,
             'sectionsMissingInstructor' => $sectionsMissingInstructor,
@@ -89,6 +92,7 @@ class ScheduleReadinessController extends Controller
             'officeHoursFailing' => $officeHoursFailing,
             'instructionalMinutes' => $instructionalMinutes,
             'minutesFailing' => $minutesFailing,
+            'distributionStats' => $distributionStats,
         ]);
     }
 

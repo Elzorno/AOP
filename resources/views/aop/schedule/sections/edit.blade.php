@@ -208,18 +208,17 @@
           <div class="surface-note">
             <div class="inline-form-grid">
               <div>
-                <label for="suggestDuration">Duration (minutes)</label>
-                <input id="suggestDuration" type="number" min="15" step="15" value="60">
-              </div>
-              <div class="md:col-span-2">
-                <label for="suggestDays">Preferred days</label>
-                <input id="suggestDays" type="text" placeholder="Mon,Wed,Fri">
+                <label for="suggestBlockType">Block type</label>
+                <select id="suggestBlockType">
+                  <option value="LECTURE">Lecture</option>
+                  <option value="LAB">Lab</option>
+                </select>
               </div>
               <div class="actions md:items-end">
                 <button id="suggestSlotButton" type="button" class="btn secondary">Find Open Slots</button>
               </div>
             </div>
-            <p class="table-note">Suggestions honor room and instructor availability using the active term buffer rules.</p>
+            <p class="table-note">Suggestions use canonical semester schedule blocks, filtered for instructor and room availability.</p>
             <div id="suggestionStatus" class="table-note" aria-live="polite"></div>
             <div id="suggestionsList" class="suggestion-list"></div>
           </div>
@@ -350,12 +349,11 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const button = document.getElementById('suggestSlotButton');
-      const durationInput = document.getElementById('suggestDuration');
-      const daysInput = document.getElementById('suggestDays');
-      const list = document.getElementById('suggestionsList');
-      const status = document.getElementById('suggestionStatus');
-      const form = document.getElementById('addBlockForm');
+      const button       = document.getElementById('suggestSlotButton');
+      const blockTypeEl  = document.getElementById('suggestBlockType');
+      const list         = document.getElementById('suggestionsList');
+      const status       = document.getElementById('suggestionStatus');
+      const form         = document.getElementById('addBlockForm');
 
       const escapeHtml = (value) => String(value)
         .replaceAll('&', '&amp;')
@@ -372,51 +370,65 @@
         });
 
         form.querySelector('input[name="starts_at"]').value = payload.startsAt || '';
-        form.querySelector('input[name="ends_at"]').value = payload.endsAt || '';
-        form.querySelector('select[name="room_id"]').value = payload.roomId || '';
+        form.querySelector('input[name="ends_at"]').value   = payload.endsAt   || '';
+        form.querySelector('select[name="room_id"]').value  = payload.roomId   || '';
 
-        status.textContent = 'Suggestion applied below. Review the room and save the meeting block when ready.';
+        // Set block type if the form type select exists
+        const typeSelect = form.querySelector('select[name="type"]');
+        if (typeSelect && payload.blockType) {
+          typeSelect.value = payload.blockType;
+        }
+
+        status.textContent = 'Slot applied — review the room below and save when ready.';
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
       };
 
       button?.addEventListener('click', async () => {
-        const duration = durationInput.value || 60;
-        const days = daysInput.value || '';
+        const blockType = blockTypeEl?.value || 'LECTURE';
 
         button.disabled = true;
-        status.textContent = 'Searching for conflict-aware openings...';
+        status.textContent = 'Finding canonical open slots…';
         list.innerHTML = '';
 
         try {
-          const response = await fetch("{{ route('aop.schedule.sections.suggest', $section) }}?duration=" + encodeURIComponent(duration) + "&days=" + encodeURIComponent(days));
+          const url = "{{ route('aop.schedule.sections.suggest', $section) }}"
+            + '?block_type=' + encodeURIComponent(blockType);
+
+          const response = await fetch(url);
           const data = await response.json();
           const suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
 
           if (suggestions.length === 0) {
-            status.textContent = 'No conflicts-free slots found. Try a different duration or a wider day pattern.';
+            status.textContent = 'No conflict-free canonical slots found for this section. Try a different block type or check for instructor conflicts.';
             return;
           }
 
-          status.textContent = suggestions.length + ' suggested slot' + (suggestions.length === 1 ? '' : 's') + ' found.';
+          status.textContent = suggestions.length + ' canonical slot' + (suggestions.length === 1 ? '' : 's') + ' available.';
+
           list.innerHTML = suggestions.map((suggestion) => {
-            const daysLabel = (suggestion.days || []).join(', ');
-            const roomLabel = suggestion.available_rooms.length > 0
-              ? suggestion.available_rooms.map((room) => room.name).join(', ')
+            const daysLabel  = (suggestion.days || []).join(', ');
+            const timeLabel  = escapeHtml(suggestion.starts_at) + ' – ' + escapeHtml(suggestion.ends_at);
+            const roomLabel  = suggestion.available_rooms.length > 0
+              ? suggestion.available_rooms.map((r) => escapeHtml(r.name)).join(', ')
               : 'No rooms currently free';
+            const blockLabel = escapeHtml(suggestion.credit_label || blockType);
+            const daysStr    = escapeHtml((suggestion.days || []).join(','));
+            const firstRoom  = suggestion.available_rooms.length > 0 ? suggestion.available_rooms[0].id : '';
 
             return `
               <div class="suggestion-item">
                 <div>
-                  <div class="meeting-title">${escapeHtml(daysLabel)} · ${escapeHtml(suggestion.starts_at)} - ${escapeHtml(suggestion.ends_at)}</div>
-                  <div class="suggestion-meta">Open rooms: ${escapeHtml(roomLabel)}</div>
+                  <div class="meeting-title">${escapeHtml(daysLabel)} · ${timeLabel}</div>
+                  <div class="suggestion-meta">${blockLabel} &middot; Open rooms: ${roomLabel}</div>
                 </div>
                 <button
                   type="button"
                   class="btn secondary"
-                  data-days="${escapeHtml((suggestion.days || []).join(','))}"
+                  data-days="${daysStr}"
                   data-start="${escapeHtml(suggestion.starts_at)}"
                   data-end="${escapeHtml(suggestion.ends_at)}"
-                  data-room="${suggestion.available_rooms.length > 0 ? suggestion.available_rooms[0].id : ''}"
+                  data-room="${escapeHtml(String(firstRoom))}"
+                  data-block-type="${escapeHtml(blockType)}"
                 >
                   Use Slot
                 </button>
@@ -432,15 +444,14 @@
 
       list?.addEventListener('click', (event) => {
         const target = event.target.closest('button[data-days]');
-        if (!target) {
-          return;
-        }
+        if (!target) return;
 
         applySuggestion({
-          days: target.dataset.days,
-          startsAt: target.dataset.start,
-          endsAt: target.dataset.end,
-          roomId: target.dataset.room,
+          days:      target.dataset.days,
+          startsAt:  target.dataset.start,
+          endsAt:    target.dataset.end,
+          roomId:    target.dataset.room,
+          blockType: target.dataset.blockType,
         });
       });
     });
