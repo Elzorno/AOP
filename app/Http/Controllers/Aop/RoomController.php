@@ -26,6 +26,7 @@ class RoomController extends Controller
             'name' => ['required','string','max:255','unique:rooms,name'],
             'building' => ['nullable','string','max:255'],
             'room_number' => ['nullable','string','max:255'],
+            'capacity' => ['nullable','integer','min:1','max:9999'],
             'is_active' => ['nullable','boolean'],
         ]);
 
@@ -47,6 +48,7 @@ class RoomController extends Controller
             'name' => ['required','string','max:255','unique:rooms,name,'.$room->id],
             'building' => ['nullable','string','max:255'],
             'room_number' => ['nullable','string','max:255'],
+            'capacity' => ['nullable','integer','min:1','max:9999'],
             'is_active' => ['nullable','boolean'],
         ]);
 

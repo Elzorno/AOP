@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Aop\Schedule;
 
 use App\Http\Controllers\Controller;
 use App\Models\Instructor;
+use App\Models\InstructorPreference;
 use App\Models\InstructorTermLock;
 use App\Models\OfficeHourBlock;
 use App\Models\Term;
@@ -55,12 +56,17 @@ class OfficeHoursController extends Controller
             ->orderBy('starts_at')
             ->get();
 
+        $preferences = InstructorPreference::where('term_id', $term->id)
+            ->where('instructor_id', $instructor->id)
+            ->first();
+
         return view('aop.schedule.office-hours.show', [
             'term' => $term,
             'instructor' => $instructor,
             'lock' => $lock,
             'blocks' => $blocks,
             'days' => self::ALLOWED_DAYS,
+            'preferences' => $preferences,
         ]);
     }
 
@@ -70,10 +76,18 @@ class OfficeHoursController extends Controller
         abort_if($lock->office_hours_locked, 403, 'Office hours are locked for this instructor in the active term.');
     }
 
+    private function ensureOwnerOrAdmin(Instructor $instructor): void
+    {
+        if (!auth()->user()->is_admin) {
+            abort_if($instructor->email !== auth()->user()->email, 403, 'You can only manage your own office hours.');
+        }
+    }
+
     public function store(Request $request, Instructor $instructor, ScheduleConflictService $conflicts)
     {
         $term = $this->activeTermOrFail();
         $this->ensureActiveInstructor($instructor);
+        $this->ensureOwnerOrAdmin($instructor);
         $this->ensureUnlocked($term, $instructor);
 
         $data = $request->validate([
@@ -81,7 +95,7 @@ class OfficeHoursController extends Controller
             'days.*' => ['string', Rule::in(self::ALLOWED_DAYS), 'distinct'],
             'starts_at' => ['required', 'date_format:H:i'],
             'ends_at' => ['required', 'date_format:H:i'],
-            'notes' => ['nullable', 'string'],
+            'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
         if ($data['ends_at'] <= $data['starts_at']) {
@@ -141,7 +155,7 @@ class OfficeHoursController extends Controller
             'days.*' => ['string', Rule::in(self::ALLOWED_DAYS), 'distinct'],
             'starts_at' => ['required', 'date_format:H:i'],
             'ends_at' => ['required', 'date_format:H:i'],
-            'notes' => ['nullable', 'string'],
+            'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
         if ($data['ends_at'] <= $data['starts_at']) {
@@ -187,6 +201,7 @@ class OfficeHoursController extends Controller
     {
         $term = $this->activeTermOrFail();
         $this->ensureActiveInstructor($instructor);
+        $this->ensureOwnerOrAdmin($instructor);
         $this->ensureUnlocked($term, $instructor);
 
         abort_if($officeHourBlock->term_id !== $term->id || $officeHourBlock->instructor_id !== $instructor->id, 400, 'Office hour block not in active term/instructor.');

@@ -30,7 +30,6 @@
       'items' => [
         ['route' => 'dashboard', 'label' => 'Dashboard', 'match' => 'dashboard'],
         ['route' => 'aop.schedule.home', 'label' => 'Schedule', 'match' => 'aop.schedule.*'],
-        ['route' => 'aop.syllabi.index', 'label' => 'Syllabi', 'match' => 'aop.syllabi.*'],
       ],
     ],
     [

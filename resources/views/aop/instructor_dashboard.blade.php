@@ -28,7 +28,6 @@
               <th>Section</th>
               <th>Modality</th>
               <th>Meeting Times</th>
-              <th>Syllabus</th>
             </tr>
           </thead>
           <tbody>
@@ -46,17 +45,9 @@
                     </div>
                   @endforeach
                 </td>
-                <td>
-                  @if($sec->syllabus)
-                    <span class="badge success">Generated</span>
-                    <a href="{{ route('aop.syllabi.show', $sec) }}" class="text-muted-xs" style="margin-left:8px;">View</a>
-                  @else
-                    <span class="text-muted-xs">Not Started</span>
-                  @endif
-                </td>
               </tr>
             @empty
-              <tr><td colspan="5">No sections assigned to you for this term yet.</td></tr>
+              <tr><td colspan="4">No sections assigned to you for this term yet.</td></tr>
             @endforelse
           </tbody>
         </table>

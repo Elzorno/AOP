@@ -24,6 +24,10 @@
           <input name="room_number" value="{{ old('room_number') }}" />
         </div>
         <div>
+          <label>Capacity</label>
+          <input type="number" name="capacity" min="1" max="9999" value="{{ old('capacity') }}" placeholder="e.g. 30" />
+        </div>
+        <div>
           <label>Active</label>
           <select name="is_active">
             <option value="1" selected>Yes</option>

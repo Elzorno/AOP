@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Room extends Model
 {
-    protected $fillable = ['name','building','room_number','is_active'];
+    protected $fillable = ['name','building','room_number','capacity','is_active'];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'capacity'  => 'integer',
     ];
 
     public function meetingBlocks(): HasMany { return $this->hasMany(MeetingBlock::class); }

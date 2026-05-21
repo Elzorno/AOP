@@ -81,6 +81,26 @@ class ScheduleReadinessController extends Controller
 
         $distributionStats = $distribution->compute($term);
 
+        // Sections over room capacity (enrolled > room capacity, where both are set)
+        $sectionsOverCapacity = $sections->filter(function ($s) {
+            if (!$s->enrolled_count || !$s->section_capacity) {
+                // Also check against assigned room capacity
+                foreach ($s->meetingBlocks as $mb) {
+                    if ($mb->room && $mb->room->capacity && $s->enrolled_count > $mb->room->capacity) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            return $s->enrolled_count > $s->section_capacity;
+        })->values();
+
+        // Sections with low enrollment (≤ 70% of section_capacity)
+        $sectionsLowEnrollment = $sections->filter(function ($s) {
+            if (!$s->section_capacity || $s->section_capacity <= 0) return false;
+            return $s->enrolled_count <= floor($s->section_capacity * 0.70);
+        })->values();
+
         return view('aop.schedule.readiness.index', [
             'term' => $term,
             'sectionsMissingInstructor' => $sectionsMissingInstructor,
@@ -93,6 +113,8 @@ class ScheduleReadinessController extends Controller
             'instructionalMinutes' => $instructionalMinutes,
             'minutesFailing' => $minutesFailing,
             'distributionStats' => $distributionStats,
+            'sectionsOverCapacity' => $sectionsOverCapacity,
+            'sectionsLowEnrollment' => $sectionsLowEnrollment,
         ]);
     }
 

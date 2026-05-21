@@ -256,6 +256,106 @@
             <li>Return to readiness after changes if you are clearing publish blockers.</li>
           </ul>
         </section>
+
+        {{-- Scheduling Preferences --}}
+        <section class="workspace-card" style="margin-top:16px;">
+          <div class="workspace-header">
+            <div>
+              <div class="briefing-kicker">Automation</div>
+              <h2 class="watchlist-title">Scheduling preferences</h2>
+              <p class="watchlist-copy">
+                Preferred days rank suggestions higher. Unavailable times are filtered out of auto-suggestions.
+                Max courses flags overloaded instructors.
+              </p>
+            </div>
+          </div>
+
+          <form method="POST" action="{{ route('aop.schedule.officeHours.preferences.upsert', $instructor) }}">
+            @csrf
+            @method('PUT')
+
+            <div class="inline-form-grid" style="align-items:start;">
+              <div>
+                <label>Max courses this term</label>
+                <input type="number" name="max_courses" min="0" max="20"
+                  value="{{ old('max_courses', $preferences?->max_courses ?? 3) }}" />
+              </div>
+              <div>
+                <label>Notes</label>
+                <input type="text" name="notes" placeholder="Optional scheduling notes"
+                  value="{{ old('notes', $preferences?->notes) }}" />
+              </div>
+            </div>
+
+            <label style="margin-top:12px;display:block;">Preferred days</label>
+            <div class="inline-form-grid-3" style="margin-top:6px;">
+              @foreach ($days as $day)
+                <label class="checkbox-row">
+                  <input type="checkbox" name="preferred_days[]" value="{{ $day }}"
+                    {{ in_array($day, old('preferred_days', $preferences?->preferred_days ?? []), true) ? 'checked' : '' }} />
+                  <span>{{ $day }}</span>
+                </label>
+              @endforeach
+            </div>
+
+            <div style="margin-top:16px;">
+              <label style="display:block;margin-bottom:8px;">Unavailable times</label>
+              <p class="table-note">These slots are excluded from schedule suggestions. End time must be after start time.</p>
+              <div id="unavail-list" class="flex flex-col gap-2 mt-3">
+                @php $existingUnavail = old('unavail_day') ? collect(old('unavail_day'))->map(fn($d,$i) => ['day'=>$d,'starts_at'=>old('unavail_start')[$i]??'','ends_at'=>old('unavail_end')[$i]??''])->all() : ($preferences?->unavailable_times ?? []) @endphp
+                @foreach ($existingUnavail as $i => $slot)
+                  <div class="unavail-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <select name="unavail_day[]" style="width:auto;">
+                      @foreach ($days as $day)
+                        <option value="{{ $day }}" {{ ($slot['day'] ?? '') === $day ? 'selected' : '' }}>{{ $day }}</option>
+                      @endforeach
+                    </select>
+                    <input type="time" name="unavail_start[]" value="{{ $slot['starts_at'] ?? '' }}" style="width:auto;" />
+                    <span style="color:var(--text-muted,#888);">to</span>
+                    <input type="time" name="unavail_end[]" value="{{ $slot['ends_at'] ?? '' }}" style="width:auto;" />
+                    <button type="button" class="btn secondary sm" onclick="this.closest('.unavail-row').remove()">Remove</button>
+                  </div>
+                @endforeach
+              </div>
+              <button type="button" class="btn secondary sm" style="margin-top:8px;" onclick="addUnavailRow()">+ Add unavailable time</button>
+            </div>
+
+            <div class="section-actions" style="margin-top:16px;">
+              <button class="btn" type="submit">Save Preferences</button>
+              @if ($preferences)
+                <a href="{{ route('aop.schedule.officeHours.preferences.destroy', $instructor) }}"
+                   onclick="event.preventDefault(); if(confirm('Clear all preferences for this term?')) document.getElementById('clear-prefs-form').submit();"
+                   class="btn secondary">Clear</a>
+              @endif
+            </div>
+          </form>
+
+          @if ($preferences)
+            <form id="clear-prefs-form" method="POST" action="{{ route('aop.schedule.officeHours.preferences.destroy', $instructor) }}" style="display:none;">
+              @csrf
+              @method('DELETE')
+            </form>
+          @endif
+
+          <script>
+            function addUnavailRow() {
+              const list = document.getElementById('unavail-list');
+              const days = @json($days);
+              const opts = days.map(d => `<option value="${d}">${d}</option>`).join('');
+              const row = document.createElement('div');
+              row.className = 'unavail-row';
+              row.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;';
+              row.innerHTML = `
+                <select name="unavail_day[]" style="width:auto;">${opts}</select>
+                <input type="time" name="unavail_start[]" style="width:auto;" />
+                <span style="color:var(--text-muted,#888);">to</span>
+                <input type="time" name="unavail_end[]" style="width:auto;" />
+                <button type="button" class="btn secondary sm" onclick="this.closest('.unavail-row').remove()">Remove</button>
+              `;
+              list.appendChild(row);
+            }
+          </script>
+        </section>
       </aside>
     </section>
   </div>

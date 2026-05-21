@@ -86,6 +86,28 @@ class ScheduleRuleWarningService
         }
 
         // ----------------------------------------------------------------
+        // Rule: MW 3:30 pm – 5:00 pm is reserved for campus faculty meetings
+        // Flag any block that meets on Monday or Wednesday and overlaps this window.
+        // ----------------------------------------------------------------
+        $campusMeetingStart = self::toMin('15:30');
+        $campusMeetingEnd   = self::toMin('17:00');
+        $hasMWDay = !empty(array_intersect($days, ['Mon', 'Wed']));
+        if ($hasMWDay) {
+            $overlap = max(0, min($endMin, $campusMeetingEnd) - max($startMin, $campusMeetingStart));
+            if ($overlap > 0) {
+                $warnings[] = 'Monday/Wednesday 3:30–5:00 pm is reserved for campus faculty meetings. This block overlaps that window.';
+            }
+        }
+
+        // ----------------------------------------------------------------
+        // Rule: standard day hours end at 6:30 pm; flag non-evening blocks
+        // that run past 18:30. (Evening courses starting at 5:00 pm+ are exempt.)
+        // ----------------------------------------------------------------
+        if ($startMin < self::toMin('17:00') && $endMin > self::toMin('18:30')) {
+            $warnings[] = 'This block ends after the 6:30 pm standard close for day courses. Consider scheduling as an evening course (5:00 pm start) instead.';
+        }
+
+        // ----------------------------------------------------------------
         // Rule: start time should match a canonical block start time
         // ----------------------------------------------------------------
         $canonicalStarts = ScheduleBlockLibrary::canonicalStartsFor($days, $blockType);

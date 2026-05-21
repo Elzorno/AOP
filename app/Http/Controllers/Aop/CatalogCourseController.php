@@ -45,10 +45,14 @@ class CatalogCourseController extends Controller
             'coreq_text' => ['nullable','string'],
             'notes' => ['nullable','string'],
 
-            'is_active' => ['nullable','boolean'],
+            'is_active'           => ['nullable','boolean'],
+            'is_gep'              => ['nullable','boolean'],
+            'is_program_required' => ['nullable','boolean'],
         ]);
 
-        $data['is_active'] = (bool)($data['is_active'] ?? true);
+        $data['is_active']           = (bool)($data['is_active'] ?? true);
+        $data['is_gep']              = (bool)($data['is_gep'] ?? false);
+        $data['is_program_required'] = (bool)($data['is_program_required'] ?? false);
 
         CatalogCourse::create($data);
 
@@ -85,10 +89,14 @@ class CatalogCourseController extends Controller
             'coreq_text' => ['nullable','string'],
             'notes' => ['nullable','string'],
 
-            'is_active' => ['nullable','boolean'],
+            'is_active'           => ['nullable','boolean'],
+            'is_gep'              => ['nullable','boolean'],
+            'is_program_required' => ['nullable','boolean'],
         ]);
 
-        $data['is_active'] = (bool)($data['is_active'] ?? true);
+        $data['is_active']           = (bool)($data['is_active'] ?? true);
+        $data['is_gep']              = (bool)($data['is_gep'] ?? false);
+        $data['is_program_required'] = (bool)($data['is_program_required'] ?? false);
 
         $course->update($data);
 

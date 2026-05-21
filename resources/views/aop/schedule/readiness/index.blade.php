@@ -259,6 +259,20 @@
               <div class="readiness-stat-label">Classroom hours on T/R</div>
               <div class="readiness-stat-note">Target: ≤ 60%</div>
             </div>
+            @if(($d['totals']['gep_total'] ?? 0) > 0)
+            <div class="readiness-stat {{ $d['flags']['gep_online_high'] ? 'r-warn' : 'r-good' }}">
+              <div class="readiness-stat-value">{{ $d['gep_online_pct'] }}%</div>
+              <div class="readiness-stat-label">GEP sections online</div>
+              <div class="readiness-stat-note">Target: ≤ 40% · {{ $d['totals']['gep_online'] }}/{{ $d['totals']['gep_total'] }}</div>
+            </div>
+            @endif
+            @if(($d['totals']['program_total'] ?? 0) > 0)
+            <div class="readiness-stat {{ $d['flags']['prog_online_high'] ? 'r-warn' : 'r-good' }}">
+              <div class="readiness-stat-value">{{ $d['program_online_pct'] }}%</div>
+              <div class="readiness-stat-label">Program-required sections online</div>
+              <div class="readiness-stat-note">Target: ≤ 25% · {{ $d['totals']['program_online'] }}/{{ $d['totals']['program_total'] }}</div>
+            </div>
+            @endif
           </div>
 
           <p class="table-note mt-4">
@@ -337,6 +351,51 @@
             </div>
           @endif
         </section>
+
+        @if($sectionsOverCapacity->isNotEmpty())
+        <section class="watchlist watchlist-danger">
+          <div class="briefing-kicker">Enrollment alert</div>
+          <h2 class="watchlist-title">Over capacity</h2>
+          <p class="watchlist-copy">Enrolled count exceeds declared section or room capacity.</p>
+          <div class="mini-list">
+            @foreach($sectionsOverCapacity->take(8) as $section)
+              @php
+                $roomCap = $section->meetingBlocks->whereNotNull('room')->min(fn($mb) => $mb->room?->capacity);
+                $capLabel = $section->section_capacity
+                    ? 'Cap '.$section->section_capacity
+                    : ($roomCap ? 'Room cap '.$roomCap : 'No cap set');
+              @endphp
+              <div class="mini-list-item">
+                <div>
+                  <div class="queue-label">{{ $section->offering?->catalogCourse?->code ?? '—' }} {{ $section->section_code }}</div>
+                  <div class="queue-copy">{{ $section->enrolled_count }} enrolled · {{ $capLabel }}</div>
+                </div>
+                <a class="btn secondary sm" href="{{ route('aop.schedule.sections.edit', $section) }}">Edit</a>
+              </div>
+            @endforeach
+          </div>
+        </section>
+        @endif
+
+        @if($sectionsLowEnrollment->isNotEmpty())
+        <section class="watchlist watchlist-warn">
+          <div class="briefing-kicker">Enrollment watchlist</div>
+          <h2 class="watchlist-title">Low enrollment (≤ 70%)</h2>
+          <p class="watchlist-copy">These sections may be at risk of cancellation.</p>
+          <div class="mini-list">
+            @foreach($sectionsLowEnrollment->take(8) as $section)
+              @php $fillPct = $section->section_capacity > 0 ? round($section->enrolled_count / $section->section_capacity * 100) : 0; @endphp
+              <div class="mini-list-item">
+                <div>
+                  <div class="queue-label">{{ $section->offering?->catalogCourse?->code ?? '—' }} {{ $section->section_code }}</div>
+                  <div class="queue-copy">{{ $section->enrolled_count }}/{{ $section->section_capacity }} enrolled ({{ $fillPct }}%)</div>
+                </div>
+                <a class="btn secondary sm" href="{{ route('aop.schedule.sections.edit', $section) }}">Edit</a>
+              </div>
+            @endforeach
+          </div>
+        </section>
+        @endif
       </aside>
     </section>
   </div>

@@ -45,7 +45,27 @@
         </div>
       </div>
 
-      <div style="height:12px;"></div>
+      {{-- Schedule block enforcement --}}
+      <div style="height:16px;"></div>
+      <label style="font-weight:600;display:block;margin-bottom:6px;">Schedule Block Rules</label>
+      <label class="checkbox-row" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+        <input
+          type="checkbox"
+          name="enforce_schedule_blocks"
+          value="1"
+          {{ old('enforce_schedule_blocks', $term->enforce_schedule_blocks) ? 'checked' : '' }}
+          style="margin-top:3px;flex-shrink:0;"
+        />
+        <span>
+          <strong>Enforce canonical schedule blocks</strong><br>
+          <span style="font-size:0.85em;color:var(--text-muted,#666);">
+            When enabled, non-canonical start times and durations are rejected as hard errors rather than advisory warnings.
+            Leave off during schedule building; enable before final review.
+          </span>
+        </span>
+      </label>
+
+      <div style="height:16px;"></div>
       <button class="btn" type="submit">Save Changes</button>
     </form>
   </div>

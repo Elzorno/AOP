@@ -57,28 +57,28 @@ class TermController extends Controller
             'slot_minutes' => ['required','integer','min:5','max:60'],
             'buffer_minutes' => ['required','integer','min:0','max:60'],
             'copy_instructor_assignments' => ['nullable','boolean'],
+            'copy_office_hours' => ['nullable','boolean'],
         ]);
 
         $result = $cloneService->cloneIntoFreshTerm(
             $sourceTerm,
             $data,
-            (bool) ($data['copy_instructor_assignments'] ?? false)
+            (bool) ($data['copy_instructor_assignments'] ?? false),
+            (bool) ($data['copy_office_hours'] ?? false)
         );
 
         $targetTerm = $result['term'];
         $counts = $result['counts'];
 
-        $copiedInstructorText = !empty($data['copy_instructor_assignments']) ? 'Instructor assignments copied.' : 'Instructor assignments left blank.';
+        $parts = [
+            'Term '.$targetTerm->code.' created from '.$sourceTerm->code.'.',
+            'Copied '.$counts['offerings'].' offerings, '.$counts['sections'].' sections, and '.$counts['meeting_blocks'].' meeting blocks.',
+            !empty($data['copy_instructor_assignments']) ? 'Instructor assignments copied.' : 'Instructor assignments left blank.',
+            $counts['office_hours'] > 0 ? $counts['office_hours'].' office hour blocks copied.' : 'Office hours not copied.',
+            'Locks, publications, syllabi, and render history were not copied.',
+        ];
 
-        return redirect()->route('aop.terms.index')->with(
-            'status',
-            'Term '.$targetTerm->code.' created from '.$sourceTerm->code.'. '
-            .'Copied '.$counts['offerings'].' offerings, '
-            .$counts['sections'].' sections, and '
-            .$counts['meeting_blocks'].' meeting blocks. '
-            .$copiedInstructorText.' '
-            .'Locks, publications, office hours, syllabi, and render history were not copied.'
-        );
+        return redirect()->route('aop.terms.index')->with('status', implode(' ', $parts));
     }
 
     public function edit(Term $term)
@@ -96,7 +96,10 @@ class TermController extends Controller
             'weeks_in_term' => ['required','integer','min:1','max:52'],
             'slot_minutes' => ['required','integer','min:5','max:60'],
             'buffer_minutes' => ['required','integer','min:0','max:60'],
+            'enforce_schedule_blocks' => ['nullable','boolean'],
         ]);
+
+        $data['enforce_schedule_blocks'] = (bool) ($data['enforce_schedule_blocks'] ?? false);
 
         $term->update($data);
 

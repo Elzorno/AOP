@@ -29,7 +29,7 @@ class DashboardController extends Controller
             $preferences = null;
 
             if ($activeTerm) {
-                $sections = Section::with(['offering.catalogCourse', 'meetingBlocks.room', 'syllabus'])
+                $sections = Section::with(['offering.catalogCourse', 'meetingBlocks.room'])
                     ->where('instructor_id', $instructor->id)
                     ->whereHas('offering', fn($q) => $q->where('term_id', $activeTerm->id))
                     ->get();

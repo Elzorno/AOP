@@ -93,12 +93,6 @@
         <div class="dock-meta">Launch schedule</div>
       </a>
 
-      <a href="{{ route('aop.syllabi.index') }}" class="dock-item">
-        <div class="dock-kicker">Downstream</div>
-        <h2 class="dock-title">Syllabi</h2>
-        <p class="dock-copy">Manage templates, structure, and section exports.</p>
-        <div class="dock-meta">Open syllabi</div>
-      </a>
     </section>
 
     <section class="dashboard-grid">
@@ -110,7 +104,7 @@
               <div>
                 <div class="sequence-label">Set context</div>
                 <h2 class="sequence-title">Choose the active term.</h2>
-                <p class="sequence-copy">Scheduling and syllabi follow this term.</p>
+                <p class="sequence-copy">Scheduling follows this term.</p>
               </div>
             </div>
             <div class="actions">

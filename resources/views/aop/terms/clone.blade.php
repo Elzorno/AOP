@@ -63,6 +63,15 @@
         </span>
       </label>
 
+      <div style="height:10px;"></div>
+      <label style="display:flex; gap:10px; align-items:flex-start; color:inherit;">
+        <input type="checkbox" name="copy_office_hours" value="1" {{ old('copy_office_hours') ? 'checked' : '' }} style="width:auto; margin-top:2px;" />
+        <span>
+          Copy office hour blocks from the source term.
+          <span style="display:block; color:var(--muted); font-size:12px; margin-top:4px;">Copies all instructor office hour blocks. Locks are not copied — instructors must re-lock after review.</span>
+        </span>
+      </label>
+
       <div style="height:12px;"></div>
       <button class="btn" type="submit">Create Term and Clone Schedule</button>
     </form>

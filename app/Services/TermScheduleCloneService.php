@@ -14,9 +14,9 @@ use Illuminate\Validation\ValidationException;
 
 class TermScheduleCloneService
 {
-    public function cloneIntoFreshTerm(Term $sourceTerm, array $targetTermData, bool $copyInstructorAssignments = false): array
+    public function cloneIntoFreshTerm(Term $sourceTerm, array $targetTermData, bool $copyInstructorAssignments = false, bool $copyOfficeHours = false): array
     {
-        return DB::transaction(function () use ($sourceTerm, $targetTermData, $copyInstructorAssignments) {
+        return DB::transaction(function () use ($sourceTerm, $targetTermData, $copyInstructorAssignments, $copyOfficeHours) {
             $targetTerm = Term::create([
                 'code' => $targetTermData['code'],
                 'name' => $targetTermData['name'],
@@ -81,12 +81,29 @@ class TermScheduleCloneService
                 }
             }
 
+            $officeHoursCopied = 0;
+            if ($copyOfficeHours) {
+                $sourceOfficeHours = OfficeHourBlock::where('term_id', $sourceTerm->id)->get();
+                foreach ($sourceOfficeHours as $sourceBlock) {
+                    OfficeHourBlock::create([
+                        'term_id'       => $targetTerm->id,
+                        'instructor_id' => $sourceBlock->instructor_id,
+                        'days_json'     => $sourceBlock->days_json,
+                        'starts_at'     => $sourceBlock->starts_at,
+                        'ends_at'       => $sourceBlock->ends_at,
+                        'notes'         => $sourceBlock->notes,
+                    ]);
+                    $officeHoursCopied++;
+                }
+            }
+
             return [
                 'term' => $targetTerm,
                 'counts' => [
-                    'offerings' => $offeringsCopied,
-                    'sections' => $sectionsCopied,
-                    'meeting_blocks' => $meetingBlocksCopied,
+                    'offerings'     => $offeringsCopied,
+                    'sections'      => $sectionsCopied,
+                    'meeting_blocks'=> $meetingBlocksCopied,
+                    'office_hours'  => $officeHoursCopied,
                 ],
             ];
         });

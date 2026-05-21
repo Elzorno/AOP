@@ -45,7 +45,6 @@
         <a class="btn" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Back to Schedule</a>
         <a class="btn secondary" href="{{ route('aop.schedule.sections.index', ['q' => $course->code]) }}">Section Directory</a>
         <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
-        <a class="btn secondary" href="{{ route('aop.syllabi.show', $section) }}">Syllabus</a>
       </div>
     </section>
 
@@ -94,12 +93,42 @@
                 <label for="notes">Notes</label>
                 <input id="notes" name="notes" value="{{ old('notes', $section->notes) }}" placeholder="Optional planning notes">
               </div>
+              <div>
+                <label for="section_capacity">Capacity</label>
+                <input id="section_capacity" type="number" name="section_capacity" min="1" max="9999"
+                  value="{{ old('section_capacity', $section->section_capacity) }}" placeholder="Max seats">
+              </div>
+              <div>
+                <label for="enrolled_count">Enrolled</label>
+                <input id="enrolled_count" type="number" name="enrolled_count" min="0" max="9999"
+                  value="{{ old('enrolled_count', $section->enrolled_count) }}" placeholder="Current enrollment">
+              </div>
             </div>
+
+            @if ($section->section_capacity && $section->enrolled_count <= floor($section->section_capacity * 0.70))
+              <div class="issue-callout issue-callout-warn" style="margin-top:10px;">
+                Enrollment is at {{ $section->section_capacity > 0 ? round(($section->enrolled_count / $section->section_capacity) * 100) : 0 }}% of capacity ({{ $section->enrolled_count }}/{{ $section->section_capacity }}).
+                Per scheduling guidelines, review this section 5–6 weeks before the term starts.
+              </div>
+            @endif
 
             <div class="section-actions">
               <button class="btn" type="submit">Save Section</button>
             </div>
           </form>
+
+          @if(!$scheduleLocked)
+          <form method="POST" action="{{ route('aop.schedule.sections.destroy', $section) }}"
+                style="margin-top:12px;"
+                onsubmit="return confirm('Permanently remove {{ addslashes($section->offering->catalogCourse->code ?? 'this') }} {{ addslashes($section->section_code) }} and all its meeting blocks? This cannot be undone.')">
+            @csrf
+            @method('DELETE')
+            <input type="hidden" name="from_schedule_home" value="{{ request()->boolean('from_schedule_home') ? '1' : '0' }}">
+            <div class="section-actions">
+              <button class="btn danger sm" type="submit">Remove This Section</button>
+            </div>
+          </form>
+          @endif
         </section>
 
         <section class="workspace-card">
@@ -189,6 +218,16 @@
                           <button class="btn secondary" type="submit">Save Meeting Block</button>
                         </div>
                       </form>
+
+                      <form method="POST" action="{{ route('aop.schedule.meetingBlocks.destroy', [$section, $meetingBlock]) }}"
+                            onsubmit="return confirm('Remove this meeting block? This cannot be undone.')">
+                        @csrf
+                        @method('DELETE')
+                        <input type="hidden" name="from_schedule_home" value="{{ request()->boolean('from_schedule_home') ? '1' : '0' }}">
+                        <div class="section-actions" style="margin-top:0;">
+                          <button class="btn danger sm" type="submit">Remove Block</button>
+                        </div>
+                      </form>
                     </div>
                   </details>
                 </div>
@@ -270,6 +309,8 @@
             <label for="new_block_notes">Notes</label>
             <input id="new_block_notes" name="notes" value="{{ $isAddingNewBlock ? old('notes') : '' }}" placeholder="Optional notes">
 
+            <div id="distPreviewPanel" hidden style="margin-top:12px;"></div>
+
             <div class="section-actions">
               <button class="btn" type="submit">Add Meeting Block</button>
             </div>
@@ -343,6 +384,41 @@
             </ul>
           @endif
         </section>
+
+        {{-- Change history --}}
+        @if ($changeLogs->isNotEmpty())
+          <section class="watchlist-panel" style="margin-top:16px;">
+            <div class="briefing-kicker">Change history</div>
+            <h2 class="watchlist-title">Block edits (last 25)</h2>
+            <p class="watchlist-copy">Every create or update to a meeting block in this section.</p>
+            <div class="change-log-list mt-4">
+              @foreach ($changeLogs as $log)
+                @php
+                  $after  = $log->payload_after ?? [];
+                  $before = $log->payload_before ?? [];
+                  $timeLabel = $log->created_at->format('M j, g:i a');
+                  $actor = $log->user?->name ?? 'System';
+                  $actionLabel = match($log->action) {
+                      'created' => 'Added',
+                      'updated' => 'Updated',
+                      'deleted' => 'Removed',
+                      default   => ucfirst($log->action),
+                  };
+                  $daysLabel = implode('/', $after['days_json'] ?? $before['days_json'] ?? []);
+                  $time = ($after['starts_at'] ?? $before['starts_at'] ?? '') . '–' . ($after['ends_at'] ?? $before['ends_at'] ?? '');
+                @endphp
+                <div class="change-log-item">
+                  <div class="change-log-meta">
+                    <span class="change-log-action change-log-action-{{ $log->action }}">{{ $actionLabel }}</span>
+                    <span class="change-log-time" title="{{ $log->created_at->toDateTimeString() }}">{{ $timeLabel }}</span>
+                    <span class="change-log-actor">{{ $actor }}</span>
+                  </div>
+                  <div class="change-log-detail">{{ $daysLabel ?: '—' }} {{ $time }}</div>
+                </div>
+              @endforeach
+            </div>
+          </section>
+        @endif
       </aside>
     </section>
   </div>
@@ -454,6 +530,80 @@
           blockType: target.dataset.blockType,
         });
       });
+
+      // Distribution preview: update on days/time change in the add-block form
+      const previewUrl   = '{{ route('aop.schedule.distribution.preview') }}';
+      const previewPanel = document.getElementById('distPreviewPanel');
+
+      function collectNewBlockInputs() {
+        const form = document.getElementById('addBlockForm');
+        if (!form) return null;
+        const days = Array.from(form.querySelectorAll('input[name="days[]"]:checked')).map(el => el.value);
+        const startsAt = form.querySelector('#new_starts_at')?.value || '';
+        const endsAt   = form.querySelector('#new_ends_at')?.value   || '';
+        return { days, startsAt, endsAt };
+      }
+
+      let previewTimer = null;
+      function schedulePreview() {
+        clearTimeout(previewTimer);
+        previewTimer = setTimeout(async () => {
+          const inputs = collectNewBlockInputs();
+          if (!inputs || inputs.days.length === 0 || !inputs.startsAt || !inputs.endsAt || inputs.endsAt <= inputs.startsAt) {
+            if (previewPanel) previewPanel.hidden = true;
+            return;
+          }
+          const params = new URLSearchParams({ starts_at: inputs.startsAt, ends_at: inputs.endsAt });
+          inputs.days.forEach(d => params.append('days[]', d));
+          try {
+            const resp = await fetch(`${previewUrl}?${params.toString()}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            renderPreview(data, previewPanel);
+          } catch {}
+        }, 350);
+      }
+
+      function renderPreview(data, panel) {
+        if (!panel) return;
+        const b = data.base;
+        const i = data.impact;
+        const fmtDelta = (base, impact) => {
+          const d = parseFloat(impact) - parseFloat(base);
+          const sign = d >= 0 ? '+' : '';
+          return `${sign}${d.toFixed(1)}pp`;
+        };
+        const flagClass = (flag) => flag ? 'dist-preview-warn' : 'dist-preview-good';
+
+        panel.hidden = false;
+        panel.innerHTML = `
+          <div class="dist-preview-title">Distribution impact preview</div>
+          <div class="dist-preview-grid">
+            <div class="dist-preview-stat ${flagClass(i.flags.friday_low)}">
+              <span class="dist-preview-value">${i.friday_pct}%</span>
+              <span class="dist-preview-label">Friday %</span>
+              <span class="dist-preview-delta">${fmtDelta(b.friday_pct, i.friday_pct)}</span>
+            </div>
+            <div class="dist-preview-stat ${flagClass(i.flags.peak_high)}">
+              <span class="dist-preview-value">${i.peak_hour_pct}%</span>
+              <span class="dist-preview-label">Peak hrs %</span>
+              <span class="dist-preview-delta">${fmtDelta(b.peak_hour_pct, i.peak_hour_pct)}</span>
+            </div>
+            <div class="dist-preview-stat ${flagClass(i.flags.mwf_high)}">
+              <span class="dist-preview-value">${i.mwf_pct}%</span>
+              <span class="dist-preview-label">MWF %</span>
+              <span class="dist-preview-delta">${fmtDelta(b.mwf_pct, i.mwf_pct)}</span>
+            </div>
+            <div class="dist-preview-stat ${flagClass(i.flags.tr_high)}">
+              <span class="dist-preview-value">${i.tr_pct}%</span>
+              <span class="dist-preview-label">TR %</span>
+              <span class="dist-preview-delta">${fmtDelta(b.tr_pct, i.tr_pct)}</span>
+            </div>
+          </div>`;
+      }
+
+      document.getElementById('addBlockForm')?.addEventListener('change', schedulePreview);
+      document.getElementById('addBlockForm')?.addEventListener('input', schedulePreview);
     });
   </script>
 </x-aop-layout>

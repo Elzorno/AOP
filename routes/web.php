@@ -5,7 +5,6 @@ use App\Http\Controllers\Aop\DashboardController;
 use App\Http\Controllers\Aop\InstructorController;
 use App\Http\Controllers\Aop\RoomController;
 use App\Http\Controllers\Aop\TermController;
-use App\Http\Controllers\Aop\SyllabusController;
 use App\Http\Controllers\Aop\Schedule\ScheduleHomeController;
 use App\Http\Controllers\Aop\Schedule\OfferingController;
 use App\Http\Controllers\Aop\Schedule\SectionController;
@@ -16,6 +15,7 @@ use App\Http\Controllers\Aop\Schedule\OfficeHoursController;
 use App\Http\Controllers\Aop\Schedule\SchedulePublishController;
 use App\Http\Controllers\Aop\Schedule\ScheduleReadinessController;
 use App\Http\Controllers\Aop\Schedule\ScheduleTermLockController;
+use App\Http\Controllers\Aop\Schedule\InstructorPreferenceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Public\SchedulePublicController;
 use Illuminate\Support\Facades\Route;
@@ -71,6 +71,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/instructors', [InstructorController::class, 'store'])->name('instructors.store');
         Route::get('/instructors/{instructor}/edit', [InstructorController::class, 'edit'])->name('instructors.edit');
         Route::put('/instructors/{instructor}', [InstructorController::class, 'update'])->name('instructors.update');
+        Route::post('/instructors/{instructor}/preferences', [InstructorPreferenceController::class, 'upsert'])->name('instructors.preferences.upsert');
 
         // Rooms
         Route::get('/rooms', [RoomController::class, 'index'])->name('rooms.index');
@@ -102,10 +103,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/schedule/sections/{section}/edit', [SectionController::class, 'edit'])->name('schedule.sections.edit');
         Route::put('/schedule/sections/{section}', [SectionController::class, 'update'])->name('schedule.sections.update');
         Route::get('/schedule/sections/{section}/suggest', [SectionController::class, 'suggest'])->name('schedule.sections.suggest');
+        Route::delete('/schedule/sections/{section}', [SectionController::class, 'destroy'])->name('schedule.sections.destroy');
+        Route::post('/schedule/sections/bulk-assign', [SectionController::class, 'bulkAssign'])->name('schedule.sections.bulkAssign');
 
         // Meeting Blocks (attached to sections)
         Route::post('/schedule/sections/{section}/meeting-blocks', [MeetingBlockController::class, 'store'])->name('schedule.meetingBlocks.store');
         Route::put('/schedule/sections/{section}/meeting-blocks/{meetingBlock}', [MeetingBlockController::class, 'update'])->name('schedule.meetingBlocks.update');
+        Route::delete('/schedule/sections/{section}/meeting-blocks/{meetingBlock}', [MeetingBlockController::class, 'destroy'])->name('schedule.meetingBlocks.destroy');
 
         // Office Hours
         Route::get('/schedule/office-hours', [OfficeHoursController::class, 'index'])->name('schedule.officeHours.index');
@@ -115,11 +119,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/schedule/office-hours/{instructor}/blocks/{officeHourBlock}', [OfficeHoursController::class, 'destroy'])->name('schedule.officeHours.blocks.destroy');
         Route::post('/schedule/office-hours/{instructor}/lock', [OfficeHoursController::class, 'lock'])->name('schedule.officeHours.lock');
         Route::post('/schedule/office-hours/{instructor}/unlock', [OfficeHoursController::class, 'unlock'])->name('schedule.officeHours.unlock');
+        Route::put('/schedule/office-hours/{instructor}/preferences', [App\Http\Controllers\Aop\Schedule\InstructorPreferenceController::class, 'upsert'])->name('schedule.officeHours.preferences.upsert');
+        Route::delete('/schedule/office-hours/{instructor}/preferences', [App\Http\Controllers\Aop\Schedule\InstructorPreferenceController::class, 'destroy'])->name('schedule.officeHours.preferences.destroy');
 
         // Schedule Grids (active term)
         Route::get('/schedule/grids', [ScheduleGridController::class, 'index'])->name('schedule.grids.index');
         Route::get('/schedule/grids/instructors/{instructor}', [ScheduleGridController::class, 'instructor'])->name('schedule.grids.instructor');
         Route::get('/schedule/grids/rooms/{room}', [ScheduleGridController::class, 'room'])->name('schedule.grids.room');
+
+        // Distribution preview (AJAX)
+        Route::get('/schedule/distribution/preview', [ScheduleHomeController::class, 'distributionPreview'])->name('schedule.distribution.preview');
 
         // Schedule Calendar (active term)
         Route::get('/schedule/calendar', [App\Http\Controllers\Aop\Schedule\ScheduleCalendarController::class, 'index'])->name('schedule.calendar.index');
@@ -144,30 +153,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/schedule/lock', [ScheduleTermLockController::class, 'lock'])->name('schedule.lock');
         Route::post('/schedule/unlock', [ScheduleTermLockController::class, 'unlock'])->name('schedule.unlock');
 
-        // Syllabi
-        Route::get('/syllabi', [SyllabusController::class, 'index'])->name('syllabi.index');
-        Route::post('/syllabi/template', [SyllabusController::class, 'uploadTemplate'])->name('syllabi.template.upload');
-        Route::get('/syllabi/structure/create', [SyllabusController::class, 'createDefinition'])->name('syllabi.structure.create');
-        Route::post('/syllabi/structure', [SyllabusController::class, 'storeDefinition'])->name('syllabi.structure.store');
-        Route::get('/syllabi/structure/{definition}/edit', [SyllabusController::class, 'editDefinition'])->name('syllabi.structure.edit');
-        Route::put('/syllabi/structure/{definition}', [SyllabusController::class, 'updateDefinition'])->name('syllabi.structure.update');
-        Route::delete('/syllabi/structure/{definition}', [SyllabusController::class, 'destroyDefinition'])->name('syllabi.structure.destroy');
-        Route::get('/syllabi/blocks/create', [SyllabusController::class, 'createBlock'])->name('syllabi.blocks.create');
-        Route::post('/syllabi/blocks', [SyllabusController::class, 'storeBlock'])->name('syllabi.blocks.store');
-        Route::get('/syllabi/blocks/{block}/edit', [SyllabusController::class, 'editBlock'])->name('syllabi.blocks.edit');
-        Route::put('/syllabi/blocks/{block}', [SyllabusController::class, 'updateBlock'])->name('syllabi.blocks.update');
-        Route::delete('/syllabi/blocks/{block}', [SyllabusController::class, 'destroyBlock'])->name('syllabi.blocks.destroy');
-        Route::get('/syllabi/sections/{section}', [SyllabusController::class, 'show'])->name('syllabi.show');
-        Route::get('/syllabi/sections/{section}/core/edit', [SyllabusController::class, 'editCoreContent'])->name('syllabi.core.edit');
-        Route::put('/syllabi/sections/{section}/core', [SyllabusController::class, 'updateCoreContent'])->name('syllabi.core.update');
-        Route::post('/syllabi/sections/{section}/core/reset/{field}', [SyllabusController::class, 'resetCoreContentField'])->name('syllabi.core.resetField');
-        Route::get('/syllabi/sections/{section}/structure/{definition}/edit', [SyllabusController::class, 'editSectionStructure'])->name('syllabi.structure.section.edit');
-        Route::put('/syllabi/sections/{section}/structure/{definition}', [SyllabusController::class, 'updateSectionStructure'])->name('syllabi.structure.section.update');
-        Route::post('/syllabi/sections/{section}/structure/{definition}/reset', [SyllabusController::class, 'resetSectionStructure'])->name('syllabi.structure.section.reset');
-        Route::get('/syllabi/sections/{section}/download/html', [SyllabusController::class, 'downloadHtml'])->name('syllabi.downloadHtml');
-        Route::get('/syllabi/sections/{section}/download/json', [SyllabusController::class, 'downloadJson'])->name('syllabi.downloadJson');
-        Route::get('/syllabi/sections/{section}/download/docx', [SyllabusController::class, 'downloadDocx'])->name('syllabi.downloadDocx');
-        Route::get('/syllabi/sections/{section}/download/pdf', [SyllabusController::class, 'downloadPdf'])->name('syllabi.downloadPdf');
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

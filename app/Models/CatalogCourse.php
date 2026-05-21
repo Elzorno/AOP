@@ -15,6 +15,8 @@ class CatalogCourse extends Model
         'description','objectives','required_materials',
         'prereq_text','coreq_text','notes',
         'is_active',
+        'is_gep',
+        'is_program_required',
     ];
 
     protected $casts = [
@@ -25,6 +27,8 @@ class CatalogCourse extends Model
         'lab_hours_per_week' => 'decimal:2',
         'contact_hours_per_week' => 'decimal:2',
         'is_active' => 'boolean',
+        'is_gep' => 'boolean',
+        'is_program_required' => 'boolean',
     ];
 
     public function offerings(): HasMany { return $this->hasMany(Offering::class); }

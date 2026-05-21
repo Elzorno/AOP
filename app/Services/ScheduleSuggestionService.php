@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\InstructorPreference;
 use App\Models\MeetingBlock;
 use App\Models\Room;
 use App\Models\Section;
@@ -69,12 +70,39 @@ class ScheduleSuggestionService
         $instructorId = $section->instructor_id;
         $buffer       = (int) ($term->buffer_minutes ?? 0);
 
+        // Load instructor preferences for filtering/ranking
+        $preferences = $instructorId
+            ? InstructorPreference::where('term_id', $term->id)
+                ->where('instructor_id', $instructorId)
+                ->first()
+            : null;
+
+        $preferredDays    = $preferences?->preferred_days ?? [];
+        $unavailableTimes = $preferences?->unavailable_times ?? [];
+
         $suggestions = [];
 
         foreach ($candidates as $candidate) {
             $days     = $candidate['days'];
             $startsAt = $candidate['starts_at'];
             $endsAt   = $candidate['ends_at'];
+
+            // 0. Filter out slots that overlap the instructor's unavailable times
+            if (!empty($unavailableTimes)) {
+                $blocked = false;
+                foreach ($unavailableTimes as $unavail) {
+                    if (!in_array($unavail['day'], $days, true)) {
+                        continue;
+                    }
+                    if (ScheduleConflictService::timesOverlap($startsAt, $endsAt, $unavail['starts_at'], $unavail['ends_at'], 0)) {
+                        $blocked = true;
+                        break;
+                    }
+                }
+                if ($blocked) {
+                    continue;
+                }
+            }
 
             // 1. Check instructor availability
             if ($instructorId) {
@@ -123,19 +151,30 @@ class ScheduleSuggestionService
                 continue;
             }
 
-            $suggestions[] = [
-                'days'            => $days,
-                'starts_at'       => $startsAt,
-                'ends_at'         => $endsAt,
-                'credit_label'    => $candidate['credit_label'],
-                'available_rooms' => array_slice($availableRooms, 0, 5),
-            ];
+            // Score: count how many of this slot's days match preferred days
+            $preferenceScore = !empty($preferredDays)
+                ? count(array_intersect($days, $preferredDays))
+                : 0;
 
-            if (count($suggestions) >= $limit) {
-                break;
-            }
+            $suggestions[] = [
+                'days'             => $days,
+                'starts_at'        => $startsAt,
+                'ends_at'          => $endsAt,
+                'credit_label'     => $candidate['credit_label'],
+                'available_rooms'  => array_slice($availableRooms, 0, 5),
+                'preference_score' => $preferenceScore,
+                'preferred'        => $preferenceScore > 0,
+            ];
         }
 
-        return $suggestions;
+        // Sort: preferred slots first, then chronological
+        usort($suggestions, function ($a, $b) {
+            if ($b['preference_score'] !== $a['preference_score']) {
+                return $b['preference_score'] <=> $a['preference_score'];
+            }
+            return $a['starts_at'] <=> $b['starts_at'];
+        });
+
+        return array_slice($suggestions, 0, $limit);
     }
 }

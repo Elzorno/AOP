@@ -134,6 +134,103 @@
         @apply border-l-4 border-amber-500;
     }
 
+    /* ── Schedule change log (section edit sidebar) ──────────────────── */
+    .change-log-list {
+        @apply flex flex-col gap-2;
+    }
+    .change-log-item {
+        @apply rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs;
+    }
+    .change-log-meta {
+        @apply flex flex-wrap items-center gap-1.5 mb-0.5;
+    }
+    .change-log-action {
+        @apply rounded-full px-1.5 py-0.5 font-semibold text-[10px] uppercase tracking-wide;
+    }
+    .change-log-action-created { @apply bg-emerald-100 text-emerald-700; }
+    .change-log-action-updated { @apply bg-blue-100 text-blue-700; }
+    .change-log-action-deleted { @apply bg-red-100 text-red-700; }
+    .change-log-time  { @apply text-slate-400; }
+    .change-log-actor { @apply text-slate-600 font-medium; }
+    .change-log-detail { @apply text-slate-500; }
+
+    /* ── Distribution health bar (schedule dashboard) ────────────────── */
+    .dist-health-bar {
+        @apply flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm;
+    }
+
+    .dist-health-label {
+        @apply flex items-center gap-2 font-semibold text-slate-700 mr-2;
+    }
+
+    .dist-health-badge {
+        @apply rounded-full px-2 py-0.5 text-xs font-medium;
+    }
+    .dist-health-badge.good  { @apply bg-emerald-100 text-emerald-700; }
+    .dist-health-badge.warn  { @apply bg-amber-100 text-amber-700; }
+
+    .dist-stat {
+        @apply flex flex-col items-center rounded-xl border px-3 py-1.5 min-w-[72px] text-center;
+    }
+    .dist-stat-good   { @apply border-emerald-200 bg-emerald-50; }
+    .dist-stat-warn   { @apply border-amber-300 bg-amber-50; }
+    .dist-stat-danger { @apply border-red-300 bg-red-50; }
+
+    .dist-stat-value {
+        @apply text-base font-bold leading-tight;
+    }
+    .dist-stat-good   .dist-stat-value { @apply text-emerald-700; }
+    .dist-stat-warn   .dist-stat-value { @apply text-amber-700; }
+    .dist-stat-danger .dist-stat-value { @apply text-red-700; }
+
+    .dist-stat-label {
+        @apply text-[11px] text-slate-500 leading-none mt-0.5;
+    }
+    .dist-stat-target {
+        @apply text-[10px] font-medium text-slate-400;
+    }
+
+    .dist-health-detail-link {
+        @apply ml-auto text-xs text-slate-500 underline-offset-2 hover:underline;
+    }
+
+    /* ── Distribution preview panel (inline in add-block form) ────────── */
+    .dist-preview-title {
+        @apply text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2;
+    }
+
+    .dist-preview-grid {
+        @apply grid grid-cols-2 gap-2 sm:grid-cols-4;
+    }
+
+    .dist-preview-stat {
+        @apply rounded-xl border px-3 py-2 text-center;
+        border-color: rgba(148, 163, 184, 0.2);
+        background: rgba(248, 250, 252, 0.9);
+    }
+
+    .dist-preview-stat.dist-preview-warn {
+        background: rgba(255, 251, 235, 0.9);
+        border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    .dist-preview-stat.dist-preview-good {
+        background: rgba(240, 253, 244, 0.9);
+        border-color: rgba(34, 197, 94, 0.2);
+    }
+
+    .dist-preview-value {
+        @apply block text-base font-bold text-slate-800;
+    }
+
+    .dist-preview-label {
+        @apply block text-xs text-slate-500;
+    }
+
+    .dist-preview-delta {
+        @apply block text-xs font-medium text-slate-600;
+    }
+
     .schedule-warnings {
         @apply rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900;
     }
@@ -366,6 +463,78 @@
         @apply flex items-center justify-between gap-4 rounded-xl bg-slate-50/90 px-3 py-2;
     }
 
+    /* ── Schedule Studio compact header ──────────────────────────────────── */
+    .sched-header {
+        @apply flex flex-col gap-4 rounded-[2rem] border p-6 md:p-7 md:flex-row md:items-start md:justify-between;
+        background:
+            radial-gradient(circle at top right, rgba(219, 234, 254, 0.7), transparent 16rem),
+            linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239,246,255,0.88));
+        border-color: rgba(96, 165, 250, 0.18);
+        box-shadow: var(--aop-shadow);
+        backdrop-filter: blur(18px);
+        overflow: hidden;
+    }
+
+    .sched-header-main {
+        @apply min-w-0 flex-1;
+    }
+
+    .sched-header-eyebrow {
+        @apply text-xs font-semibold uppercase tracking-[0.22em] text-blue-500;
+    }
+
+    .sched-header-title {
+        @apply mt-2 text-2xl md:text-3xl font-semibold tracking-tight text-slate-950;
+    }
+
+    .sched-header-copy {
+        @apply mt-2 text-sm leading-6 text-slate-500;
+    }
+
+    .sched-header-stats {
+        @apply mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600;
+    }
+
+    .sched-stat-sep {
+        @apply text-slate-300;
+    }
+
+    .sched-stat-good  { @apply font-medium text-emerald-700; }
+    .sched-stat-warn  { @apply font-medium text-amber-700; }
+    .sched-stat-danger{ @apply font-medium text-red-600; }
+    .sched-stat-muted { @apply text-slate-500; }
+
+    .sched-header-actions {
+        @apply flex flex-shrink-0 flex-wrap gap-2 md:pt-1;
+    }
+
+    /* ── Issue alert strip ────────────────────────────────────────────────── */
+    .issue-alert-strip {
+        @apply flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border px-4 py-3;
+        background: rgba(254, 252, 232, 0.9);
+        border-color: rgba(234, 179, 8, 0.25);
+    }
+
+    .issue-alert-label {
+        @apply flex items-center gap-2 text-sm font-semibold text-amber-800;
+    }
+
+    .issue-alert-list {
+        @apply flex flex-1 flex-wrap gap-2;
+    }
+
+    .issue-alert-item {
+        @apply inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 transition-colors;
+    }
+
+    .issue-alert-count {
+        @apply rounded-full bg-amber-200 px-1.5 py-0.5 text-xs font-bold text-amber-900;
+    }
+
+    .issue-alert-more {
+        @apply ml-auto text-xs font-semibold text-amber-700 hover:text-amber-900 underline underline-offset-2;
+    }
+
     .briefing-grid {
         @apply grid gap-6 xl:grid-cols-[minmax(0,1fr)_23rem] xl:items-start;
     }
@@ -508,6 +677,16 @@
         border-color: var(--aop-line);
         box-shadow: var(--aop-shadow);
         overflow: hidden;
+    }
+
+    .watchlist.watchlist-danger {
+        background: rgba(254, 242, 242, 0.9);
+        border-color: rgba(239, 68, 68, 0.25);
+    }
+
+    .watchlist.watchlist-warn {
+        background: rgba(255, 251, 235, 0.9);
+        border-color: rgba(245, 158, 11, 0.25);
     }
 
     .watchlist-title {
@@ -946,6 +1125,26 @@
 
     .directory-grid {
         @apply grid gap-4 xl:grid-cols-2;
+    }
+
+    /* ── Bulk action bar (sections index) ────────────────────────────── */
+    .bulk-bar {
+        @apply sticky top-0 z-30 flex flex-wrap items-center gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-2.5 shadow-md mb-4;
+    }
+    .bulk-bar-count {
+        @apply text-sm font-semibold text-blue-800 mr-1;
+    }
+    .bulk-bar-select {
+        @apply rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm;
+    }
+    .bulk-card {
+        @apply relative;
+    }
+    .bulk-checkbox-wrap {
+        @apply absolute top-4 right-4 z-10 cursor-pointer;
+    }
+    .bulk-checkbox {
+        @apply h-4 w-4 cursor-pointer accent-blue-600;
     }
 
     .directory-card,
@@ -1550,4 +1749,24 @@
     .issue-callout-actions {
         @apply mt-3 flex flex-wrap items-center gap-2 border-t border-red-200/60 pt-3;
     }
+
+    /* ── Client-side conflict preview alert ──────────────────────────── */
+
+    .conflict-preview-alert {
+        @apply mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm;
+    }
+
+    .conflict-preview-item {
+        @apply font-medium text-red-700;
+    }
+
+    .conflict-preview-note {
+        @apply mt-1 text-xs text-red-500;
+    }
 }
+
+[x-cloak] { display: none !important; }
+
+/* HTMX loading indicator */
+.htmx-request .section-card { opacity: 0.55; transition: opacity 0.15s ease; pointer-events: none; }
+.htmx-request.section-card { opacity: 0.55; transition: opacity 0.15s ease; pointer-events: none; }

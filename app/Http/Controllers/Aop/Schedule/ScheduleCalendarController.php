@@ -49,7 +49,7 @@ class ScheduleCalendarController extends Controller
         return view('aop.schedule.calendar.index', [
             'term'       => $term,
             'rooms'      => $rooms,
-            'eventsJson' => json_encode($events, JSON_UNESCAPED_UNICODE),
+            'eventsJson' => json_encode($events, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG),
         ]);
     }
 

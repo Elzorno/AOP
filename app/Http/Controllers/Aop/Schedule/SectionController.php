@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Instructor;
 use App\Models\MeetingBlock;
 use App\Models\Offering;
+use App\Models\ScheduleChangeLog;
 use App\Models\Room;
 use App\Models\Section;
 use App\Models\Term;
@@ -73,6 +74,10 @@ class SectionController extends Controller
                 break;
             case 'room':
                 $sectionsQuery->whereHas('meetingBlocks', fn ($q) => $q->whereNull('room_id'));
+                break;
+            case 'low_enrollment':
+                $sectionsQuery->whereNotNull('section_capacity')
+                    ->whereRaw('enrolled_count <= FLOOR(section_capacity * 0.70)');
                 break;
         }
 
@@ -158,6 +163,8 @@ class SectionController extends Controller
             'instructor_id' => ['nullable', 'integer', 'exists:instructors,id'],
             'modality' => ['required', Rule::enum(SectionModality::class)],
             'notes' => ['nullable', 'string'],
+            'section_capacity' => ['nullable', 'integer', 'min:1', 'max:9999'],
+            'enrolled_count' => ['nullable', 'integer', 'min:0', 'max:9999'],
         ]);
 
         $offering = Offering::where('id', $data['offering_id'])
@@ -182,15 +189,24 @@ class SectionController extends Controller
 
         $conflictNotes = $this->sectionConflictNotes($term, $section, $conflicts);
 
+        $changeLogs = ScheduleChangeLog::query()
+            ->with('user')
+            ->where('section_id', $section->id)
+            ->latest()
+            ->limit(25)
+            ->get();
+
         return view('aop.schedule.sections.edit', [
             'term' => $term,
             'section' => $section,
+            'scheduleLocked' => (bool) $term->schedule_locked,
             'instructors' => Instructor::where('is_active', true)->orderBy('name')->get(),
             'modalities' => SectionModality::cases(),
             'rooms' => Room::where('is_active', true)->orderBy('name')->get(),
             'meetingBlockTypes' => MeetingBlockType::cases(),
             'weekDays' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
             'conflictNotes' => $conflictNotes,
+            'changeLogs' => $changeLogs,
         ]);
     }
 
@@ -212,6 +228,8 @@ class SectionController extends Controller
             'instructor_id' => ['nullable', 'integer', 'exists:instructors,id'],
             'modality' => ['required', Rule::enum(SectionModality::class)],
             'notes' => ['nullable', 'string'],
+            'section_capacity' => ['nullable', 'integer', 'min:1', 'max:9999'],
+            'enrolled_count' => ['nullable', 'integer', 'min:0', 'max:9999'],
         ]);
 
         $section->update($data);
@@ -221,6 +239,82 @@ class SectionController extends Controller
         }
 
         return redirect()->route('aop.schedule.sections.edit', $section)->with('status', 'Section updated.');
+    }
+
+    public function destroy(Request $request, Section $section)
+    {
+        $term = $this->activeTermOrFail();
+        $this->ensureScheduleUnlocked($term);
+
+        abort_if($section->offering->term_id !== $term->id, 403, 'Section does not belong to the active term.');
+
+        $offeringId = $section->offering_id;
+        $label = ($section->offering->catalogCourse->code ?? 'Section').' '.$section->section_code;
+
+        // Cascade: delete meeting blocks first (with audit log entries)
+        foreach ($section->meetingBlocks as $block) {
+            $before = [
+                'days_json' => $block->days_json,
+                'starts_at' => $block->starts_at,
+                'ends_at'   => $block->ends_at,
+                'room_id'   => $block->room_id,
+                'type'      => $block->type?->value,
+            ];
+            $block->delete();
+            ScheduleChangeLog::create([
+                'term_id'        => $term->id,
+                'section_id'     => $section->id,
+                'meeting_block_id' => null,
+                'user_id'        => auth()->id(),
+                'action'         => 'deleted',
+                'payload_before' => $before,
+                'payload_after'  => null,
+            ]);
+        }
+
+        ScheduleChangeLog::create([
+            'term_id'        => $term->id,
+            'section_id'     => $section->id,
+            'meeting_block_id' => null,
+            'user_id'        => auth()->id(),
+            'action'         => 'section_deleted',
+            'payload_before' => ['section_code' => $section->section_code, 'instructor_id' => $section->instructor_id],
+            'payload_after'  => null,
+        ]);
+
+        $section->delete();
+
+        if ($request->boolean('from_schedule_home')) {
+            return redirect()->route('aop.schedule.home', ['focus_offering' => $offeringId])
+                ->with('status', "{$label} removed.");
+        }
+
+        return redirect()->route('aop.schedule.sections.index')
+            ->with('status', "{$label} removed.");
+    }
+
+    public function bulkAssign(Request $request)
+    {
+        $term = $this->activeTermOrFail();
+        $this->ensureScheduleUnlocked($term);
+
+        $data = $request->validate([
+            'section_ids'   => ['required', 'array', 'min:1'],
+            'section_ids.*' => ['integer', 'exists:sections,id'],
+            'instructor_id' => ['nullable', 'integer', 'exists:instructors,id'],
+        ]);
+
+        $updated = Section::query()
+            ->whereIn('id', $data['section_ids'])
+            ->whereHas('offering', fn ($q) => $q->where('term_id', $term->id))
+            ->update(['instructor_id' => $data['instructor_id'] ?: null]);
+
+        $name = $data['instructor_id']
+            ? Instructor::find($data['instructor_id'])?->name ?? 'selected instructor'
+            : 'Unassigned';
+
+        return redirect()->route('aop.schedule.sections.index')
+            ->with('status', "Updated {$updated} section(s) — instructor set to {$name}.");
     }
 
     public function suggest(Request $request, Section $section, \App\Services\ScheduleSuggestionService $service)

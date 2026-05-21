@@ -90,7 +90,30 @@
         <option value="0" {{ !$course->is_active ? 'selected' : '' }}>No</option>
       </select>
 
-      <div style="height:12px;"></div>
+      <div style="height:16px;"></div>
+      <label style="font-weight:600;display:block;margin-bottom:6px;">Scheduling Classification</label>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+          <input type="checkbox" name="is_gep" value="1"
+            {{ old('is_gep', $course->is_gep) ? 'checked' : '' }}
+            style="margin-top:3px;flex-shrink:0;" />
+          <span>
+            <strong>General Education Program (GEP) course</strong><br>
+            <span style="font-size:0.85em;color:var(--text-muted,#666);">No more than 40% of GEP sections in a category may be offered online.</span>
+          </span>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+          <input type="checkbox" name="is_program_required" value="1"
+            {{ old('is_program_required', $course->is_program_required) ? 'checked' : '' }}
+            style="margin-top:3px;flex-shrink:0;" />
+          <span>
+            <strong>Required program course (face-to-face program)</strong><br>
+            <span style="font-size:0.85em;color:var(--text-muted,#666);">No more than 25% of required program sections may be offered online in a semester.</span>
+          </span>
+        </label>
+      </div>
+
+      <div style="height:16px;"></div>
       <button class="btn" type="submit">Save Changes</button>
     </form>
   </div>

@@ -15,11 +15,13 @@ use App\Models\SchedulePublication;
 use App\Models\Section;
 use App\Models\Term;
 use App\Services\ScheduleConflictService;
+use App\Services\ScheduleDistributionService;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ScheduleHomeController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, ScheduleDistributionService $distributionService)
     {
         $term = Term::where('is_active', true)->first();
 
@@ -30,11 +32,13 @@ class ScheduleHomeController extends Controller
 
         $summary = $term ? $this->buildTermSummary($term, $latestPublication) : null;
         $workspace = $term ? $this->buildWorkspace($term, $request) : $this->emptyWorkspace();
+        $distributionStats = $term ? $distributionService->compute($term) : null;
 
         return view('aop.schedule.index', array_merge([
             'term' => $term,
             'latestPublication' => $latestPublication,
             'summary' => $summary,
+            'distributionStats' => $distributionStats,
         ], $workspace));
     }
 
@@ -46,7 +50,6 @@ class ScheduleHomeController extends Controller
             'rooms' => collect(),
             'offerings' => collect(),
             'issueQueue' => collect(),
-            'supportLinks' => [],
             'filters' => [
                 'q' => '',
                 'issue' => 'all',
@@ -56,6 +59,7 @@ class ScheduleHomeController extends Controller
             'meetingBlockTypes' => MeetingBlockType::cases(),
             'modalities' => SectionModality::cases(),
             'weekDays' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            'meetingBlocksJson' => [],
         ];
     }
 
@@ -247,20 +251,34 @@ class ScheduleHomeController extends Controller
             ->orderBy('code')
             ->get();
 
+        // Paginate offering cards
+        $perPage = 15;
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $paginatedCards = new LengthAwarePaginator(
+            $offeringCards->forPage($currentPage, $perPage)->values(),
+            $offeringCards->count(),
+            $perPage,
+            $currentPage,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+
+        // Serialize meeting blocks for client-side conflict detection
+        $meetingBlocksJson = $meetingBlocks->map(fn (MeetingBlock $mb) => [
+            'id'            => $mb->id,
+            'section_id'    => $mb->section_id,
+            'room_id'       => $mb->room_id,
+            'instructor_id' => $mb->section?->instructor_id,
+            'days'          => $mb->days_json ?? [],
+            'starts_at'     => substr((string) $mb->starts_at, 0, 5),
+            'ends_at'       => substr((string) $mb->ends_at, 0, 5),
+        ])->values()->toArray();
+
         return [
             'availableCourses' => $availableCourses,
             'instructors' => Instructor::query()->where('is_active', true)->orderBy('name')->get(),
             'rooms' => Room::query()->where('is_active', true)->orderBy('name')->get(),
-            'offerings' => $offeringCards,
+            'offerings' => $paginatedCards,
             'issueQueue' => $issueQueue,
-            'supportLinks' => [
-                ['label' => 'Readiness', 'href' => route('aop.schedule.readiness.index')],
-                ['label' => 'Calendar', 'href' => route('aop.schedule.calendar.index')],
-                ['label' => 'Reports', 'href' => route('aop.schedule.reports.index')],
-                ['label' => 'Office Hours', 'href' => route('aop.schedule.officeHours.index')],
-                ['label' => 'Rooms', 'href' => route('aop.rooms.index')],
-                ['label' => 'Syllabi', 'href' => route('aop.syllabi.index')],
-            ],
             'filters' => [
                 'q' => $queryText,
                 'issue' => $issueFilter,
@@ -270,7 +288,33 @@ class ScheduleHomeController extends Controller
             'meetingBlockTypes' => MeetingBlockType::cases(),
             'modalities' => SectionModality::cases(),
             'weekDays' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            'meetingBlocksJson' => $meetingBlocksJson,
         ];
+    }
+
+    /**
+     * AJAX: compute distribution stats with a hypothetical new block added.
+     * Accepts ?days[]=Mon&days[]=Wed&starts_at=09:30&ends_at=10:45
+     * Returns JSON with impact flags for each metric.
+     */
+    public function distributionPreview(Request $request, ScheduleDistributionService $distributionService)
+    {
+        $term = Term::where('is_active', true)->first();
+        if (!$term) {
+            return response()->json(['error' => 'No active term'], 400);
+        }
+
+        $days     = array_filter((array) $request->input('days', []), fn($d) => is_string($d));
+        $startsAt = (string) $request->input('starts_at', '');
+        $endsAt   = (string) $request->input('ends_at', '');
+
+        $base   = $distributionService->compute($term);
+        $impact = $distributionService->previewBlock($term, $days, $startsAt, $endsAt);
+
+        return response()->json([
+            'base'   => $base,
+            'impact' => $impact,
+        ]);
     }
 
     private function buildConflictMaps(Term $term, $meetingBlocks, $officeBlocks): array

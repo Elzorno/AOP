@@ -86,6 +86,7 @@
               <option value="instructor" {{ $filters['missing'] === 'instructor' ? 'selected' : '' }}>Missing instructor</option>
               <option value="meeting_blocks" {{ $filters['missing'] === 'meeting_blocks' ? 'selected' : '' }}>Missing meeting blocks</option>
               <option value="room" {{ $filters['missing'] === 'room' ? 'selected' : '' }}>Missing room</option>
+              <option value="low_enrollment" {{ $filters['missing'] === 'low_enrollment' ? 'selected' : '' }}>Low enrollment (≤70%)</option>
             </select>
           </div>
           <div>
@@ -118,77 +119,137 @@
         </div>
       </section>
     @else
-      <section class="directory-grid">
-        @foreach($sections as $section)
-          @php
-            $course = $section->offering->catalogCourse;
-            $roomRequired = ($section->modality?->value ?? null) !== 'ONLINE';
-            $missingInstructor = !$section->instructor_id;
-            $missingMeetings = $section->meetingBlocks->isEmpty();
-            $missingRoom = $roomRequired && $section->meetingBlocks->contains(fn ($meetingBlock) => !$meetingBlock->room_id);
-            $issueCount = ($missingInstructor ? 1 : 0) + ($missingMeetings ? 1 : 0) + ($missingRoom ? 1 : 0);
-          @endphp
-          <article class="directory-card {{ $issueCount > 0 ? 'directory-card-danger' : 'directory-card-good' }}">
-            <div class="offering-head">
-              <div>
-                <div class="offering-kicker">Section</div>
-                <h2 class="offering-title">{{ $course->code }} {{ $section->section_code }}</h2>
-                <p class="offering-copy">{{ $course->title }}</p>
-              </div>
-              <div class="section-badges">
-                <span class="badge info">{{ $section->meetingBlocks->count() }} meeting block{{ $section->meetingBlocks->count() === 1 ? '' : 's' }}</span>
-                @if($issueCount === 0)
-                  <span class="badge success">Ready</span>
-                @endif
-                @if($missingInstructor)
-                  <span class="badge warn">Instructor needed</span>
-                @endif
-                @if($missingMeetings)
-                  <span class="badge warn">Meetings missing</span>
-                @endif
-                @if($missingRoom)
-                  <span class="badge warn">Room needed</span>
-                @endif
-              </div>
-            </div>
+      {{-- Bulk assign form wraps the entire grid --}}
+      <form id="bulk-form" method="POST" action="{{ route('aop.schedule.sections.bulkAssign') }}">
+        @csrf
 
-            <div class="directory-meta">
-              <div class="offering-meta-card">
-                <strong class="block text-slate-900">Instructor</strong>
-                <span>{{ $section->instructor?->name ?? 'Unassigned' }}</span>
-              </div>
-              <div class="offering-meta-card">
-                <strong class="block text-slate-900">Modality</strong>
-                <span>{{ str_replace('_', ' ', $section->modality?->value ?? 'Unspecified') }}</span>
-              </div>
-              <div class="offering-meta-card">
-                <strong class="block text-slate-900">Offering</strong>
-                <span>{{ $section->offering->delivery_method ?: 'Delivery method not set' }}</span>
-              </div>
-              <div class="offering-meta-card">
-                <strong class="block text-slate-900">Meetings</strong>
-                <span>
-                  @if($section->meetingBlocks->isEmpty())
-                    None scheduled yet
-                  @else
-                    {{ $section->meetingBlocks->map(fn ($meetingBlock) => implode('/', $meetingBlock->days_json ?? []).' '.substr($meetingBlock->starts_at, 0, 5))->implode(', ') }}
+        {{-- Bulk action bar (shown when selections exist) --}}
+        <div id="bulk-bar" class="bulk-bar" style="display:none;" aria-live="polite">
+          <span class="bulk-bar-count" id="bulk-bar-count">0 selected</span>
+          <select name="instructor_id" id="bulk-instructor" class="bulk-bar-select">
+            <option value="">Unassign instructor</option>
+            @foreach ($instructors as $i)
+              <option value="{{ $i->id }}">{{ $i->name }}</option>
+            @endforeach
+          </select>
+          <button type="submit" class="btn">Assign to selected</button>
+          <button type="button" class="btn secondary" onclick="clearBulkSelection()">Clear</button>
+        </div>
+
+        <section class="directory-grid">
+          @foreach($sections as $section)
+            @php
+              $course = $section->offering->catalogCourse;
+              $roomRequired = ($section->modality?->value ?? null) !== 'ONLINE';
+              $missingInstructor = !$section->instructor_id;
+              $missingMeetings = $section->meetingBlocks->isEmpty();
+              $missingRoom = $roomRequired && $section->meetingBlocks->contains(fn ($meetingBlock) => !$meetingBlock->room_id);
+              $lowEnrollment = $section->section_capacity && $section->enrolled_count <= floor($section->section_capacity * 0.70);
+              $enrollPct = ($section->section_capacity > 0) ? round(($section->enrolled_count / $section->section_capacity) * 100) : null;
+              $issueCount = ($missingInstructor ? 1 : 0) + ($missingMeetings ? 1 : 0) + ($missingRoom ? 1 : 0) + ($lowEnrollment ? 1 : 0);
+            @endphp
+            <article
+              class="directory-card {{ $issueCount > 0 ? 'directory-card-danger' : 'directory-card-good' }} bulk-card"
+              data-section-id="{{ $section->id }}"
+            >
+              {{-- Checkbox in top-left corner --}}
+              <label class="bulk-checkbox-wrap" title="Select for bulk action">
+                <input
+                  type="checkbox"
+                  name="section_ids[]"
+                  value="{{ $section->id }}"
+                  class="bulk-checkbox"
+                  onchange="updateBulkBar()"
+                  aria-label="Select {{ $course->code }} {{ $section->section_code }}"
+                />
+              </label>
+
+              <div class="offering-head">
+                <div>
+                  <div class="offering-kicker">Section</div>
+                  <h2 class="offering-title">{{ $course->code }} {{ $section->section_code }}</h2>
+                  <p class="offering-copy">{{ $course->title }}</p>
+                </div>
+                <div class="section-badges">
+                  <span class="badge info">{{ $section->meetingBlocks->count() }} meeting block{{ $section->meetingBlocks->count() === 1 ? '' : 's' }}</span>
+                  @if($issueCount === 0)
+                    <span class="badge success">Ready</span>
                   @endif
-                </span>
+                  @if($missingInstructor)
+                    <span class="badge warn">Instructor needed</span>
+                  @endif
+                  @if($missingMeetings)
+                    <span class="badge warn">Meetings missing</span>
+                  @endif
+                  @if($missingRoom)
+                    <span class="badge warn">Room needed</span>
+                  @endif
+                  @if($lowEnrollment)
+                    <span class="badge warn">Low enrollment {{ $enrollPct }}%</span>
+                  @endif
+                </div>
               </div>
-            </div>
 
-            @if($section->notes)
-              <div class="status-note mt-4">{{ $section->notes }}</div>
-            @endif
+              <div class="directory-meta">
+                <div class="offering-meta-card">
+                  <strong class="block text-slate-900">Instructor</strong>
+                  <span>{{ $section->instructor?->name ?? 'Unassigned' }}</span>
+                </div>
+                <div class="offering-meta-card">
+                  <strong class="block text-slate-900">Modality</strong>
+                  <span>{{ str_replace('_', ' ', $section->modality?->value ?? 'Unspecified') }}</span>
+                </div>
+                <div class="offering-meta-card">
+                  <strong class="block text-slate-900">Enrollment</strong>
+                  <span>
+                    @if ($section->section_capacity)
+                      {{ $section->enrolled_count }} / {{ $section->section_capacity }}
+                      @if ($lowEnrollment)
+                        <span style="color:var(--amber-600,#d97706);"> ({{ $enrollPct }}%)</span>
+                      @endif
+                    @else
+                      Not tracked
+                    @endif
+                  </span>
+                </div>
+                <div class="offering-meta-card">
+                  <strong class="block text-slate-900">Meetings</strong>
+                  <span>
+                    @if($section->meetingBlocks->isEmpty())
+                      None scheduled yet
+                    @else
+                      {{ $section->meetingBlocks->map(fn ($meetingBlock) => implode('/', $meetingBlock->days_json ?? []).' '.substr($meetingBlock->starts_at, 0, 5))->implode(', ') }}
+                    @endif
+                  </span>
+                </div>
+              </div>
 
-            <div class="section-actions">
-              <a class="btn" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Open</a>
-              <a class="btn secondary" href="{{ route('aop.schedule.sections.edit', $section) }}">Edit</a>
-              <a class="btn secondary" href="{{ route('aop.syllabi.show', $section) }}">Syllabus</a>
-            </div>
-          </article>
-        @endforeach
-      </section>
+              @if($section->notes)
+                <div class="status-note mt-4">{{ $section->notes }}</div>
+              @endif
+
+              <div class="section-actions">
+                <a class="btn" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Open</a>
+                <a class="btn secondary" href="{{ route('aop.schedule.sections.edit', $section) }}">Edit</a>
+              </div>
+            </article>
+          @endforeach
+        </section>
+      </form>
+
+      <script>
+        function updateBulkBar() {
+          const checked = document.querySelectorAll('.bulk-checkbox:checked');
+          const bar = document.getElementById('bulk-bar');
+          const count = document.getElementById('bulk-bar-count');
+          bar.style.display = checked.length > 0 ? 'flex' : 'none';
+          count.textContent = checked.length + ' selected';
+        }
+        function clearBulkSelection() {
+          document.querySelectorAll('.bulk-checkbox').forEach(cb => cb.checked = false);
+          updateBulkBar();
+        }
+      </script>
     @endif
   </div>
 </x-aop-layout>
