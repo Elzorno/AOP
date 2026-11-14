@@ -1,4 +1,4 @@
-<x-aop-layout :activeTermLabel="'Active Term: '.$term->code.' - '.$term->name">
+<x-aop-layout :activeTermLabel="'Selected Term: '.$term->code.' - '.$term->name">
   <x-slot:title>Offerings</x-slot:title>
 
   @php
@@ -10,7 +10,7 @@
     <section class="page-header">
       <span class="page-eyebrow">Schedule Coverage</span>
       <h1 class="page-title">Offering lineup for {{ $term->code }}</h1>
-      <p class="page-subtitle">Review active-term offerings and open the ones that need sections.</p>
+      <p class="page-subtitle">Review offerings explicitly scoped to this term.</p>
 
       <div class="summary-strip">
         <div class="summary-stat">
@@ -36,9 +36,13 @@
       </div>
 
       <div class="toolbar-line">
-        <a class="btn" href="{{ route('aop.schedule.home') }}">Open Schedule Studio</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Review Readiness</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.offerings.create') }}">Fallback Create Form</a>
+        @if($term->is_active)
+          <a class="btn" href="{{ route('aop.schedule.home') }}">Open Schedule Studio</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Review Readiness</a>
+        @else
+          <a class="btn" href="{{ route('aop.terms.index') }}">Back to Terms</a>
+        @endif
+        <a class="btn secondary" href="{{ route('aop.schedule.offerings.create', $term) }}">Create Offering</a>
       </div>
     </section>
 
@@ -50,7 +54,7 @@
             <p class="workspace-copy">Add the first offering to start the term schedule.</p>
           </div>
           <div class="actions">
-            <a class="btn" href="{{ route('aop.schedule.home') }}">Create in Studio</a>
+            <a class="btn" href="{{ route('aop.schedule.offerings.create', $term) }}">Create Offering</a>
           </div>
         </div>
       </section>
@@ -95,10 +99,14 @@
             @endif
 
             <div class="section-actions">
-              <a class="btn" href="{{ route('aop.schedule.home', ['focus_offering' => $offering->id]) }}#offering-{{ $offering->id }}">
-                {{ $offering->sections_count === 0 ? 'Add First Section' : 'Open' }}
-              </a>
-              <a class="btn secondary" href="{{ route('aop.schedule.sections.index', ['q' => $course?->code]) }}">Sections</a>
+              @if($term->is_active)
+                <a class="btn" href="{{ route('aop.schedule.home', ['focus_offering' => $offering->id]) }}#offering-{{ $offering->id }}">
+                  {{ $offering->sections_count === 0 ? 'Add First Section' : 'Open' }}
+                </a>
+                <a class="btn secondary" href="{{ route('aop.schedule.sections.index', ['q' => $course?->code]) }}">Sections</a>
+              @else
+                <span class="badge muted">Section editing moves in the next scoped slice</span>
+              @endif
             </div>
           </article>
         @endforeach

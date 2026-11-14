@@ -1,15 +1,19 @@
-<x-aop-layout :activeTermLabel="'Active Term: '.$term->code.' - '.$term->name">
+<x-aop-layout :activeTermLabel="'Selected Term: '.$term->code.' - '.$term->name">
   <x-slot:title>New Offering</x-slot:title>
 
   <div class="page-shell">
     <section class="page-header">
       <span class="page-eyebrow">Offerings</span>
       <h1 class="page-title">Create an offering for {{ $term->code }}</h1>
-      <p class="page-subtitle">Add a catalog course to the active term.</p>
+      <p class="page-subtitle">Add a catalog course to this explicitly selected term.</p>
 
       <div class="toolbar-line">
-        <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.offerings.index') }}">Offering Overview</a>
+        @if($term->is_active)
+          <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
+        @else
+          <a class="btn" href="{{ route('aop.terms.index') }}">Back to Terms</a>
+        @endif
+        <a class="btn secondary" href="{{ route('aop.schedule.offerings.index', $term) }}">Offering Overview</a>
       </div>
     </section>
 
@@ -21,7 +25,7 @@
         </div>
       </div>
 
-      <form method="POST" action="{{ route('aop.schedule.offerings.store') }}">
+      <form method="POST" action="{{ route('aop.schedule.offerings.store', $term) }}">
         @csrf
 
         <label for="catalog_course_id">Catalog course</label>

@@ -189,3 +189,10 @@ This file tracks what each phase changed so the project remains understandable w
 - Kept scheduling on active-term behavior until every displayed route and write target can be converted together; no mixed-context workspace is exposed.
 - Verified 74 tests / 266 assertions and rehearsed the migration on a disposable production database copy with successful integrity and foreign-key checks.
 - This checkpoint is committed only in the isolated modernization workspace and is not deployed.
+
+## Explicit offering term boundary — development checkpoint 2026-11-14
+- Moved offering list, create, store and delete routes under `/aop/terms/{term}/schedule/offerings`.
+- Offering writes now derive `term_id` from the route; cross-term offering deletion returns 404 even when another term is globally active.
+- The legacy offering GET redirects to the authenticated administrator's selected term, falling back to the active term only when no selection exists.
+- Non-active offering pages do not link into section and schedule-studio writes that still use the global active term.
+- Verified the full suite at 77 tests / 274 assertions.

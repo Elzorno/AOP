@@ -25,7 +25,7 @@
         <div class="status-note">No offerings exist for this term yet. Create the offering first, then come back to add the section.</div>
         <div class="section-actions">
           <a class="btn" href="{{ route('aop.schedule.home') }}">Go to Studio</a>
-          <a class="btn secondary" href="{{ route('aop.schedule.offerings.create') }}">Create Offering</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.offerings.create', $term) }}">Create Offering</a>
         </div>
       @else
         <form method="POST" action="{{ route('aop.schedule.sections.store') }}">

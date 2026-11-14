@@ -252,7 +252,7 @@
 
         <div class="add-offering-body">
           <div class="stack-grid-2">
-            <form method="POST" action="{{ route('aop.schedule.offerings.store') }}" class="surface-note">
+            <form method="POST" action="{{ route('aop.schedule.offerings.store', $term) }}" class="surface-note">
               @csrf
               <input type="hidden" name="from_schedule_home" value="1">
 
@@ -390,7 +390,7 @@
                     <span class="badge warn">No sections</span>
                   @endif
                   @if ($offeringCard['all_sections_count'] === 0 && !$scheduleLocked)
-                    <form method="POST" action="{{ route('aop.schedule.offerings.destroy', $offering) }}" onsubmit="return confirm('Remove offering for {{ addslashes($course?->code ?? 'this course') }}? This cannot be undone.')">
+                    <form method="POST" action="{{ route('aop.schedule.offerings.destroy', [$term, $offering]) }}" onsubmit="return confirm('Remove offering for {{ addslashes($course?->code ?? 'this course') }}? This cannot be undone.')">
                       @csrf
                       @method('DELETE')
                       <input type="hidden" name="from_schedule_home" value="1">

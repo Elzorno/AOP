@@ -19,7 +19,7 @@ class SelectedTermBoundaryTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('aop.terms.schedule.select', $selected))
-            ->assertRedirect(route('aop.terms.index'));
+            ->assertRedirect(route('aop.schedule.offerings.index', $selected));
 
         $this->assertSame($selected->id, $admin->refresh()->selected_term_id);
         $this->assertTrue($active->refresh()->is_active);

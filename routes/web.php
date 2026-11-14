@@ -5,23 +5,26 @@ use App\Http\Controllers\Aop\DashboardController;
 use App\Http\Controllers\Aop\InstructorController;
 use App\Http\Controllers\Aop\LabTechController;
 use App\Http\Controllers\Aop\RoomController;
-use App\Http\Controllers\Aop\TermController;
-use App\Http\Controllers\Aop\UserInstructorLinkController;
-use App\Http\Controllers\Aop\Schedule\ScheduleHomeController;
-use App\Http\Controllers\Aop\Schedule\OpenLabController;
-use App\Http\Controllers\Aop\Schedule\ScheduledEventController;
-use App\Http\Controllers\Aop\Schedule\OfferingController;
-use App\Http\Controllers\Aop\Schedule\SectionController;
+use App\Http\Controllers\Aop\Schedule\InstructorPreferenceController;
 use App\Http\Controllers\Aop\Schedule\MeetingBlockController;
-use App\Http\Controllers\Aop\Schedule\ScheduleGridController;
-use App\Http\Controllers\Aop\Schedule\ScheduleReportsController;
+use App\Http\Controllers\Aop\Schedule\OfferingController;
 use App\Http\Controllers\Aop\Schedule\OfficeHoursController;
+use App\Http\Controllers\Aop\Schedule\OpenLabController;
+use App\Http\Controllers\Aop\Schedule\ScheduleCalendarController;
+use App\Http\Controllers\Aop\Schedule\ScheduledEventController;
+use App\Http\Controllers\Aop\Schedule\ScheduleGridController;
+use App\Http\Controllers\Aop\Schedule\ScheduleHomeController;
 use App\Http\Controllers\Aop\Schedule\SchedulePublishController;
 use App\Http\Controllers\Aop\Schedule\ScheduleReadinessController;
+use App\Http\Controllers\Aop\Schedule\ScheduleReportsController;
 use App\Http\Controllers\Aop\Schedule\ScheduleTermLockController;
-use App\Http\Controllers\Aop\Schedule\InstructorPreferenceController;
+use App\Http\Controllers\Aop\Schedule\SectionController;
+use App\Http\Controllers\Aop\TermController;
+use App\Http\Controllers\Aop\UserInstructorLinkController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Public\SchedulePublicController;
+use App\Models\Term;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -53,8 +56,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Instructor specific
     Route::post('/instructor-preferences', [App\Http\Controllers\Aop\InstructorPreferenceController::class, 'store'])->name('aop.instructor_preferences.store');
-    Route::post('/instructor-office-hours/{instructor}/blocks', [App\Http\Controllers\Aop\Schedule\OfficeHoursController::class, 'store'])->name('instructor.officeHours.store');
-    Route::delete('/instructor-office-hours/{instructor}/blocks/{officeHourBlock}', [App\Http\Controllers\Aop\Schedule\OfficeHoursController::class, 'destroy'])->name('instructor.officeHours.destroy');
+    Route::post('/instructor-office-hours/{instructor}/blocks', [OfficeHoursController::class, 'store'])->name('instructor.officeHours.store');
+    Route::delete('/instructor-office-hours/{instructor}/blocks/{officeHourBlock}', [OfficeHoursController::class, 'destroy'])->name('instructor.officeHours.destroy');
 
     Route::prefix('/aop')->name('aop.')->middleware(['admin'])->group(function () {
         Route::get('/accounts', [UserInstructorLinkController::class, 'index'])->name('accounts.index');
@@ -108,11 +111,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/schedule/events/create', [ScheduledEventController::class, 'create'])->name('schedule.events.create');
         Route::post('/schedule/events', [ScheduledEventController::class, 'store'])->name('schedule.events.store');
 
-        // Offerings
-        Route::get('/schedule/offerings', [OfferingController::class, 'index'])->name('schedule.offerings.index');
-        Route::get('/schedule/offerings/create', [OfferingController::class, 'create'])->name('schedule.offerings.create');
-        Route::post('/schedule/offerings', [OfferingController::class, 'store'])->name('schedule.offerings.store');
-        Route::delete('/schedule/offerings/{offering}', [OfferingController::class, 'destroy'])->name('schedule.offerings.destroy');
+        // Offerings are the first fully explicit term-scoped scheduling resource.
+        Route::prefix('/terms/{term}/schedule/offerings')->name('schedule.offerings.')->group(function () {
+            Route::get('/', [OfferingController::class, 'index'])->name('index');
+            Route::get('/create', [OfferingController::class, 'create'])->name('create');
+            Route::post('/', [OfferingController::class, 'store'])->name('store');
+            Route::delete('/{offering}', [OfferingController::class, 'destroy'])->name('destroy');
+        });
+
+        Route::get('/schedule/offerings', function (Request $request) {
+            $term = $request->user()->selectedTerm
+                ?? Term::query()->where('is_active', true)->firstOrFail();
+
+            return redirect()->route('aop.schedule.offerings.index', $term);
+        })->name('schedule.offerings.legacy');
 
         // Sections
         Route::get('/schedule/sections', [SectionController::class, 'index'])->name('schedule.sections.index');
@@ -137,8 +149,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/schedule/office-hours/{instructor}/blocks/{officeHourBlock}', [OfficeHoursController::class, 'destroy'])->name('schedule.officeHours.blocks.destroy');
         Route::post('/schedule/office-hours/{instructor}/lock', [OfficeHoursController::class, 'lock'])->name('schedule.officeHours.lock');
         Route::post('/schedule/office-hours/{instructor}/unlock', [OfficeHoursController::class, 'unlock'])->name('schedule.officeHours.unlock');
-        Route::put('/schedule/office-hours/{instructor}/preferences', [App\Http\Controllers\Aop\Schedule\InstructorPreferenceController::class, 'upsert'])->name('schedule.officeHours.preferences.upsert');
-        Route::delete('/schedule/office-hours/{instructor}/preferences', [App\Http\Controllers\Aop\Schedule\InstructorPreferenceController::class, 'destroy'])->name('schedule.officeHours.preferences.destroy');
+        Route::put('/schedule/office-hours/{instructor}/preferences', [InstructorPreferenceController::class, 'upsert'])->name('schedule.officeHours.preferences.upsert');
+        Route::delete('/schedule/office-hours/{instructor}/preferences', [InstructorPreferenceController::class, 'destroy'])->name('schedule.officeHours.preferences.destroy');
 
         // Open Labs
         Route::get('/schedule/open-labs', [OpenLabController::class, 'index'])->name('schedule.openLabs.index');
@@ -159,9 +171,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/schedule/distribution/preview', [ScheduleHomeController::class, 'distributionPreview'])->name('schedule.distribution.preview');
 
         // Schedule Calendar (active term)
-        Route::get('/schedule/calendar', [App\Http\Controllers\Aop\Schedule\ScheduleCalendarController::class, 'index'])->name('schedule.calendar.index');
-        Route::get('/schedule/calendar/events', [App\Http\Controllers\Aop\Schedule\ScheduleCalendarController::class, 'events'])->name('schedule.calendar.events');
-        Route::post('/schedule/calendar/update', [App\Http\Controllers\Aop\Schedule\ScheduleCalendarController::class, 'update'])->name('schedule.calendar.update');
+        Route::get('/schedule/calendar', [ScheduleCalendarController::class, 'index'])->name('schedule.calendar.index');
+        Route::get('/schedule/calendar/events', [ScheduleCalendarController::class, 'events'])->name('schedule.calendar.events');
+        Route::post('/schedule/calendar/update', [ScheduleCalendarController::class, 'update'])->name('schedule.calendar.update');
 
         // Schedule Reports (active term)
         Route::get('/schedule/reports', [ScheduleReportsController::class, 'index'])->name('schedule.reports.index');

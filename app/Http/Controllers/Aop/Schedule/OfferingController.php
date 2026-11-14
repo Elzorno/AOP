@@ -10,17 +10,8 @@ use Illuminate\Http\Request;
 
 class OfferingController extends Controller
 {
-    private function activeTermOrFail(): Term
+    public function index(Term $term)
     {
-        $term = Term::where('is_active', true)->first();
-        abort_if(!$term, 400, 'No active term is set. Go to Terms and set an active term.');
-        return $term;
-    }
-
-    public function index()
-    {
-        $term = $this->activeTermOrFail();
-
         $offerings = Offering::with('catalogCourse')
             ->withCount('sections')
             ->where('term_id', $term->id)
@@ -39,26 +30,22 @@ class OfferingController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Term $term)
     {
-        $term = $this->activeTermOrFail();
-
         return view('aop.schedule.offerings.create', [
             'term' => $term,
             'courses' => CatalogCourse::where('is_active', true)->orderBy('code')->get(),
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, Term $term)
     {
-        $term = $this->activeTermOrFail();
-
         $data = $request->validate([
-            'catalog_course_id' => ['required','integer','exists:catalog_courses,id'],
-            'delivery_method' => ['nullable','string','max:80'],
-            'notes' => ['nullable','string'],
-            'prereq_override' => ['nullable','string'],
-            'coreq_override' => ['nullable','string'],
+            'catalog_course_id' => ['required', 'integer', 'exists:catalog_courses,id'],
+            'delivery_method' => ['nullable', 'string', 'max:80'],
+            'notes' => ['nullable', 'string'],
+            'prereq_override' => ['nullable', 'string'],
+            'coreq_override' => ['nullable', 'string'],
         ]);
 
         $data['term_id'] = $term->id;
@@ -69,7 +56,7 @@ class OfferingController extends Controller
                 return redirect()->route('aop.schedule.home', ['focus_offering' => $existing->id])->with('status', 'Offering already exists for that course in this term.');
             }
 
-            return redirect()->route('aop.schedule.offerings.index')->with('status', 'Offering already exists for that course in this term.');
+            return redirect()->route('aop.schedule.offerings.index', $term)->with('status', 'Offering already exists for that course in this term.');
         }
 
         $offering = Offering::create($data);
@@ -78,20 +65,18 @@ class OfferingController extends Controller
             return redirect()->route('aop.schedule.home', ['focus_offering' => $offering->id])->with('status', 'Offering created.');
         }
 
-        return redirect()->route('aop.schedule.offerings.index')->with('status', 'Offering created.');
+        return redirect()->route('aop.schedule.offerings.index', $term)->with('status', 'Offering created.');
     }
 
-    public function destroy(Request $request, Offering $offering)
+    public function destroy(Request $request, Term $term, Offering $offering)
     {
-        $term = $this->activeTermOrFail();
-
-        abort_if($offering->term_id !== $term->id, 403, 'Offering does not belong to the active term.');
+        abort_if($offering->term_id !== $term->id, 404, 'Offering does not belong to this term.');
 
         if ($offering->sections()->exists()) {
             $count = $offering->sections()->count();
             $redirect = $request->boolean('from_schedule_home')
                 ? redirect()->route('aop.schedule.home', ['focus_offering' => $offering->id])
-                : redirect()->route('aop.schedule.offerings.index');
+                : redirect()->route('aop.schedule.offerings.index', $term);
 
             return $redirect->withErrors(['delete' => "Cannot remove this offering — it has {$count} section(s). Remove all sections first."]);
         }
@@ -102,6 +87,6 @@ class OfferingController extends Controller
             return redirect()->route('aop.schedule.home')->with('status', 'Offering removed.');
         }
 
-        return redirect()->route('aop.schedule.offerings.index')->with('status', 'Offering removed.');
+        return redirect()->route('aop.schedule.offerings.index', $term)->with('status', 'Offering removed.');
     }
 }

@@ -124,8 +124,8 @@ class TermController extends Controller
         $request->user()->forceFill(['selected_term_id' => $term->id])->save();
 
         return redirect()
-            ->route('aop.terms.index')
-            ->with('status', $term->code.' selected for the upcoming term-scoped schedule workspace.');
+            ->route('aop.schedule.offerings.index', $term)
+            ->with('status', $term->code.' selected. Offering writes are now explicitly scoped to this term.');
     }
 
     public function makeDraft(Term $term)
