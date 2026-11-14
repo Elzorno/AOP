@@ -196,3 +196,9 @@ This file tracks what each phase changed so the project remains understandable w
 - The legacy offering GET redirects to the authenticated administrator's selected term, falling back to the active term only when no selection exists.
 - Non-active offering pages do not link into section and schedule-studio writes that still use the global active term.
 - Verified the full suite at 77 tests / 274 assertions.
+
+## Explicit offering term boundary `fa7dfb6` — deployed 2026-11-14
+- Captured and verified `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`, including the production database, environment and prior `dc60a9d` release.
+- Ran the additive selected-term migration as batch 25 and atomically selected `/var/www/aop-releases/fa7dfb6`.
+- Verified production database integrity and foreign keys, deployed route hashes, current compiled assets, HTTPS login, protected hidden files, service health and read-only application code.
+- Release `dc60a9d` remains available for code rollback; its schema is compatible with the additive nullable column.
