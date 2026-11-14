@@ -215,3 +215,7 @@ This file tracks what each phase changed so the project remains understandable w
 - Mixed-term bulk assignment fails atomically instead of silently updating only the matching subset.
 - Updated all section and meeting-block form/link targets, including schedule studio and HTMX partials, to carry the route term.
 - Verified non-active-term directory/create/edit rendering, route-term writes and cross-term rejection; the suite passes 82 tests / 287 assertions.
+
+## Explicit section and meeting-block release `811483a` — deployed 2026-11-14
+- Atomically deployed the verified section/meeting-block route slice without a schema migration; release `2560003` remains available for rollback.
+- Rebuilt production caches, reloaded PHP-FPM, and verified the cached explicit routes, real production section-directory rendering, SQLite integrity, HTTPS login/assets and service health.

@@ -1,8 +1,8 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: phases 1–2 and the instructor-identity portion of phase 3 are deployed; per-user term selection is implemented and verified in the isolated workspace, while explicit term-scoped scheduling routes remain pending.
+Prepared 14 November 2026. Status: phases 1–2 and the identity, offering, section and meeting-block portions of phase 3 are deployed; remaining schedule resources still need explicit term routes.
 
-Current production release: `2560003` through `/var/www/aop-current`. The isolated suite passes 82 tests / 287 assertions. The next verified development slice moves section CRUD, bulk assignment, suggestions and nested meeting-block mutations to explicit term routes. Cross-term and mixed-term requests fail before mutation, and scoped directory/create/edit pages render for non-active terms. Verified pre-migration checkpoint: `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`.
+Current production release: `811483a` through `/var/www/aop-current`. The isolated suite passes 82 tests / 287 assertions. Section CRUD, bulk assignment, suggestions and nested meeting-block mutations now use explicit term routes. Cross-term and mixed-term requests fail before mutation, and scoped directory/create/edit pages render for non-active terms. Releases `2560003` and `fa7dfb6` remain available for rollback. Verified pre-migration checkpoint: `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`.
 
 ## Outcome and constraints
 
