@@ -207,4 +207,4 @@ Isolated workspace: `/srv/aop-workspaces/modernization`, branch `modernization/2
 - Added spreadsheet-formula neutralization to current CSV generation and download-time sanitization for historical CSV/ZIP artifacts. Stored snapshots remain byte-for-byte unchanged. The six existing stored CSV artifacts were inventoried and contain no formula-leading cells.
 - Added configurable Cloudflare Tunnel proxy trust and HTTPS enforcement. The observed connector address is `192.168.1.167`; deployment still needs production environment changes and an external cookie/header verification before this item is accepted.
 
-No application code from this workspace has been deployed to `/var/www/aop`. Host permission, PHP upload-progress, service restart and production release steps remain pending.
+Security release `7e1993e` is deployed through `/var/www/aop-current`. PHP upload progress is disabled, current services were restarted, application code is deployment-owned/read-only, runtime data is separately writable, and the Cloudflare HTTPS/cookie/header checks pass. Named administrator access, firewall policy, off-host recovery and phases 3–8 remain pending.
