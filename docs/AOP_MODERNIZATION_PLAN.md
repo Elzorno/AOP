@@ -201,7 +201,7 @@ Isolated workspace: `/srv/aop-workspaces/modernization`, branch `modernization/2
 
 - Captured the deployed source, including pre-existing uncommitted work, in baseline commit `68cf437` without copying production secrets or data into the development runtime.
 - Added test and database-maintenance preflights. Tests require uncached configuration and disposable SQLite storage; destructive maintenance requires an exact `AOP_EXPECTED_DATABASE` path.
-- Installed locked development dependencies as the unprivileged `aop-build` account. The complete baseline now passes 64 tests / 232 assertions and the Vite production build.
+- Installed locked development dependencies as the unprivileged `aop-build` account. The complete baseline now passes 65 tests / 234 assertions and the Vite production build.
 - Updated the compatible Laravel 12 stack, including Symfony HTTP Foundation 7.4.23. Composer audit reports zero advisories.
 - Updated audited browser dependencies, bundled FullCalendar through Vite instead of CDN scripts, and reduced npm audit to zero advisories.
 - Added spreadsheet-formula neutralization to current CSV generation and download-time sanitization for historical CSV/ZIP artifacts. Stored snapshots remain byte-for-byte unchanged. The six existing stored CSV artifacts were inventoried and contain no formula-leading cells.

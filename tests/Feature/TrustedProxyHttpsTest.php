@@ -39,4 +39,16 @@ class TrustedProxyHttpsTest extends TestCase
         $this->assertStringStartsWith('https://', $response->headers->get('Location'));
         $response->assertHeaderMissing('Strict-Transport-Security');
     }
+
+    public function test_https_enforcement_generates_secure_application_redirects(): void
+    {
+        config()->set('aop.trusted_proxies', ['192.168.1.167']);
+        config()->set('aop.enforce_https', true);
+
+        $response = $this->withServerVariables(['REMOTE_ADDR' => '192.168.1.167'])
+            ->withHeader('X-Forwarded-Proto', 'https')
+            ->get('/');
+
+        $response->assertRedirect('https://127.0.0.1:8081/login');
+    }
 }
