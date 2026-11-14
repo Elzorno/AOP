@@ -6,6 +6,6 @@
   </div>
 
   <div class="card">
-    <p>We could not find an instructor profile matching your email address. Please contact the administration to link your account.</p>
+    <p>Your account is not linked to an instructor profile. Please contact the administration to establish the link.</p>
   </div>
 </x-aop-layout>

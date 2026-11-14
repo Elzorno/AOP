@@ -19,7 +19,7 @@ class OfficeHoursController extends Controller
     private function activeTermOrFail(): Term
     {
         $term = Term::where('is_active', true)->first();
-        abort_if(!$term, 400, 'No active term is set. Go to Terms and set an active term.');
+        abort_if(! $term, 400, 'No active term is set. Go to Terms and set an active term.');
 
         return $term;
     }
@@ -31,7 +31,7 @@ class OfficeHoursController extends Controller
 
     private function ensureActiveInstructor(Instructor $instructor): void
     {
-        abort_if(!$instructor->is_active, 404, 'Instructor not found.');
+        abort_if(! $instructor->is_active, 404, 'Instructor not found.');
     }
 
     public function index()
@@ -78,8 +78,8 @@ class OfficeHoursController extends Controller
 
     private function ensureOwnerOrAdmin(Instructor $instructor): void
     {
-        if (!auth()->user()->is_admin) {
-            abort_if($instructor->email !== auth()->user()->email, 403, 'You can only manage your own office hours.');
+        if (! auth()->user()->is_admin) {
+            abort_unless((int) auth()->user()->instructor_id === (int) $instructor->id, 403, 'You can only manage your own office hours.');
         }
     }
 
@@ -115,14 +115,14 @@ class OfficeHoursController extends Controller
         $messages = [];
 
         if ($conf['office_hour_blocks']->count() > 0) {
-            $messages[] = 'Conflicts with existing office hours: ' . $conf['office_hour_blocks']->map(fn ($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))->implode('; ');
+            $messages[] = 'Conflicts with existing office hours: '.$conf['office_hour_blocks']->map(fn ($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))->implode('; ');
         }
 
         if ($conf['meeting_blocks']->count() > 0) {
-            $messages[] = 'Conflicts with class meeting blocks: ' . $conf['meeting_blocks']->map(fn ($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
+            $messages[] = 'Conflicts with class meeting blocks: '.$conf['meeting_blocks']->map(fn ($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
         }
 
-        if (!empty($messages)) {
+        if (! empty($messages)) {
             return back()->withErrors(['conflicts' => implode(' | ', $messages)])->withInput();
         }
 
@@ -176,14 +176,14 @@ class OfficeHoursController extends Controller
         $messages = [];
 
         if ($conf['office_hour_blocks']->count() > 0) {
-            $messages[] = 'Conflicts with existing office hours: ' . $conf['office_hour_blocks']->map(fn ($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))->implode('; ');
+            $messages[] = 'Conflicts with existing office hours: '.$conf['office_hour_blocks']->map(fn ($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))->implode('; ');
         }
 
         if ($conf['meeting_blocks']->count() > 0) {
-            $messages[] = 'Conflicts with class meeting blocks: ' . $conf['meeting_blocks']->map(fn ($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
+            $messages[] = 'Conflicts with class meeting blocks: '.$conf['meeting_blocks']->map(fn ($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
         }
 
-        if (!empty($messages)) {
+        if (! empty($messages)) {
             return back()->withErrors(['conflicts' => implode(' | ', $messages)])->withInput();
         }
 

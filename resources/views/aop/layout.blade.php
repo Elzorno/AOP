@@ -40,6 +40,7 @@
         ['route' => 'aop.instructors.index', 'label' => 'Instructors', 'match' => 'aop.instructors.*'],
         ['route' => 'aop.labtechs.index', 'label' => 'Lab Techs', 'match' => 'aop.labtechs.*'],
         ['route' => 'aop.rooms.index', 'label' => 'Rooms', 'match' => 'aop.rooms.*'],
+        ['route' => 'aop.accounts.index', 'label' => 'Account Links', 'match' => 'aop.accounts.*'],
       ],
     ],
   ];

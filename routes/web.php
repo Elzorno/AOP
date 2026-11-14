@@ -6,6 +6,7 @@ use App\Http\Controllers\Aop\InstructorController;
 use App\Http\Controllers\Aop\LabTechController;
 use App\Http\Controllers\Aop\RoomController;
 use App\Http\Controllers\Aop\TermController;
+use App\Http\Controllers\Aop\UserInstructorLinkController;
 use App\Http\Controllers\Aop\Schedule\ScheduleHomeController;
 use App\Http\Controllers\Aop\Schedule\OpenLabController;
 use App\Http\Controllers\Aop\Schedule\ScheduledEventController;
@@ -56,6 +57,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/instructor-office-hours/{instructor}/blocks/{officeHourBlock}', [App\Http\Controllers\Aop\Schedule\OfficeHoursController::class, 'destroy'])->name('instructor.officeHours.destroy');
 
     Route::prefix('/aop')->name('aop.')->middleware(['admin'])->group(function () {
+        Route::get('/accounts', [UserInstructorLinkController::class, 'index'])->name('accounts.index');
+        Route::put('/accounts/{user}/instructor', [UserInstructorLinkController::class, 'update'])->name('accounts.instructor.update');
+
         // Terms
         Route::get('/terms', [TermController::class, 'index'])->name('terms.index');
         Route::get('/terms/create', [TermController::class, 'create'])->name('terms.create');
