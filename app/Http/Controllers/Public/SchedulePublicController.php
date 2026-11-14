@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Models\SchedulePublication;
 use App\Models\Term;
-use Illuminate\Support\Facades\Storage;
+use App\Services\PublicationArtifactDownloadService;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SchedulePublicController extends Controller
@@ -13,14 +13,14 @@ class SchedulePublicController extends Controller
     public function show(string $termCode, int $version, string $token)
     {
         $term = Term::where('code', $termCode)->first();
-        abort_if(!$term, 404);
+        abort_if(! $term, 404);
 
         $publication = SchedulePublication::where('term_id', $term->id)
             ->where('version', $version)
             ->first();
 
-        abort_if(!$publication, 404);
-        abort_if(!$this->tokenMatches($publication->public_token, $token), 404);
+        abort_if(! $publication, 404);
+        abort_if(! $this->tokenMatches($publication->public_token, $token), 404);
 
         return view('public.schedule.show', [
             'term' => $term,
@@ -33,56 +33,45 @@ class SchedulePublicController extends Controller
         ]);
     }
 
-    public function downloadTerm(string $termCode, int $version, string $token): StreamedResponse
+    public function downloadTerm(string $termCode, int $version, string $token, PublicationArtifactDownloadService $downloads): StreamedResponse
     {
         $pub = $this->resolvePublication($termCode, $version, $token);
-        return $this->downloadLocalFile($pub->storage_base_path . '/term_schedule.csv', sprintf('aop_%s_v%d_term_schedule.csv', $termCode, $pub->version));
+
+        return $downloads->download($pub->storage_base_path.'/term_schedule.csv', sprintf('aop_%s_v%d_term_schedule.csv', $termCode, $pub->version));
     }
 
-    public function downloadInstructorsZip(string $termCode, int $version, string $token): StreamedResponse
+    public function downloadInstructorsZip(string $termCode, int $version, string $token, PublicationArtifactDownloadService $downloads): StreamedResponse
     {
         $pub = $this->resolvePublication($termCode, $version, $token);
-        return $this->downloadLocalFile($pub->storage_base_path . '/instructors.zip', sprintf('aop_%s_v%d_instructors.zip', $termCode, $pub->version));
+
+        return $downloads->download($pub->storage_base_path.'/instructors.zip', sprintf('aop_%s_v%d_instructors.zip', $termCode, $pub->version));
     }
 
-    public function downloadRoomsZip(string $termCode, int $version, string $token): StreamedResponse
+    public function downloadRoomsZip(string $termCode, int $version, string $token, PublicationArtifactDownloadService $downloads): StreamedResponse
     {
         $pub = $this->resolvePublication($termCode, $version, $token);
-        return $this->downloadLocalFile($pub->storage_base_path . '/rooms.zip', sprintf('aop_%s_v%d_rooms.zip', $termCode, $pub->version));
+
+        return $downloads->download($pub->storage_base_path.'/rooms.zip', sprintf('aop_%s_v%d_rooms.zip', $termCode, $pub->version));
     }
 
     private function resolvePublication(string $termCode, int $version, string $token): SchedulePublication
     {
         $term = Term::where('code', $termCode)->first();
-        abort_if(!$term, 404);
+        abort_if(! $term, 404);
 
         $publication = SchedulePublication::where('term_id', $term->id)->where('version', $version)->first();
-        abort_if(!$publication, 404);
-        abort_if(!$this->tokenMatches($publication->public_token, $token), 404);
+        abort_if(! $publication, 404);
+        abort_if(! $this->tokenMatches($publication->public_token, $token), 404);
 
         return $publication;
     }
 
     private function tokenMatches(?string $storedToken, string $providedToken): bool
     {
-        if (!is_string($storedToken) || $storedToken === '' || $providedToken === '') {
+        if (! is_string($storedToken) || $storedToken === '' || $providedToken === '') {
             return false;
         }
 
         return hash_equals($storedToken, $providedToken);
-    }
-
-    private function downloadLocalFile(string $storagePath, string $downloadName): StreamedResponse
-    {
-        abort_unless(Storage::disk('local')->exists($storagePath), 404);
-
-        return response()->streamDownload(function () use ($storagePath) {
-            $stream = Storage::disk('local')->readStream($storagePath);
-            if (!$stream) {
-                return;
-            }
-            fpassthru($stream);
-            fclose($stream);
-        }, $downloadName);
     }
 }

@@ -9,9 +9,9 @@
     "devDependencies": {
         "@tailwindcss/forms": "^0.5.2",
         "@tailwindcss/vite": "^4.0.0",
-        "alpinejs": "^3.4.2",
+        "alpinejs": "^3.17.5",
         "autoprefixer": "^10.4.2",
-        "axios": "^1.11.0",
+        "axios": "^1.21.1",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^2.0.0",
         "postcss": "^8.4.31",
@@ -19,6 +19,9 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
-        "htmx.org": "^2.0.10"
+        "@fullcalendar/core": "^6.1.22",
+        "@fullcalendar/interaction": "^6.1.22",
+        "@fullcalendar/timegrid": "^6.1.22",
+        "htmx.org": "^2.0.11"
     }
 }

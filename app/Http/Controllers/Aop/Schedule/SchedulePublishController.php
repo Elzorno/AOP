@@ -12,20 +12,22 @@ use App\Models\Room;
 use App\Models\SchedulePublication;
 use App\Models\Section;
 use App\Models\Term;
+use App\Services\PublicationArtifactDownloadService;
 use App\Services\ScheduleConflictService;
-use Illuminate\Http\Request;
+use App\Support\SafeCsv;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use ZipArchive;
 
 class SchedulePublishController extends Controller
 {
-    private const DAYS_ORDER = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    private const DAYS_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     private function activeTermOrFail(): Term
     {
         $term = Term::where('is_active', true)->first();
-        abort_if(!$term, 400, 'No active term is set. Go to Terms and set an active term.');
+        abort_if(! $term, 400, 'No active term is set. Go to Terms and set an active term.');
+
         return $term;
     }
 
@@ -62,7 +64,7 @@ class SchedulePublishController extends Controller
             ->where('term_id', $term->id)
             ->get();
 
-        $sectionsMissingInstructor = $sections->filter(fn (Section $section) => !$section->hasInstructorAssignment())->count();
+        $sectionsMissingInstructor = $sections->filter(fn (Section $section) => ! $section->hasInstructorAssignment())->count();
         $sectionsMissingMeetingBlocks = $sections
             ->filter(fn (Section $section) => $section->requiresMeetingBlocks() && $section->meetingBlocks->isEmpty())
             ->count();
@@ -71,7 +73,8 @@ class SchedulePublishController extends Controller
             ->filter(function ($mb) {
                 $modality = $mb->section?->modality;
                 $requiresRoom = in_array($modality, ['IN_PERSON', 'HYBRID'], true);
-                return $requiresRoom && !$mb->room_id;
+
+                return $requiresRoom && ! $mb->room_id;
             })
             ->count();
 
@@ -122,10 +125,10 @@ class SchedulePublishController extends Controller
                 for ($j = $i + 1; $j < $n; $j++) {
                     $a = $classList[$i];
                     $b = $classList[$j];
-                    if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
+                    if (! ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
                         continue;
                     }
-                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                    if (! ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
                         continue;
                     }
                     $count++;
@@ -137,10 +140,10 @@ class SchedulePublishController extends Controller
                 for ($j = $i + 1; $j < $m; $j++) {
                     $a = $openLabList[$i];
                     $b = $openLabList[$j];
-                    if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
+                    if (! ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
                         continue;
                     }
-                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                    if (! ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
                         continue;
                     }
                     $count++;
@@ -149,10 +152,10 @@ class SchedulePublishController extends Controller
 
             foreach ($classList as $classBlock) {
                 foreach ($openLabList as $openLab) {
-                    if (!ScheduleConflictService::dayOverlap($classBlock->days_json ?? [], $openLab->days_json ?? [])) {
+                    if (! ScheduleConflictService::dayOverlap($classBlock->days_json ?? [], $openLab->days_json ?? [])) {
                         continue;
                     }
-                    if (!ScheduleConflictService::timesOverlap($classBlock->starts_at, $classBlock->ends_at, $openLab->starts_at, $openLab->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                    if (! ScheduleConflictService::timesOverlap($classBlock->starts_at, $classBlock->ends_at, $openLab->starts_at, $openLab->ends_at, (int) ($term->buffer_minutes ?? 0))) {
                         continue;
                     }
                     $count++;
@@ -187,10 +190,10 @@ class SchedulePublishController extends Controller
                 for ($j = $i + 1; $j < $n; $j++) {
                     $a = $classList[$i];
                     $b = $classList[$j];
-                    if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
+                    if (! ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
                         continue;
                     }
-                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                    if (! ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
                         continue;
                     }
                     $count++;
@@ -202,10 +205,10 @@ class SchedulePublishController extends Controller
                 for ($j = $i + 1; $j < $m; $j++) {
                     $a = $officeList[$i];
                     $b = $officeList[$j];
-                    if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
+                    if (! ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
                         continue;
                     }
-                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                    if (! ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
                         continue;
                     }
                     $count++;
@@ -214,10 +217,10 @@ class SchedulePublishController extends Controller
 
             foreach ($classList as $classBlock) {
                 foreach ($officeList as $officeBlock) {
-                    if (!ScheduleConflictService::dayOverlap($classBlock->days_json ?? [], $officeBlock->days_json ?? [])) {
+                    if (! ScheduleConflictService::dayOverlap($classBlock->days_json ?? [], $officeBlock->days_json ?? [])) {
                         continue;
                     }
-                    if (!ScheduleConflictService::timesOverlap($classBlock->starts_at, $classBlock->ends_at, $officeBlock->starts_at, $officeBlock->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                    if (! ScheduleConflictService::timesOverlap($classBlock->starts_at, $classBlock->ends_at, $officeBlock->starts_at, $officeBlock->ends_at, (int) ($term->buffer_minutes ?? 0))) {
                         continue;
                     }
                     $count++;
@@ -241,10 +244,10 @@ class SchedulePublishController extends Controller
                 for ($j = $i + 1; $j < $n; $j++) {
                     $a = $list[$i];
                     $b = $list[$j];
-                    if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
+                    if (! ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
                         continue;
                     }
-                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                    if (! ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
                         continue;
                     }
                     $count++;
@@ -279,7 +282,7 @@ class SchedulePublishController extends Controller
             $meetsHours = $minutesPerWeek >= 240;
             $meetsDays = count(array_unique($days)) >= 3;
 
-            if (!($meetsHours && $meetsDays)) {
+            if (! ($meetsHours && $meetsDays)) {
                 $failing++;
             }
         }
@@ -293,7 +296,7 @@ class SchedulePublishController extends Controller
         $failing = 0;
 
         foreach ($sections as $section) {
-            if (!$section->requiresMeetingBlocks()) {
+            if (! $section->requiresMeetingBlocks()) {
                 continue;
             }
 
@@ -335,22 +338,25 @@ class SchedulePublishController extends Controller
         return max(0, $end - $start);
     }
 
-    public function downloadTerm(SchedulePublication $publication): StreamedResponse
+    public function downloadTerm(SchedulePublication $publication, PublicationArtifactDownloadService $downloads): StreamedResponse
     {
         $this->assertAdminAndTermAccess($publication);
-        return $this->downloadLocalFile($publication->storage_base_path . '/term_schedule.csv', $this->termFileName($publication, 'term_schedule.csv'));
+
+        return $downloads->download($publication->storage_base_path.'/term_schedule.csv', $this->termFileName($publication, 'term_schedule.csv'));
     }
 
-    public function downloadInstructorsZip(SchedulePublication $publication): StreamedResponse
+    public function downloadInstructorsZip(SchedulePublication $publication, PublicationArtifactDownloadService $downloads): StreamedResponse
     {
         $this->assertAdminAndTermAccess($publication);
-        return $this->downloadLocalFile($publication->storage_base_path . '/instructors.zip', $this->termFileName($publication, 'instructors.zip'));
+
+        return $downloads->download($publication->storage_base_path.'/instructors.zip', $this->termFileName($publication, 'instructors.zip'));
     }
 
-    public function downloadRoomsZip(SchedulePublication $publication): StreamedResponse
+    public function downloadRoomsZip(SchedulePublication $publication, PublicationArtifactDownloadService $downloads): StreamedResponse
     {
         $this->assertAdminAndTermAccess($publication);
-        return $this->downloadLocalFile($publication->storage_base_path . '/rooms.zip', $this->termFileName($publication, 'rooms.zip'));
+
+        return $downloads->download($publication->storage_base_path.'/rooms.zip', $this->termFileName($publication, 'rooms.zip'));
     }
 
     private function assertAdminAndTermAccess(SchedulePublication $publication): void
@@ -360,30 +366,17 @@ class SchedulePublishController extends Controller
         abort_unless($publication->term_id !== null, 404);
     }
 
-    private function downloadLocalFile(string $storagePath, string $downloadName): StreamedResponse
-    {
-        abort_unless(Storage::disk('local')->exists($storagePath), 404, 'File not found.');
-
-        return response()->streamDownload(function () use ($storagePath) {
-            $stream = Storage::disk('local')->readStream($storagePath);
-            if (!$stream) {
-                return;
-            }
-            fpassthru($stream);
-            fclose($stream);
-        }, $downloadName);
-    }
-
     private function termFileName(SchedulePublication $publication, string $baseName): string
     {
         $term = $publication->term;
         $code = $term?->code ?? 'term';
+
         return sprintf('aop_%s_v%d_%s', $code, $publication->version, $baseName);
     }
 
     private function ensureDir(string $storagePath): void
     {
-        if (!Storage::disk('local')->exists($storagePath)) {
+        if (! Storage::disk('local')->exists($storagePath)) {
             Storage::disk('local')->makeDirectory($storagePath);
         }
     }
@@ -391,15 +384,15 @@ class SchedulePublishController extends Controller
     private function createZipFromDir(string $dirPath, string $zipPath): void
     {
         $disk = Storage::disk('local');
-        if (!$disk->exists($dirPath)) {
+        if (! $disk->exists($dirPath)) {
             return;
         }
 
-        $fullZipPath = storage_path('app/' . ltrim($zipPath, '/'));
+        $fullZipPath = storage_path('app/'.ltrim($zipPath, '/'));
 
         // Ensure parent directory exists
         $zipParent = dirname($fullZipPath);
-        if (!is_dir($zipParent)) {
+        if (! is_dir($zipParent)) {
             @mkdir($zipParent, 0755, true);
         }
 
@@ -408,7 +401,7 @@ class SchedulePublishController extends Controller
             @unlink($fullZipPath);
         }
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         $ok = $zip->open($fullZipPath, ZipArchive::CREATE);
         if ($ok !== true) {
             return;
@@ -417,11 +410,11 @@ class SchedulePublishController extends Controller
         // Add files that actually exist on disk
         $files = $disk->allFiles($dirPath);
         foreach ($files as $file) {
-            $absPath = storage_path('app/' . ltrim($file, '/'));
-            if (!is_file($absPath)) {
+            $absPath = storage_path('app/'.ltrim($file, '/'));
+            if (! is_file($absPath)) {
                 continue;
             }
-            $localName = str_replace($dirPath . '/', '', $file);
+            $localName = str_replace($dirPath.'/', '', $file);
             $zip->addFile($absPath, $localName);
         }
 
@@ -436,6 +429,7 @@ class SchedulePublishController extends Controller
         if (is_string($type)) {
             return $type;
         }
+
         return 'OTHER';
     }
 
@@ -443,19 +437,21 @@ class SchedulePublishController extends Controller
     {
         $days = array_values(array_filter($days, fn ($d) => is_string($d) && $d !== ''));
         $order = array_flip(self::DAYS_ORDER);
-        usort($days, fn($a,$b) => ($order[$a] ?? 99) <=> ($order[$b] ?? 99));
+        usort($days, fn ($a, $b) => ($order[$a] ?? 99) <=> ($order[$b] ?? 99));
+
         return implode('/', $days);
     }
 
     private function time5($time): string
     {
-        return substr((string)$time, 0, 5);
+        return substr((string) $time, 0, 5);
     }
 
     private function safeSlug(string $s): string
     {
         $s = strtolower(trim($s));
         $s = preg_replace('/[^a-z0-9]+/', '_', $s) ?? $s;
+
         return trim($s, '_');
     }
 
@@ -464,18 +460,20 @@ class SchedulePublishController extends Controller
         $fh = fopen('php://temp', 'r+');
         fwrite($fh, "\xEF\xBB\xBF");
         foreach ($rows as $row) {
-            fputcsv($fh, $row);
+            SafeCsv::write($fh, $row);
         }
         rewind($fh);
         $csv = stream_get_contents($fh);
         fclose($fh);
+
         return $csv === false ? '' : $csv;
     }
 
     private function isCsvOnlyHeader(string $csv): bool
     {
         $lines = preg_split("/\r\n|\r|\n/", trim($csv));
-        return is_array($lines) && count(array_filter($lines, fn($l) => trim($l) !== '')) <= 1;
+
+        return is_array($lines) && count(array_filter($lines, fn ($l) => trim($l) !== '')) <= 1;
     }
 
     private function buildTermCsv(Term $term, $meetingBlocks, $openLabs): string
@@ -527,7 +525,7 @@ class SchedulePublishController extends Controller
         $rows[] = ['Term', 'Instructor', 'Event Kind', 'Course Code', 'Section Code', 'Meeting Type', 'Days', 'Start', 'End', 'Room', 'Notes'];
 
         foreach ($meetingBlocks as $mb) {
-            if ((int)$mb->section->instructor_id !== (int)$instructor->id) {
+            if ((int) $mb->section->instructor_id !== (int) $instructor->id) {
                 continue;
             }
             $course = $mb->section->offering->catalogCourse;
@@ -547,7 +545,7 @@ class SchedulePublishController extends Controller
         }
 
         foreach ($officeBlocks as $ob) {
-            if ((int)$ob->instructor_id !== (int)$instructor->id) {
+            if ((int) $ob->instructor_id !== (int) $instructor->id) {
                 continue;
             }
             $rows[] = [
@@ -574,7 +572,7 @@ class SchedulePublishController extends Controller
         $rows[] = ['Term', 'Room', 'Event Kind', 'Display Name', 'Course Code', 'Section Code', 'Assigned Staff', 'Meeting Type', 'Days', 'Start', 'End', 'Notes'];
 
         foreach ($meetingBlocks as $mb) {
-            if ((int)$mb->room_id !== (int)$room->id) {
+            if ((int) $mb->room_id !== (int) $room->id) {
                 continue;
             }
             $course = $mb->section->offering->catalogCourse;

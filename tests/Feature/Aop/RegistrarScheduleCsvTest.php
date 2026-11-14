@@ -10,6 +10,7 @@ use App\Models\Room;
 use App\Models\Section;
 use App\Models\Term;
 use App\Models\User;
+use App\Support\SafeCsv;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -126,6 +127,37 @@ class RegistrarScheduleCsvTest extends TestCase
             '1/11/2027 - 4/23/2027 Main Campus Online Instruction - ONLIN',
             $onlineRow['Registrar Schedule'],
         );
+    }
+
+    public function test_registrar_csv_neutralizes_formula_cells_without_changing_ordinary_values(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $term = Term::create([
+            'code' => '2027FA', 'name' => 'Fall 2027', 'starts_on' => '2027-08-23',
+            'ends_on' => '2027-12-10', 'is_active' => true, 'status' => 'draft',
+            'weeks_in_term' => 16, 'slot_minutes' => 15, 'buffer_minutes' => 10,
+        ]);
+        $course = CatalogCourse::create([
+            'code' => 'SAFE-100', 'title' => '=HYPERLINK("https://example.test","Open")',
+            'credits' => 3, 'is_active' => true,
+        ]);
+        $offering = Offering::create(['term_id' => $term->id, 'catalog_course_id' => $course->id]);
+        Section::create([
+            'offering_id' => $offering->id, 'section_code' => '01',
+            'instructor_is_staff' => true, 'modality' => 'ONLINE',
+            'notes' => '  +SUM(1,1)',
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('aop.schedule.reports.exportRegistrar'));
+        $rows = $this->parseCsv($response->streamedContent());
+
+        $this->assertSame("'=HYPERLINK(\"https://example.test\",\"Open\")", $rows[0]['Title']);
+        $this->assertSame("'  +SUM(1,1)", $rows[0]['Notes']);
+        $this->assertSame('SAFE-100-01', $rows[0]['Course-Section']);
+        $this->assertSame('STAFF', $rows[0]['Faculty']);
+
+        $this->assertSame("'\u{2003}@SUM(1,1)", SafeCsv::escapeCell("\u{2003}@SUM(1,1)"));
+        $this->assertSame("'\n-2+2", SafeCsv::escapeCell("\n-2+2"));
     }
 
     private function parseCsv(string $csv): array

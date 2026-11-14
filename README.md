@@ -1,6 +1,6 @@
 # Academic Ops Platform (AOP)
 
-Academic Ops Platform is a Laravel-based internal scheduling and syllabus management application for academic operations.
+Academic Ops Platform is a Laravel-based internal academic scheduling application.
 
 ## Current release
 
@@ -12,30 +12,26 @@ Academic Ops Platform is a Laravel-based internal scheduling and syllabus manage
   - Rooms
   - Catalog
   - Schedule planning and readiness checks
-  - Public schedule publication snapshots
-  - Syllabi rendering and render history
+  - Open labs and lab-tech workload tracking
+  - Historical schedule publication downloads
 
 ## Core scheduling features
 
-- Active-term scheduling workflow
+- Schedule Studio workflow: Build → Validate → Export
 - Offerings, sections, and meeting blocks
 - Room and instructor conflict detection with configurable term buffer minutes
 - Instructor office-hours tracking and compliance checks
 - Readiness review for conflicts, instructional-minutes compliance, and office-hours compliance
-- Published public schedule snapshots with downloadable exports
+- Historical token-protected schedule downloads
 - Clone-last-year schedule workflow to seed a new term from an existing term
 
-## Security posture
+## Product boundaries
 
-Recent hardening includes:
-
-- self-registration disabled by default
-- schedule lock enforced server-side
-- publish requires a locked schedule
-- public published links use token-based access and throttling
-- stricter validation for schedule data entry
-- response security headers for deployed environments
-- SQLite foreign-key enforcement at runtime
+- Readiness findings advise administrators; they do not block registrar export.
+- `STAFF` is an intentional unassigned-faculty placeholder.
+- Asynchronous online sections and sections without meetings remain exportable.
+- Syllabus generation and creation of schedule-publication snapshots are retired.
+- Existing publication snapshots remain available through their protected historical links.
 
 ## Deployment notes
 
@@ -49,18 +45,6 @@ Minimum host expectations:
 - Web server pointing to `public/`
 - writable `storage/` and `bootstrap/cache/`
 
-For syllabus rendering, install:
-
-- `pandoc` and/or `libreoffice` if you want HTML-aligned DOCX/PDF syllabus exports
-- PHP `ZipArchive` support if you want template-based DOCX placeholder replacement
-
-Syllabus export mode is controlled by `AOP_SYLLABUS_EXPORT_ENGINE`:
-- `auto` = prefer HTML-aligned export, then fall back to the uploaded DOCX template if needed
-- `html` = require the HTML-aligned renderer path
-- `template` = require the uploaded DOCX template path
-
-Structured syllabus sections also expose slug-based and order-based DOCX placeholder tokens. See `docs/SYLLABUS_TEMPLATE_TOKENS.md` for the current token model.
-
 See `docs/AOP_DEPLOY_CHECKLIST.md` for a clean production deployment workflow.
 
 ## First-time setup
@@ -71,7 +55,7 @@ cp .env.example .env
 php artisan key:generate
 mkdir -p database
 touch database/database.sqlite
-php artisan migrate --force
+AOP_EXPECTED_DATABASE="$PWD/database/database.sqlite" php artisan migrate --force
 php artisan db:seed --force
 php artisan optimize
 ```
@@ -82,7 +66,7 @@ Then configure your first admin account using your preferred local admin/bootstr
 
 ```bash
 php artisan optimize:clear
-php artisan migrate --force
+AOP_EXPECTED_DATABASE=/absolute/path/to/database.sqlite php artisan migrate --force
 php artisan optimize
 ```
 

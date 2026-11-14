@@ -19,9 +19,6 @@
     <div id="calendar" class="rounded-2xl border border-slate-200 bg-white shadow-sm"></div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/interaction@6.1.15/index.global.min.js"></script>
-
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       const calendarEl = document.getElementById('calendar');
@@ -87,7 +84,8 @@
       }
 
       // ── Calendar ─────────────────────────────────────────────────────────
-      const calendar = new FullCalendar.Calendar(calendarEl, {
+      const calendar = new window.AopCalendar.Calendar(calendarEl, {
+        plugins: [window.AopCalendar.timeGridPlugin, window.AopCalendar.interactionPlugin],
         initialView:  'timeGridWeek',
         initialDate:  '2026-01-05',   // Fixed reference week — never shown as a date
         headerToolbar: false,          // No navigation — this is a timeless weekly grid

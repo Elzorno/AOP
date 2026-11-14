@@ -3,6 +3,12 @@
 .env
 .env.backup
 .env.production
+.env.*
+!.env.example
+/.claude/
+/*.pdf
+/database/*.sqlite*
+/database/*.db
 .phpactor.json
 .phpunit.result.cache
 /.fleet

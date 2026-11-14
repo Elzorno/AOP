@@ -11,6 +11,7 @@ use App\Models\OpenLab;
 use App\Models\Room;
 use App\Models\Section;
 use App\Models\Term;
+use App\Support\SafeCsv;
 use Carbon\CarbonInterface;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -123,7 +124,7 @@ class ScheduleReportsController extends Controller
         $filename = sprintf('aop_%s_registrar_schedule.csv', $this->safeSlug($term->code));
 
         return $this->streamCsv($filename, function ($out) use ($term, $sections) {
-            fputcsv($out, $this->registrarHeaders());
+            SafeCsv::write($out, $this->registrarHeaders());
 
             foreach ($sections as $section) {
                 $meetingBlocks = $section->meetingBlocks
@@ -136,12 +137,12 @@ class ScheduleReportsController extends Controller
                     ->values();
 
                 if ($meetingBlocks->isEmpty()) {
-                    fputcsv($out, $this->registrarRow($term, $section));
+                    SafeCsv::write($out, $this->registrarRow($term, $section));
                     continue;
                 }
 
                 foreach ($meetingBlocks as $meetingBlock) {
-                    fputcsv($out, $this->registrarRow($term, $section, $meetingBlock));
+                    SafeCsv::write($out, $this->registrarRow($term, $section, $meetingBlock));
                 }
             }
         });
@@ -175,13 +176,13 @@ class ScheduleReportsController extends Controller
         $filename = sprintf('aop_%s_instructor_%s.csv', $term->code, $this->safeSlug($instructor->name));
 
         return $this->streamCsv($filename, function ($out) use ($term, $instructor, $meetingBlocks, $officeBlocks) {
-            fputcsv($out, [
+            SafeCsv::write($out, [
                 'Term', 'Instructor', 'Event Kind', 'Course Code', 'Section Code', 'Meeting Type', 'Days', 'Start', 'End', 'Room', 'Notes'
             ]);
 
             foreach ($meetingBlocks as $mb) {
                 $course = $mb->section->offering->catalogCourse;
-                fputcsv($out, [
+                SafeCsv::write($out, [
                     $term->code,
                     $instructor->name,
                     'CLASS',
@@ -197,7 +198,7 @@ class ScheduleReportsController extends Controller
             }
 
             foreach ($officeBlocks as $ob) {
-                fputcsv($out, [
+                SafeCsv::write($out, [
                     $term->code,
                     $instructor->name,
                     'OFFICE_HOURS',
@@ -236,13 +237,13 @@ class ScheduleReportsController extends Controller
         $filename = sprintf('aop_%s_room_%s.csv', $term->code, $this->safeSlug($room->name));
 
         return $this->streamCsv($filename, function ($out) use ($term, $room, $meetingBlocks, $openLabs) {
-            fputcsv($out, [
+            SafeCsv::write($out, [
                 'Term', 'Room', 'Event Kind', 'Display Name', 'Course Code', 'Section Code', 'Assigned Staff', 'Meeting Type', 'Days', 'Start', 'End', 'Notes'
             ]);
 
             foreach ($meetingBlocks as $mb) {
                 $course = $mb->section->offering->catalogCourse;
-                fputcsv($out, [
+                SafeCsv::write($out, [
                     $term->code,
                     $room->name,
                     'CLASS',
@@ -259,7 +260,7 @@ class ScheduleReportsController extends Controller
             }
 
             foreach ($openLabs as $openLab) {
-                fputcsv($out, [
+                SafeCsv::write($out, [
                     $term->code,
                     $room->name,
                     'OPEN_LAB',

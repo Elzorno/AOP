@@ -2,8 +2,12 @@ import './bootstrap';
 
 import 'htmx.org';
 import Alpine from 'alpinejs';
+import { Calendar } from '@fullcalendar/core';
+import interactionPlugin from '@fullcalendar/interaction';
+import timeGridPlugin from '@fullcalendar/timegrid';
 
 window.Alpine = Alpine;
+window.AopCalendar = { Calendar, interactionPlugin, timeGridPlugin };
 
 /**
  * Client-side conflict checker for meeting block forms.

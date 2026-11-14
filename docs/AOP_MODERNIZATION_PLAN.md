@@ -1,6 +1,6 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: preservation complete; implementation proposed, not started.
+Prepared 14 November 2026. Status: phases 1–2 in isolated implementation; production remains unchanged.
 
 ## Outcome and constraints
 
@@ -194,3 +194,17 @@ Primary files: Schedule Studio, section cards, calendar, grids, instructor dashb
 The modernization is complete when the security remediation release is verified; all scheduling writes are term-scoped and authorized; the event model has a single authoritative owner; all views evaluate the same versioned rules; current registrar/print/instructor workflows pass regression checks; releases and recoveries are reproducible; and documentation reflects implemented behavior. Preserve meaningful tests and add coverage for new boundaries; do not create tests merely to mirror implementation details.
 
 Next executable step: phase 1, using the preserved deployed state in an isolated checkout. No refactor, dependency update, migration or host hardening has been applied by this planning task.
+
+## Implementation checkpoint — 14 November 2026
+
+Isolated workspace: `/srv/aop-workspaces/modernization`, branch `modernization/2026-11-14`.
+
+- Captured the deployed source, including pre-existing uncommitted work, in baseline commit `68cf437` without copying production secrets or data into the development runtime.
+- Added test and database-maintenance preflights. Tests require uncached configuration and disposable SQLite storage; destructive maintenance requires an exact `AOP_EXPECTED_DATABASE` path.
+- Installed locked development dependencies as the unprivileged `aop-build` account. The complete baseline now passes 64 tests / 232 assertions and the Vite production build.
+- Updated the compatible Laravel 12 stack, including Symfony HTTP Foundation 7.4.23. Composer audit reports zero advisories.
+- Updated audited browser dependencies, bundled FullCalendar through Vite instead of CDN scripts, and reduced npm audit to zero advisories.
+- Added spreadsheet-formula neutralization to current CSV generation and download-time sanitization for historical CSV/ZIP artifacts. Stored snapshots remain byte-for-byte unchanged. The six existing stored CSV artifacts were inventoried and contain no formula-leading cells.
+- Added configurable Cloudflare Tunnel proxy trust and HTTPS enforcement. The observed connector address is `192.168.1.167`; deployment still needs production environment changes and an external cookie/header verification before this item is accepted.
+
+No application code from this workspace has been deployed to `/var/www/aop`. Host permission, PHP upload-progress, service restart and production release steps remain pending.

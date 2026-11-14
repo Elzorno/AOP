@@ -9,7 +9,6 @@ Install and confirm:
 - SQLite 3
 - `pdo_sqlite` PHP extension
 - `mbstring`, `xml`, `ctype`, `json`, `tokenizer`, and `zip` PHP extensions
-- `libreoffice` if syllabus PDF exports are required
 
 ## 2. Application files
 
@@ -28,10 +27,11 @@ Start from `.env.example` and set at minimum:
 - `DB_DATABASE=` to the full SQLite file path
 - `AOP_VERSION=1.0.0`
 - `AOP_ALLOW_SELF_REGISTRATION=false`
-
-Recommended when HTTPS is enabled:
-
+- `AOP_TRUSTED_PROXIES=` to the comma-separated Cloudflare connector IPs/CIDRs
+- `AOP_ENFORCE_HTTPS=true` after the trusted proxy path is verified
 - `SESSION_SECURE_COOKIE=true`
+
+Do not use `*` for trusted proxies when the origin is reachable by other LAN clients.
 
 ## 4. Database/bootstrap
 
@@ -39,7 +39,7 @@ Recommended when HTTPS is enabled:
 mkdir -p database
 touch database/database.sqlite
 php artisan key:generate
-php artisan migrate --force
+AOP_EXPECTED_DATABASE=/absolute/path/to/database.sqlite php artisan migrate --force
 php artisan db:seed --force
 ```
 
@@ -67,7 +67,7 @@ php artisan optimize
 - confirm Readiness loads without errors
 - confirm the registrar CSV downloads without locking the schedule
 - confirm the CSV includes course-section, faculty, room/location, days, times, and term dates
-- confirm syllabi HTML/JSON/DOCX/PDF generation works on the host
+- confirm historical token-protected downloads still work
 
 ## 8. Release checklist
 
@@ -77,5 +77,5 @@ Before calling the deployment final:
 - rerun migrations after every schema change
 - verify `APP_DEBUG=false`
 - verify `AOP_ALLOW_SELF_REGISTRATION=false`
-- verify schedule publication URLs work from a browser
-- verify at least one syllabus DOCX and PDF render completes successfully
+- verify historical schedule download URLs work from a browser
+- verify the public HTTPS response sets Secure cookies and HSTS
