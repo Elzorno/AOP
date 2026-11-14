@@ -76,7 +76,7 @@
         <p class="muted">Jump to grids, then use Print if needed.</p>
         <div class="actions" style="margin-top:10px; flex-wrap:wrap;">
           <a class="btn" href="{{ route('aop.schedule.grids.index') }}">Schedule Grids</a>
-          <a class="btn" href="{{ route('aop.schedule.sections.index') }}">Sections</a>
+          <a class="btn" href="{{ route('aop.schedule.sections.index', $term) }}">Sections</a>
           <a class="btn" href="{{ route('aop.schedule.officeHours.index') }}">Office Hours</a>
           <a class="btn" href="{{ route('aop.schedule.openLabs.index') }}">Open Labs</a>
           <a class="btn" href="{{ route('aop.labtechs.index') }}">Lab Techs</a>

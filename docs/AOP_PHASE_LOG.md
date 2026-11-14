@@ -208,3 +208,10 @@ This file tracks what each phase changed so the project remains understandable w
 - Added an admin-dashboard regression request and verified the full suite at 78 tests / 276 assertions.
 - Deployed the single controller fix as release `2560003`, reloaded PHP-FPM, and directly exercised the production controller to confirm it returns the `aop.dashboard` view.
 - Public root/login, SQLite integrity, foreign keys and service health remain good.
+
+## Explicit section and meeting-block term boundary — development checkpoint 2026-11-14
+- Moved section CRUD, filtering, bulk assignment and suggestion routes under `/aop/terms/{term}/schedule/sections`.
+- Nested meeting-block create, update and delete routes now carry the same explicit term and verify both section-term and block-section ownership.
+- Mixed-term bulk assignment fails atomically instead of silently updating only the matching subset.
+- Updated all section and meeting-block form/link targets, including schedule studio and HTMX partials, to carry the route term.
+- Verified non-active-term directory/create/edit rendering, route-term writes and cross-term rejection; the suite passes 82 tests / 287 assertions.

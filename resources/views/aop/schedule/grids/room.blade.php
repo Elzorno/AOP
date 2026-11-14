@@ -45,7 +45,7 @@
     <x-slot:actions>
       <a class="btn secondary" href="{{ route('aop.schedule.grids.index') }}">Back to Grids</a>
       <a class="btn" href="{{ route('aop.rooms.index') }}">Rooms</a>
-      <a class="btn" href="{{ route('aop.schedule.sections.index') }}">Sections</a>
+      <a class="btn" href="{{ route('aop.schedule.sections.index', $term) }}">Sections</a>
       <a class="btn" href="{{ route('aop.schedule.grids.room', $room) }}?print=1" target="_blank">Print</a>
       <a class="btn" href="{{ route('aop.schedule.grids.room.pdf', $room) }}">Export PDF</a>
     </x-slot:actions>

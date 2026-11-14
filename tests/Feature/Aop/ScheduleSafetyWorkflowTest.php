@@ -205,6 +205,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
         ]);
 
         $response = $this->actingAs($admin)->get(route('aop.schedule.sections.index', [
+            'term' => $term,
             'missing' => 'meeting_blocks',
         ]));
 
@@ -228,6 +229,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
         ]);
 
         $this->actingAs($admin)->get(route('aop.schedule.sections.index', [
+            'term' => $term,
             'missing' => 'meeting_blocks',
         ]))
             ->assertOk()
@@ -238,7 +240,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
             ->assertOk()
             ->assertViewHas('sectionsMissingMeetingBlocks', function ($sections) use ($online, $inPerson) {
                 return $sections->contains('id', $inPerson->id)
-                    && !$sections->contains('id', $online->id);
+                    && ! $sections->contains('id', $online->id);
             });
     }
 

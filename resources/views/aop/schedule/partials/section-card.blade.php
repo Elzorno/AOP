@@ -108,8 +108,8 @@
         </summary>
         <div class="disclosure-body">
           <form method="POST"
-            action="{{ route('aop.schedule.meetingBlocks.update', [$section, $meetingBlock]) }}"
-            hx-post="{{ route('aop.schedule.meetingBlocks.update', [$section, $meetingBlock]) }}"
+            action="{{ route('aop.schedule.meetingBlocks.update', [$term, $section, $meetingBlock]) }}"
+            hx-post="{{ route('aop.schedule.meetingBlocks.update', [$term, $section, $meetingBlock]) }}"
             hx-target="#section-{{ $section->id }}"
             hx-swap="outerHTML"
             hx-indicator="#section-{{ $section->id }}">
@@ -189,8 +189,8 @@
       <summary class="disclosure-summary">+ Add meeting block</summary>
       <div class="disclosure-body">
         <form method="POST"
-          action="{{ route('aop.schedule.meetingBlocks.store', $section) }}"
-          hx-post="{{ route('aop.schedule.meetingBlocks.store', $section) }}"
+          action="{{ route('aop.schedule.meetingBlocks.store', [$term, $section]) }}"
+          hx-post="{{ route('aop.schedule.meetingBlocks.store', [$term, $section]) }}"
           hx-target="#section-{{ $section->id }}"
           hx-swap="outerHTML"
           hx-indicator="#section-{{ $section->id }}">
@@ -261,7 +261,7 @@
     <details class="block-edit-row" {{ ($focusSectionId ?? null) === $section->id ? 'open' : '' }}>
       <summary class="disclosure-summary">Edit section details</summary>
       <div class="disclosure-body">
-        <form method="POST" action="{{ route('aop.schedule.sections.update', $section) }}">
+        <form method="POST" action="{{ route('aop.schedule.sections.update', [$term, $section]) }}">
           @csrf
           @method('PUT')
           <input type="hidden" name="from_schedule_home" value="1">
@@ -311,12 +311,12 @@
 
   {{-- Section quick-link toolbar --}}
   <div class="section-toolbar">
-    <a class="btn secondary sm" href="{{ route('aop.schedule.sections.edit', $section) }}">Full editor</a>
+    <a class="btn secondary sm" href="{{ route('aop.schedule.sections.edit', [$term, $section]) }}">Full editor</a>
     @if($section->instructor_id)
       <a class="btn secondary sm" href="{{ route('aop.schedule.officeHours.show', $section->instructor_id) }}">Office hours</a>
     @endif
     @if(!$scheduleLocked)
-      <form method="POST" action="{{ route('aop.schedule.sections.destroy', $section) }}"
+      <form method="POST" action="{{ route('aop.schedule.sections.destroy', [$term, $section]) }}"
             style="display:inline;"
             onsubmit="return confirm('Remove {{ addslashes(($section->offering->catalogCourse->code ?? '').' '.$section->section_code) }} and all its meeting blocks? This cannot be undone.')">
         @csrf

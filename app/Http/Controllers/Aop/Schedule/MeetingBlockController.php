@@ -24,19 +24,10 @@ class MeetingBlockController extends Controller
 {
     private const ALLOWED_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    private function activeTermOrFail(): Term
+    private function ensureSectionInTerm(Term $term, Section $section): void
     {
-        $term = Term::where('is_active', true)->first();
-        abort_if(!$term, 400, 'No active term is set. Go to Terms and set an active term.');
-        return $term;
-    }
-
-    private function ensureSectionInActiveTerm(Section $section): Term
-    {
-        $term = $this->activeTermOrFail();
         $section->load('offering');
-        abort_if($section->offering->term_id !== $term->id, 400, 'Section not in active term.');
-        return $term;
+        abort_if($section->offering->term_id !== $term->id, 404, 'Section not in this term.');
     }
 
     private function sectionCardResponse(Section $section, Term $term, ?string $htmxError = null, ?int $openBlockId = null): Response
@@ -45,40 +36,44 @@ class MeetingBlockController extends Controller
         $sectionCard = app(SectionCardBuilderService::class)->build($section, $term);
 
         return response()->view('aop.schedule.partials.section-card', [
-            'section'          => $section,
-            'sectionCard'      => $sectionCard,
-            'course'           => $section->offering->catalogCourse,
-            'rooms'            => Room::orderBy('name')->get(),
-            'instructors'      => Instructor::orderBy('name')->get(),
-            'modalities'       => SectionModality::cases(),
-            'meetingBlockTypes'=> MeetingBlockType::cases(),
-            'weekDays'         => ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
-            'scheduleLocked'   => false,
-            'focusSectionId'   => null,
-            'dayAbbr'          => ['Monday'=>'Mon','Tuesday'=>'Tue','Wednesday'=>'Wed','Thursday'=>'Thu','Friday'=>'Fri','Saturday'=>'Sat','Sunday'=>'Sun'],
-            'htmxError'        => $htmxError,
-            'oldMeetingBlockId'=> $openBlockId,
+            'term' => $term,
+            'section' => $section,
+            'sectionCard' => $sectionCard,
+            'course' => $section->offering->catalogCourse,
+            'rooms' => Room::orderBy('name')->get(),
+            'instructors' => Instructor::orderBy('name')->get(),
+            'modalities' => SectionModality::cases(),
+            'meetingBlockTypes' => MeetingBlockType::cases(),
+            'weekDays' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            'scheduleLocked' => false,
+            'focusSectionId' => null,
+            'dayAbbr' => ['Monday' => 'Mon', 'Tuesday' => 'Tue', 'Wednesday' => 'Wed', 'Thursday' => 'Thu', 'Friday' => 'Fri', 'Saturday' => 'Sat', 'Sunday' => 'Sun'],
+            'htmxError' => $htmxError,
+            'oldMeetingBlockId' => $openBlockId,
         ]);
     }
 
-    public function store(Request $request, Section $section, ScheduleConflictService $conflicts, ScheduleRuleWarningService $ruleWarnings)
+    public function store(Request $request, Term $term, Section $section, ScheduleConflictService $conflicts, ScheduleRuleWarningService $ruleWarnings)
     {
-        $term = $this->ensureSectionInActiveTerm($section);
+        $this->ensureSectionInTerm($term, $section);
 
         $data = $request->validate([
             'type' => ['required', Rule::enum(MeetingBlockType::class)],
-            'days' => ['required','array','min:1'],
+            'days' => ['required', 'array', 'min:1'],
             'days.*' => ['string', Rule::in(self::ALLOWED_DAYS), 'distinct'],
-            'starts_at' => ['required','date_format:H:i'],
-            'ends_at' => ['required','date_format:H:i'],
-            'room_id' => ['nullable','integer','exists:rooms,id'],
-            'notes' => ['nullable','string','max:2000'],
+            'starts_at' => ['required', 'date_format:H:i'],
+            'ends_at' => ['required', 'date_format:H:i'],
+            'room_id' => ['nullable', 'integer', 'exists:rooms,id'],
+            'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $isHtmx = (bool) $request->header('HX-Request');
 
         if ($data['ends_at'] <= $data['starts_at']) {
-            if ($isHtmx) return $this->sectionCardResponse($section, $term, 'End time must be after start time.');
+            if ($isHtmx) {
+                return $this->sectionCardResponse($section, $term, 'End time must be after start time.');
+            }
+
             return back()->withErrors(['ends_at' => 'End time must be after start time.'])->withInput();
         }
 
@@ -86,7 +81,10 @@ class MeetingBlockController extends Controller
             $data['room_id'] = null;
         } else {
             if (empty($data['room_id'])) {
-                if ($isHtmx) return $this->sectionCardResponse($section, $term, 'Room is required for in-person or hybrid sections.');
+                if ($isHtmx) {
+                    return $this->sectionCardResponse($section, $term, 'Room is required for in-person or hybrid sections.');
+                }
+
                 return back()->withErrors(['room_id' => 'Room is required for in-person or hybrid sections.'])->withInput();
             }
         }
@@ -94,41 +92,50 @@ class MeetingBlockController extends Controller
         $days = array_values(array_unique($data['days']));
 
         // Room conflicts: class vs class only
-        $roomConflicts = $conflicts->roomConflictsForMeetingBlock($term, (int)($data['room_id'] ?? 0), $days, $data['starts_at'], $data['ends_at']);
+        $roomConflicts = $conflicts->roomConflictsForMeetingBlock($term, (int) ($data['room_id'] ?? 0), $days, $data['starts_at'], $data['ends_at']);
 
         $roomConflictLabels = ScheduleConflictService::formatRoomConflictMessages($roomConflicts);
         if ($roomConflictLabels !== []) {
-            $msg = 'Room conflict with: ' . implode('; ', $roomConflictLabels);
-            if ($isHtmx) return $this->sectionCardResponse($section, $term, $msg);
+            $msg = 'Room conflict with: '.implode('; ', $roomConflictLabels);
+            if ($isHtmx) {
+                return $this->sectionCardResponse($section, $term, $msg);
+            }
+
             return back()->withErrors(['conflicts' => $msg])->withInput();
         }
 
         // Instructor conflicts: class vs class + office hours
-        if (!empty($section->instructor_id)) {
-            $insConf = $conflicts->instructorConflictsForMeetingBlock($term, (int)$section->instructor_id, $days, $data['starts_at'], $data['ends_at']);
+        if (! empty($section->instructor_id)) {
+            $insConf = $conflicts->instructorConflictsForMeetingBlock($term, (int) $section->instructor_id, $days, $data['starts_at'], $data['ends_at']);
             $messages = [];
 
             if ($insConf['meeting_blocks']->count() > 0) {
-                $messages[] = 'Instructor conflict with classes: ' . $insConf['meeting_blocks']->map(fn($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
+                $messages[] = 'Instructor conflict with classes: '.$insConf['meeting_blocks']->map(fn ($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
             }
 
             if ($insConf['office_hour_blocks']->count() > 0) {
-                $messages[] = 'Instructor conflict with office hours: ' . $insConf['office_hour_blocks']->map(fn($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))->implode('; ');
+                $messages[] = 'Instructor conflict with office hours: '.$insConf['office_hour_blocks']->map(fn ($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))->implode('; ');
             }
 
-            if (!empty($messages)) {
+            if (! empty($messages)) {
                 $msg = implode(' | ', $messages);
-                if ($isHtmx) return $this->sectionCardResponse($section, $term, $msg);
+                if ($isHtmx) {
+                    return $this->sectionCardResponse($section, $term, $msg);
+                }
+
                 return back()->withErrors(['conflicts' => $msg])->withInput();
             }
         }
 
         // Rule warnings (soft or hard depending on term enforcement flag)
         $ruleWarns = $ruleWarnings->warnForBlock($days, $data['starts_at'], $data['ends_at'], $data['type'], $term);
-        if (!empty($ruleWarns)) {
+        if (! empty($ruleWarns)) {
             if ($ruleWarnings->isEnforced($term)) {
                 $msg = implode(' | ', $ruleWarns);
-                if ($isHtmx) return $this->sectionCardResponse($section, $term, $msg);
+                if ($isHtmx) {
+                    return $this->sectionCardResponse($section, $term, $msg);
+                }
+
                 return back()->withErrors(['schedule_rules' => $msg])->withInput();
             }
             session()->flash('schedule_warnings', $ruleWarns);
@@ -145,64 +152,66 @@ class MeetingBlockController extends Controller
         ]);
 
         ScheduleChangeLog::create([
-            'term_id'          => $term->id,
-            'section_id'       => $section->id,
+            'term_id' => $term->id,
+            'section_id' => $section->id,
             'meeting_block_id' => $block->id,
-            'user_id'          => auth()->id(),
-            'action'           => 'created',
-            'payload_before'   => null,
-            'payload_after'    => $block->only(['type','days_json','starts_at','ends_at','room_id','notes']),
+            'user_id' => auth()->id(),
+            'action' => 'created',
+            'payload_before' => null,
+            'payload_after' => $block->only(['type', 'days_json', 'starts_at', 'ends_at', 'room_id', 'notes']),
         ]);
 
-        if ($isHtmx) return $this->sectionCardResponse($section, $term);
+        if ($isHtmx) {
+            return $this->sectionCardResponse($section, $term);
+        }
 
         if ($request->boolean('from_schedule_home')) {
             return redirect()->route('aop.schedule.home', ['focus' => $section->id])->with('status', 'Meeting block added.');
         }
 
-        return redirect()->route('aop.schedule.sections.edit', $section)->with('status', 'Meeting block added.');
+        return redirect()->route('aop.schedule.sections.edit', [$term, $section])->with('status', 'Meeting block added.');
     }
 
-    public function destroy(Request $request, Section $section, MeetingBlock $meetingBlock)
+    public function destroy(Request $request, Term $term, Section $section, MeetingBlock $meetingBlock)
     {
-        $term = $this->ensureSectionInActiveTerm($section);
-        abort_if($meetingBlock->section_id !== $section->id, 400, 'Meeting block not in section.');
+        $this->ensureSectionInTerm($term, $section);
+        abort_if($meetingBlock->section_id !== $section->id, 404, 'Meeting block not in section.');
 
-        $before = $meetingBlock->only(['type','days_json','starts_at','ends_at','room_id','notes']);
+        $before = $meetingBlock->only(['type', 'days_json', 'starts_at', 'ends_at', 'room_id', 'notes']);
         $blockId = $meetingBlock->id;
 
         $meetingBlock->delete();
 
         ScheduleChangeLog::create([
-            'term_id'          => $term->id,
-            'section_id'       => $section->id,
+            'term_id' => $term->id,
+            'section_id' => $section->id,
             'meeting_block_id' => null,   // already deleted; nulled by FK
-            'user_id'          => auth()->id(),
-            'action'           => 'deleted',
-            'payload_before'   => $before,
-            'payload_after'    => null,
+            'user_id' => auth()->id(),
+            'action' => 'deleted',
+            'payload_before' => $before,
+            'payload_after' => null,
         ]);
 
         if ($request->boolean('from_schedule_home')) {
             return redirect()->route('aop.schedule.home', ['focus' => $section->id])->with('status', 'Meeting block removed.');
         }
 
-        return redirect()->route('aop.schedule.sections.edit', $section)->with('status', 'Meeting block removed.');
+        return redirect()->route('aop.schedule.sections.edit', [$term, $section])->with('status', 'Meeting block removed.');
     }
 
-    public function update(Request $request, Section $section, MeetingBlock $meetingBlock, MeetingBlockMutationService $mutationService, ScheduleRuleWarningService $ruleWarnings)
+    public function update(Request $request, Term $term, Section $section, MeetingBlock $meetingBlock, MeetingBlockMutationService $mutationService, ScheduleRuleWarningService $ruleWarnings)
     {
-        $term = $this->ensureSectionInActiveTerm($section);
-        abort_if($meetingBlock->section_id !== $section->id, 400, 'Meeting block not in section.');
+        $this->ensureSectionInTerm($term, $section);
+        abort_if($meetingBlock->section_id !== $section->id, 404, 'Meeting block not in section.');
 
         $data = $request->validate([
             'type' => ['required', Rule::enum(MeetingBlockType::class)],
-            'days' => ['required','array','min:1'],
+            'days' => ['required', 'array', 'min:1'],
             'days.*' => ['string', Rule::in(self::ALLOWED_DAYS), 'distinct'],
-            'starts_at' => ['required','date_format:H:i'],
-            'ends_at' => ['required','date_format:H:i'],
-            'room_id' => ['nullable','integer','exists:rooms,id'],
-            'notes' => ['nullable','string','max:2000'],
+            'starts_at' => ['required', 'date_format:H:i'],
+            'ends_at' => ['required', 'date_format:H:i'],
+            'room_id' => ['nullable', 'integer', 'exists:rooms,id'],
+            'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $isHtmx = (bool) $request->header('HX-Request');
@@ -210,16 +219,19 @@ class MeetingBlockController extends Controller
         // Rule warnings (soft or hard depending on term enforcement flag)
         $days = array_values(array_unique($data['days']));
         $ruleWarns = $ruleWarnings->warnForBlock($days, $data['starts_at'], $data['ends_at'], $data['type'], $term);
-        if (!empty($ruleWarns)) {
+        if (! empty($ruleWarns)) {
             if ($ruleWarnings->isEnforced($term)) {
                 $msg = implode(' | ', $ruleWarns);
-                if ($isHtmx) return $this->sectionCardResponse($section, $term, $msg, $meetingBlock->id);
+                if ($isHtmx) {
+                    return $this->sectionCardResponse($section, $term, $msg, $meetingBlock->id);
+                }
+
                 return back()->withErrors(['schedule_rules' => $msg])->withInput();
             }
             session()->flash('schedule_warnings', $ruleWarns);
         }
 
-        $before = $meetingBlock->only(['type','days_json','starts_at','ends_at','room_id','notes']);
+        $before = $meetingBlock->only(['type', 'days_json', 'starts_at', 'ends_at', 'room_id', 'notes']);
 
         try {
             $mutationService->update($term, $meetingBlock, [
@@ -232,27 +244,32 @@ class MeetingBlockController extends Controller
             ]);
         } catch (ValidationException $e) {
             $msg = implode(' | ', array_merge(...array_values($e->errors())));
-            if ($isHtmx) return $this->sectionCardResponse($section, $term, $msg, $meetingBlock->id);
+            if ($isHtmx) {
+                return $this->sectionCardResponse($section, $term, $msg, $meetingBlock->id);
+            }
+
             return back()->withErrors($e->errors())->withInput();
         }
 
         $meetingBlock->refresh();
         ScheduleChangeLog::create([
-            'term_id'          => $term->id,
-            'section_id'       => $section->id,
+            'term_id' => $term->id,
+            'section_id' => $section->id,
             'meeting_block_id' => $meetingBlock->id,
-            'user_id'          => auth()->id(),
-            'action'           => 'updated',
-            'payload_before'   => $before,
-            'payload_after'    => $meetingBlock->only(['type','days_json','starts_at','ends_at','room_id','notes']),
+            'user_id' => auth()->id(),
+            'action' => 'updated',
+            'payload_before' => $before,
+            'payload_after' => $meetingBlock->only(['type', 'days_json', 'starts_at', 'ends_at', 'room_id', 'notes']),
         ]);
 
-        if ($isHtmx) return $this->sectionCardResponse($section, $term, null, null);
+        if ($isHtmx) {
+            return $this->sectionCardResponse($section, $term, null, null);
+        }
 
         if ($request->boolean('from_schedule_home')) {
             return redirect()->route('aop.schedule.home', ['focus' => $section->id])->with('status', 'Meeting block updated.');
         }
 
-        return redirect()->route('aop.schedule.sections.edit', $section)->with('status', 'Meeting block updated.');
+        return redirect()->route('aop.schedule.sections.edit', [$term, $section])->with('status', 'Meeting block updated.');
     }
 }

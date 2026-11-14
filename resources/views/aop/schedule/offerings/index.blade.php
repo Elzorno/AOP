@@ -103,7 +103,7 @@
                 <a class="btn" href="{{ route('aop.schedule.home', ['focus_offering' => $offering->id]) }}#offering-{{ $offering->id }}">
                   {{ $offering->sections_count === 0 ? 'Add First Section' : 'Open' }}
                 </a>
-                <a class="btn secondary" href="{{ route('aop.schedule.sections.index', ['q' => $course?->code]) }}">Sections</a>
+                <a class="btn secondary" href="{{ route('aop.schedule.sections.index', ['term' => $term, 'q' => $course?->code]) }}">Sections</a>
               @else
                 <span class="badge muted">Section editing moves in the next scoped slice</span>
               @endif

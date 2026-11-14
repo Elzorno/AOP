@@ -52,7 +52,7 @@
 
       <div class="toolbar-line">
         <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.sections.index') }}">Section Directory</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.sections.index', $term) }}">Section Directory</a>
         <a class="btn secondary" href="{{ route('aop.schedule.officeHours.index') }}">Office Hours</a>
         <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index') }}">Open Labs</a>
         <a class="btn secondary" href="{{ route('aop.schedule.reports.index') }}">Registrar CSV</a>
@@ -476,7 +476,7 @@
                   <div class="queue-label">{{ $section->offering?->catalogCourse?->code ?? '—' }} {{ $section->section_code }}</div>
                   <div class="queue-copy">{{ $section->enrolled_count }} enrolled · {{ $capLabel }}</div>
                 </div>
-                <a class="btn secondary sm" href="{{ route('aop.schedule.sections.edit', $section) }}">Edit</a>
+                <a class="btn secondary sm" href="{{ route('aop.schedule.sections.edit', [$term, $section]) }}">Edit</a>
               </div>
             @endforeach
           </div>
@@ -496,7 +496,7 @@
                   <div class="queue-label">{{ $section->offering?->catalogCourse?->code ?? '—' }} {{ $section->section_code }}</div>
                   <div class="queue-copy">{{ $section->enrolled_count }}/{{ $section->section_capacity }} enrolled ({{ $fillPct }}%)</div>
                 </div>
-                <a class="btn secondary sm" href="{{ route('aop.schedule.sections.edit', $section) }}">Edit</a>
+                <a class="btn secondary sm" href="{{ route('aop.schedule.sections.edit', [$term, $section]) }}">Edit</a>
               </div>
             @endforeach
           </div>

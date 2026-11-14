@@ -9,7 +9,7 @@
 
       <div class="toolbar-line">
         <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.sections.index') }}">Section Directory</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.sections.index', $term) }}">Section Directory</a>
         <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index') }}">Open Labs</a>
       </div>
     </section>

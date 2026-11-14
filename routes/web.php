@@ -126,20 +126,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
             return redirect()->route('aop.schedule.offerings.index', $term);
         })->name('schedule.offerings.legacy');
 
-        // Sections
-        Route::get('/schedule/sections', [SectionController::class, 'index'])->name('schedule.sections.index');
-        Route::get('/schedule/sections/create', [SectionController::class, 'create'])->name('schedule.sections.create');
-        Route::post('/schedule/sections', [SectionController::class, 'store'])->name('schedule.sections.store');
-        Route::get('/schedule/sections/{section}/edit', [SectionController::class, 'edit'])->name('schedule.sections.edit');
-        Route::put('/schedule/sections/{section}', [SectionController::class, 'update'])->name('schedule.sections.update');
-        Route::get('/schedule/sections/{section}/suggest', [SectionController::class, 'suggest'])->name('schedule.sections.suggest');
-        Route::delete('/schedule/sections/{section}', [SectionController::class, 'destroy'])->name('schedule.sections.destroy');
-        Route::post('/schedule/sections/bulk-assign', [SectionController::class, 'bulkAssign'])->name('schedule.sections.bulkAssign');
+        // Sections and their meeting blocks are explicitly term scoped.
+        Route::prefix('/terms/{term}/schedule/sections')->group(function () {
+            Route::get('/', [SectionController::class, 'index'])->name('schedule.sections.index');
+            Route::get('/create', [SectionController::class, 'create'])->name('schedule.sections.create');
+            Route::post('/', [SectionController::class, 'store'])->name('schedule.sections.store');
+            Route::post('/bulk-assign', [SectionController::class, 'bulkAssign'])->name('schedule.sections.bulkAssign');
+            Route::get('/{section}/edit', [SectionController::class, 'edit'])->name('schedule.sections.edit');
+            Route::put('/{section}', [SectionController::class, 'update'])->name('schedule.sections.update');
+            Route::get('/{section}/suggest', [SectionController::class, 'suggest'])->name('schedule.sections.suggest');
+            Route::delete('/{section}', [SectionController::class, 'destroy'])->name('schedule.sections.destroy');
+            Route::post('/{section}/meeting-blocks', [MeetingBlockController::class, 'store'])->name('schedule.meetingBlocks.store');
+            Route::put('/{section}/meeting-blocks/{meetingBlock}', [MeetingBlockController::class, 'update'])->name('schedule.meetingBlocks.update');
+            Route::delete('/{section}/meeting-blocks/{meetingBlock}', [MeetingBlockController::class, 'destroy'])->name('schedule.meetingBlocks.destroy');
+        });
 
-        // Meeting Blocks (attached to sections)
-        Route::post('/schedule/sections/{section}/meeting-blocks', [MeetingBlockController::class, 'store'])->name('schedule.meetingBlocks.store');
-        Route::put('/schedule/sections/{section}/meeting-blocks/{meetingBlock}', [MeetingBlockController::class, 'update'])->name('schedule.meetingBlocks.update');
-        Route::delete('/schedule/sections/{section}/meeting-blocks/{meetingBlock}', [MeetingBlockController::class, 'destroy'])->name('schedule.meetingBlocks.destroy');
+        Route::get('/schedule/sections', function (Request $request) {
+            $term = $request->user()->selectedTerm
+                ?? Term::query()->where('is_active', true)->firstOrFail();
+
+            return redirect()->route('aop.schedule.sections.index', array_merge(['term' => $term], $request->query()));
+        })->name('schedule.sections.legacy');
 
         // Office Hours
         Route::get('/schedule/office-hours', [OfficeHoursController::class, 'index'])->name('schedule.officeHours.index');

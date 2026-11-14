@@ -44,7 +44,7 @@
 
       <div class="toolbar-line">
         <a class="btn" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Back to Schedule</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.sections.index', ['q' => $course->code]) }}">Section Directory</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.sections.index', ['term' => $term, 'q' => $course->code]) }}">Section Directory</a>
         <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
       </div>
     </section>
@@ -59,7 +59,7 @@
             </div>
           </div>
 
-          <form method="POST" action="{{ route('aop.schedule.sections.update', $section) }}">
+          <form method="POST" action="{{ route('aop.schedule.sections.update', [$term, $section]) }}">
             @csrf
             @method('PUT')
             <input type="hidden" name="section_id" value="{{ $section->id }}">
@@ -120,7 +120,7 @@
           </form>
 
           @if(!$scheduleLocked)
-          <form method="POST" action="{{ route('aop.schedule.sections.destroy', $section) }}"
+          <form method="POST" action="{{ route('aop.schedule.sections.destroy', [$term, $section]) }}"
                 style="margin-top:12px;"
                 onsubmit="return confirm('Permanently remove {{ addslashes($section->offering->catalogCourse->code ?? 'this') }} {{ addslashes($section->section_code) }} and all its meeting blocks? This cannot be undone.')">
             @csrf
@@ -165,7 +165,7 @@
                   <details class="disclosure" {{ $oldMeetingBlockId === $meetingBlock->id ? 'open' : '' }}>
                     <summary class="disclosure-summary">Edit meeting block</summary>
                     <div class="disclosure-body">
-                      <form method="POST" action="{{ route('aop.schedule.meetingBlocks.update', [$section, $meetingBlock]) }}">
+                      <form method="POST" action="{{ route('aop.schedule.meetingBlocks.update', [$term, $section, $meetingBlock]) }}">
                         @csrf
                         @method('PUT')
                         <input type="hidden" name="meeting_section_id" value="{{ $section->id }}">
@@ -221,7 +221,7 @@
                         </div>
                       </form>
 
-                      <form method="POST" action="{{ route('aop.schedule.meetingBlocks.destroy', [$section, $meetingBlock]) }}"
+                      <form method="POST" action="{{ route('aop.schedule.meetingBlocks.destroy', [$term, $section, $meetingBlock]) }}"
                             onsubmit="return confirm('Remove this meeting block? This cannot be undone.')">
                         @csrf
                         @method('DELETE')
@@ -264,7 +264,7 @@
             <div id="suggestionsList" class="suggestion-list"></div>
           </div>
 
-          <form method="POST" id="addBlockForm" action="{{ route('aop.schedule.meetingBlocks.store', $section) }}" class="mt-5">
+          <form method="POST" id="addBlockForm" action="{{ route('aop.schedule.meetingBlocks.store', [$term, $section]) }}" class="mt-5">
             @csrf
             <input type="hidden" name="meeting_section_id" value="{{ $section->id }}">
 
@@ -469,7 +469,7 @@
         list.innerHTML = '';
 
         try {
-          const url = "{{ route('aop.schedule.sections.suggest', $section) }}"
+          const url = "{{ route('aop.schedule.sections.suggest', [$term, $section]) }}"
             + '?block_type=' + encodeURIComponent(blockType);
 
           const response = await fetch(url);

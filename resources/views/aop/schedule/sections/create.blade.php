@@ -9,7 +9,7 @@
 
       <div class="toolbar-line">
         <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.sections.index') }}">Section Directory</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.sections.index', $term) }}">Section Directory</a>
       </div>
     </section>
 
@@ -28,7 +28,7 @@
           <a class="btn secondary" href="{{ route('aop.schedule.offerings.create', $term) }}">Create Offering</a>
         </div>
       @else
-        <form method="POST" action="{{ route('aop.schedule.sections.store') }}">
+        <form method="POST" action="{{ route('aop.schedule.sections.store', $term) }}">
           @csrf
 
           <label for="offering_id">Offering</label>

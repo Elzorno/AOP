@@ -25,12 +25,12 @@ class StaffInstructorSchedulingTest extends TestCase
         $offering = $this->createOffering($term);
         $room = Room::create(['name' => 'STAFF-101', 'is_active' => true]);
 
-        $this->actingAs($admin)->post(route('aop.schedule.sections.store'), [
+        $this->actingAs($admin)->post(route('aop.schedule.sections.store', $term), [
             'offering_id' => $offering->id,
             'section_code' => '01',
             'instructor_id' => Section::STAFF_ASSIGNMENT,
             'modality' => 'IN_PERSON',
-        ])->assertRedirect(route('aop.schedule.sections.index'));
+        ])->assertRedirect(route('aop.schedule.sections.index', $term));
 
         $section = Section::query()->firstOrFail();
         $this->assertNull($section->instructor_id);
@@ -94,11 +94,11 @@ class StaffInstructorSchedulingTest extends TestCase
             'staff_id' => $instructor->id,
         ]);
 
-        $this->actingAs($admin)->put(route('aop.schedule.sections.update', $section), [
+        $this->actingAs($admin)->put(route('aop.schedule.sections.update', [$term, $section]), [
             'section_code' => '02',
             'instructor_id' => Section::STAFF_ASSIGNMENT,
             'modality' => 'ONLINE',
-        ])->assertRedirect(route('aop.schedule.sections.edit', $section));
+        ])->assertRedirect(route('aop.schedule.sections.edit', [$term, $section]));
 
         $section->refresh();
         $this->assertNull($section->instructor_id);

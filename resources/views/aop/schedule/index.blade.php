@@ -436,7 +436,7 @@
               <details class="disclosure" {{ $offeringCard['focus'] || $offeringCard['has_empty_offering'] || $oldOfferingId === $offering->id ? 'open' : '' }}>
                 <summary class="disclosure-summary">+ Add section to this offering</summary>
                 <div class="disclosure-body">
-                  <form method="POST" action="{{ route('aop.schedule.sections.store') }}">
+                  <form method="POST" action="{{ route('aop.schedule.sections.store', $term) }}">
                     @csrf
                     <input type="hidden" name="from_schedule_home" value="1">
                     <input type="hidden" name="offering_id" value="{{ $offering->id }}">

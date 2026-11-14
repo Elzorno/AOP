@@ -45,7 +45,7 @@
       <div class="toolbar-line">
         <a class="btn" href="{{ route('aop.schedule.home') }}">Open Schedule Studio</a>
         <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.sections.create') }}">Fallback Create Form</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.sections.create', $term) }}">Fallback Create Form</a>
       </div>
     </section>
 
@@ -57,7 +57,7 @@
         </div>
       </div>
 
-      <form method="GET" action="{{ route('aop.schedule.sections.index') }}">
+      <form method="GET" action="{{ route('aop.schedule.sections.index', $term) }}">
         <div class="filter-grid">
           <div class="md:col-span-2 xl:col-span-2">
             <label for="q">Search</label>
@@ -103,7 +103,7 @@
           </div>
           <div class="actions md:items-end">
             <button type="submit" class="btn secondary">Apply</button>
-            <a class="btn secondary" href="{{ route('aop.schedule.sections.index') }}">Reset</a>
+            <a class="btn secondary" href="{{ route('aop.schedule.sections.index', $term) }}">Reset</a>
           </div>
         </div>
       </form>
@@ -123,7 +123,7 @@
       </section>
     @else
       {{-- Bulk assign form wraps the entire grid --}}
-      <form id="bulk-form" method="POST" action="{{ route('aop.schedule.sections.bulkAssign') }}">
+      <form id="bulk-form" method="POST" action="{{ route('aop.schedule.sections.bulkAssign', $term) }}">
         @csrf
 
         {{-- Bulk action bar (shown when selections exist) --}}
@@ -235,7 +235,7 @@
 
               <div class="section-actions">
                 <a class="btn" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Open</a>
-                <a class="btn secondary" href="{{ route('aop.schedule.sections.edit', $section) }}">Edit</a>
+                <a class="btn secondary" href="{{ route('aop.schedule.sections.edit', [$term, $section]) }}">Edit</a>
               </div>
             </article>
           @endforeach

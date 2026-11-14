@@ -8,28 +8,19 @@ use App\Http\Controllers\Controller;
 use App\Models\Instructor;
 use App\Models\MeetingBlock;
 use App\Models\Offering;
-use App\Models\ScheduleChangeLog;
 use App\Models\Room;
+use App\Models\ScheduleChangeLog;
 use App\Models\Section;
 use App\Models\Term;
 use App\Services\ScheduleConflictService;
+use App\Services\ScheduleSuggestionService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class SectionController extends Controller
 {
-    private function activeTermOrFail(): Term
+    public function index(Request $request, Term $term)
     {
-        $term = Term::where('is_active', true)->first();
-        abort_if(!$term, 400, 'No active term is set. Go to Terms and set an active term.');
-
-        return $term;
-    }
-
-    public function index(Request $request)
-    {
-        $term = $this->activeTermOrFail();
-
         $queryText = trim((string) $request->input('q', ''));
         $modality = (string) $request->input('modality', '');
         $instructorId = trim((string) $request->input('instructor_id', ''));
@@ -134,10 +125,8 @@ class SectionController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Term $term)
     {
-        $term = $this->activeTermOrFail();
-
         $offerings = Offering::with('catalogCourse')
             ->where('term_id', $term->id)
             ->orderBy('id', 'desc')
@@ -151,10 +140,8 @@ class SectionController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, Term $term)
     {
-        $term = $this->activeTermOrFail();
-
         $data = $request->validate([
             'offering_id' => ['required', 'integer', 'exists:offerings,id'],
             'section_code' => [
@@ -174,7 +161,7 @@ class SectionController extends Controller
         $offering = Offering::where('id', $data['offering_id'])
             ->where('term_id', $term->id)
             ->first();
-        abort_if(!$offering, 400, 'Offering not in active term.');
+        abort_if(! $offering, 404, 'Offering not in this term.');
 
         $section = Section::create($this->normalizeInstructorAssignment($data));
 
@@ -182,14 +169,13 @@ class SectionController extends Controller
             return redirect()->route('aop.schedule.home', ['focus' => $section->id])->with('status', 'Section created.');
         }
 
-        return redirect()->route('aop.schedule.sections.index')->with('status', 'Section created.');
+        return redirect()->route('aop.schedule.sections.index', $term)->with('status', 'Section created.');
     }
 
-    public function edit(Section $section, ScheduleConflictService $conflicts)
+    public function edit(Term $term, Section $section, ScheduleConflictService $conflicts)
     {
-        $term = $this->activeTermOrFail();
         $section->load(['offering.catalogCourse', 'instructor', 'meetingBlocks.room']);
-        abort_if($section->offering->term_id !== $term->id, 400, 'Section not in active term.');
+        abort_if($section->offering->term_id !== $term->id, 404, 'Section not in this term.');
 
         $conflictNotes = $this->sectionConflictNotes($term, $section, $conflicts);
 
@@ -214,10 +200,9 @@ class SectionController extends Controller
         ]);
     }
 
-    public function update(Request $request, Section $section)
+    public function update(Request $request, Term $term, Section $section)
     {
-        $term = $this->activeTermOrFail();
-        abort_if($section->offering->term_id !== $term->id, 400, 'Section not in active term.');
+        abort_if($section->offering->term_id !== $term->id, 404, 'Section not in this term.');
 
         $data = $request->validate([
             'section_code' => [
@@ -241,14 +226,12 @@ class SectionController extends Controller
             return redirect()->route('aop.schedule.home', ['focus' => $section->id])->with('status', 'Section updated.');
         }
 
-        return redirect()->route('aop.schedule.sections.edit', $section)->with('status', 'Section updated.');
+        return redirect()->route('aop.schedule.sections.edit', [$term, $section])->with('status', 'Section updated.');
     }
 
-    public function destroy(Request $request, Section $section)
+    public function destroy(Request $request, Term $term, Section $section)
     {
-        $term = $this->activeTermOrFail();
-
-        abort_if($section->offering->term_id !== $term->id, 403, 'Section does not belong to the active term.');
+        abort_if($section->offering->term_id !== $term->id, 404, 'Section does not belong to this term.');
 
         $offeringId = $section->offering_id;
         $label = ($section->offering->catalogCourse->code ?? 'Section').' '.$section->section_code;
@@ -258,30 +241,30 @@ class SectionController extends Controller
             $before = [
                 'days_json' => $block->days_json,
                 'starts_at' => $block->starts_at,
-                'ends_at'   => $block->ends_at,
-                'room_id'   => $block->room_id,
-                'type'      => $block->type?->value,
+                'ends_at' => $block->ends_at,
+                'room_id' => $block->room_id,
+                'type' => $block->type?->value,
             ];
             $block->delete();
             ScheduleChangeLog::create([
-                'term_id'        => $term->id,
-                'section_id'     => $section->id,
+                'term_id' => $term->id,
+                'section_id' => $section->id,
                 'meeting_block_id' => null,
-                'user_id'        => auth()->id(),
-                'action'         => 'deleted',
+                'user_id' => auth()->id(),
+                'action' => 'deleted',
                 'payload_before' => $before,
-                'payload_after'  => null,
+                'payload_after' => null,
             ]);
         }
 
         ScheduleChangeLog::create([
-            'term_id'        => $term->id,
-            'section_id'     => $section->id,
+            'term_id' => $term->id,
+            'section_id' => $section->id,
             'meeting_block_id' => null,
-            'user_id'        => auth()->id(),
-            'action'         => 'section_deleted',
+            'user_id' => auth()->id(),
+            'action' => 'section_deleted',
             'payload_before' => ['section_code' => $section->section_code, 'instructor_id' => $section->instructor_id],
-            'payload_after'  => null,
+            'payload_after' => null,
         ]);
 
         $section->delete();
@@ -291,16 +274,14 @@ class SectionController extends Controller
                 ->with('status', "{$label} removed.");
         }
 
-        return redirect()->route('aop.schedule.sections.index')
+        return redirect()->route('aop.schedule.sections.index', $term)
             ->with('status', "{$label} removed.");
     }
 
-    public function bulkAssign(Request $request)
+    public function bulkAssign(Request $request, Term $term)
     {
-        $term = $this->activeTermOrFail();
-
         $data = $request->validate([
-            'section_ids'   => ['required', 'array', 'min:1'],
+            'section_ids' => ['required', 'array', 'min:1'],
             'section_ids.*' => ['integer', 'exists:sections,id'],
             'instructor_id' => $this->instructorAssignmentRules(),
         ]);
@@ -310,6 +291,9 @@ class SectionController extends Controller
             ->whereIn('id', $data['section_ids'])
             ->whereHas('offering', fn ($q) => $q->where('term_id', $term->id))
             ->get();
+
+        $requestedSectionIds = collect($data['section_ids'])->map(fn ($id) => (int) $id)->unique();
+        abort_if($sections->count() !== $requestedSectionIds->count(), 404, 'One or more sections do not belong to this term.');
 
         $sections->each(fn (Section $section) => $section->update([
             'instructor_id' => $assignment['instructor_id'],
@@ -323,17 +307,16 @@ class SectionController extends Controller
                 ? Instructor::find($assignment['instructor_id'])?->name ?? 'selected instructor'
                 : 'Unassigned');
 
-        return redirect()->route('aop.schedule.sections.index')
+        return redirect()->route('aop.schedule.sections.index', $term)
             ->with('status', "Updated {$updated} section(s) — instructor set to {$name}.");
     }
 
-    public function suggest(Request $request, Section $section, \App\Services\ScheduleSuggestionService $service)
+    public function suggest(Request $request, Term $term, Section $section, ScheduleSuggestionService $service)
     {
-        $term = $this->activeTermOrFail();
-        abort_if($section->offering->term_id !== $term->id, 400, 'Section not in active term.');
+        abort_if($section->offering->term_id !== $term->id, 404, 'Section not in this term.');
 
         $blockType = strtoupper((string) $request->input('block_type', 'LECTURE'));
-        if (!in_array($blockType, ['LECTURE', 'LAB'], true)) {
+        if (! in_array($blockType, ['LECTURE', 'LAB'], true)) {
             $blockType = 'LECTURE';
         }
 
@@ -367,7 +350,7 @@ class SectionController extends Controller
                 $notes[] = $label.': room conflict(s) with '.implode('; ', $roomConflictLabels);
             }
 
-            if (!empty($section->instructor_id)) {
+            if (! empty($section->instructor_id)) {
                 $insConflicts = $conflicts->instructorConflictsForMeetingBlock(
                     $term,
                     (int) $section->instructor_id,
@@ -399,7 +382,7 @@ class SectionController extends Controller
                     return;
                 }
 
-                if (!ctype_digit((string) $value) || !Instructor::query()->whereKey((int) $value)->exists()) {
+                if (! ctype_digit((string) $value) || ! Instructor::query()->whereKey((int) $value)->exists()) {
                     $fail('The selected instructor is invalid.');
                 }
             },
