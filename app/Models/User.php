@@ -36,4 +36,9 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Instructor::class);
     }
+
+    public function selectedTerm(): BelongsTo
+    {
+        return $this->belongsTo(Term::class, 'selected_term_id');
+    }
 }

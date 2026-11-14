@@ -191,8 +191,18 @@
                 <td>{{ $t->buffer_minutes }}m</td>
                 <td>
                   <div class="actions">
+                    <form method="POST" action="{{ route('aop.terms.schedule.select', $t) }}" class="actions">
+                      @csrf
+                      <button class="btn sm" type="submit">Open Schedule</button>
+                    </form>
                     <a class="btn secondary sm" href="{{ route('aop.terms.edit', $t) }}">Edit</a>
                     <a class="btn secondary sm" href="{{ route('aop.terms.clone.create', $t) }}">Clone</a>
+                    <form method="POST" action="{{ route('aop.terms.schedule.select', $t) }}" class="actions">
+                      @csrf
+                      <button class="btn secondary sm" type="submit">
+                        {{ auth()->user()->selected_term_id === $t->id ? 'Selected' : 'Select for Schedule' }}
+                      </button>
+                    </form>
                     <form method="POST" action="{{ route('aop.terms.draft', $t) }}" class="actions">
                       @csrf
                       <button class="btn secondary sm" type="submit">Clone to Draft</button>

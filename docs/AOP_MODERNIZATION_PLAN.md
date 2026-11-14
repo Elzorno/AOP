@@ -1,6 +1,8 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: phases 1–2 in isolated implementation; production remains unchanged.
+Prepared 14 November 2026. Status: phases 1–2 and the instructor-identity portion of phase 3 are deployed; per-user term selection is implemented and verified in the isolated workspace, while explicit term-scoped scheduling routes remain pending.
+
+Current production release: `dc60a9d` through `/var/www/aop-current`. The isolated suite passes 74 tests / 266 assertions. The next additive migration stores `users.selected_term_id`; it passed rehearsal against a disposable production database copy but is not deployed. Schedule reads and writes remain on the existing global active-term behavior until they can be converted together, avoiding a workspace whose displayed term differs from its write target.
 
 ## Outcome and constraints
 

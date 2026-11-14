@@ -176,3 +176,16 @@ This file tracks what each phase changed so the project remains understandable w
 - Verified 14,320 archived regular files through isolated extraction. SQLite integrity passed, foreign-key checks returned zero violations, and all 26 table counts matched the restored snapshot.
 - Added `AOP_MODERNIZATION_PLAN.md` covering isolated baseline verification, security remediation, explicit term/account boundaries, shared mutations, authoritative events, versioned policy, workspace improvements and repeatable recovery/releases.
 - No production code, package, schema, service or application behavior changes were made. Existing source changes were not committed or overwritten. Full application boot/recovery testing remains a planned step; this checkpoint verifies files and database restoration.
+
+## Modernization security and identity releases — deployed 2026-11-14
+- Deployed security release `7e1993e`, then identity release `dc60a9d`, through atomic release directories while preserving rollback releases and verified database/source checkpoints.
+- Activated canonical HTTPS through `syllabi.elzorno.com`, restricted proxy trust, Secure cookies and HSTS; hardened application, environment and SQLite permissions.
+- Updated audited dependencies, bundled FullCalendar, protected current and historical CSV downloads from spreadsheet formulas, and disabled PHP FPM upload progress on patched PHP 8.3.6-0ubuntu0.24.04.13.
+- Replaced mutable-email instructor ownership with a nullable unique `users.instructor_id` foreign key and admin Account Links workflow.
+
+## Per-user term selection foundation — development checkpoint 2026-11-14
+- Added a nullable `users.selected_term_id` foreign key with deletion-safe nulling and a `User::selectedTerm` relationship.
+- Added an admin-only selection action so two administrators can retain independent schedule targets without changing the global active term.
+- Kept scheduling on active-term behavior until every displayed route and write target can be converted together; no mixed-context workspace is exposed.
+- Verified 74 tests / 266 assertions and rehearsed the migration on a disposable production database copy with successful integrity and foreign-key checks.
+- This checkpoint is committed only in the isolated modernization workspace and is not deployed.

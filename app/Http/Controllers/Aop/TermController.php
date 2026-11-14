@@ -25,13 +25,13 @@ class TermController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'code' => ['required','string','max:20','unique:terms,code'],
-            'name' => ['required','string','max:255'],
-            'starts_on' => ['nullable','date'],
-            'ends_on' => ['nullable','date'],
-            'weeks_in_term' => ['required','integer','min:1','max:52'],
-            'slot_minutes' => ['required','integer','min:5','max:60'],
-            'buffer_minutes' => ['required','integer','min:0','max:60'],
+            'code' => ['required', 'string', 'max:20', 'unique:terms,code'],
+            'name' => ['required', 'string', 'max:255'],
+            'starts_on' => ['nullable', 'date'],
+            'ends_on' => ['nullable', 'date'],
+            'weeks_in_term' => ['required', 'integer', 'min:1', 'max:52'],
+            'slot_minutes' => ['required', 'integer', 'min:5', 'max:60'],
+            'buffer_minutes' => ['required', 'integer', 'min:0', 'max:60'],
         ]);
 
         Term::create($data);
@@ -49,15 +49,15 @@ class TermController extends Controller
     public function cloneStore(Request $request, Term $sourceTerm, TermScheduleCloneService $cloneService)
     {
         $data = $request->validate([
-            'code' => ['required','string','max:20','unique:terms,code'],
-            'name' => ['required','string','max:255'],
-            'starts_on' => ['nullable','date'],
-            'ends_on' => ['nullable','date'],
-            'weeks_in_term' => ['required','integer','min:1','max:52'],
-            'slot_minutes' => ['required','integer','min:5','max:60'],
-            'buffer_minutes' => ['required','integer','min:0','max:60'],
-            'copy_instructor_assignments' => ['nullable','boolean'],
-            'copy_office_hours' => ['nullable','boolean'],
+            'code' => ['required', 'string', 'max:20', 'unique:terms,code'],
+            'name' => ['required', 'string', 'max:255'],
+            'starts_on' => ['nullable', 'date'],
+            'ends_on' => ['nullable', 'date'],
+            'weeks_in_term' => ['required', 'integer', 'min:1', 'max:52'],
+            'slot_minutes' => ['required', 'integer', 'min:5', 'max:60'],
+            'buffer_minutes' => ['required', 'integer', 'min:0', 'max:60'],
+            'copy_instructor_assignments' => ['nullable', 'boolean'],
+            'copy_office_hours' => ['nullable', 'boolean'],
         ]);
 
         $result = $cloneService->cloneIntoFreshTerm(
@@ -73,7 +73,7 @@ class TermController extends Controller
         $parts = [
             'Term '.$targetTerm->code.' created from '.$sourceTerm->code.'.',
             'Copied '.$counts['offerings'].' offerings, '.$counts['sections'].' sections, and '.$counts['meeting_blocks'].' meeting blocks.',
-            !empty($data['copy_instructor_assignments']) ? 'Instructor assignments copied.' : 'Instructor assignments left blank.',
+            ! empty($data['copy_instructor_assignments']) ? 'Instructor assignments copied.' : 'Instructor assignments left blank.',
             $counts['office_hours'] > 0 ? $counts['office_hours'].' office hour blocks copied.' : 'Office hours not copied.',
             $counts['open_labs'] > 0 ? $counts['open_labs'].' open lab blocks copied.' : 'Open labs not copied.',
             'Locks, publications, office hours, and change history were not copied.',
@@ -90,14 +90,14 @@ class TermController extends Controller
     public function update(Request $request, Term $term)
     {
         $data = $request->validate([
-            'code' => ['required','string','max:20','unique:terms,code,'.$term->id],
-            'name' => ['required','string','max:255'],
-            'starts_on' => ['nullable','date'],
-            'ends_on' => ['nullable','date'],
-            'weeks_in_term' => ['required','integer','min:1','max:52'],
-            'slot_minutes' => ['required','integer','min:5','max:60'],
-            'buffer_minutes' => ['required','integer','min:0','max:60'],
-            'enforce_schedule_blocks' => ['nullable','boolean'],
+            'code' => ['required', 'string', 'max:20', 'unique:terms,code,'.$term->id],
+            'name' => ['required', 'string', 'max:255'],
+            'starts_on' => ['nullable', 'date'],
+            'ends_on' => ['nullable', 'date'],
+            'weeks_in_term' => ['required', 'integer', 'min:1', 'max:52'],
+            'slot_minutes' => ['required', 'integer', 'min:5', 'max:60'],
+            'buffer_minutes' => ['required', 'integer', 'min:0', 'max:60'],
+            'enforce_schedule_blocks' => ['nullable', 'boolean'],
         ]);
 
         $data['enforce_schedule_blocks'] = (bool) ($data['enforce_schedule_blocks'] ?? false);
@@ -110,7 +110,7 @@ class TermController extends Controller
     public function setActive(Request $request)
     {
         $data = $request->validate([
-            'term_id' => ['required','integer','exists:terms,id'],
+            'term_id' => ['required', 'integer', 'exists:terms,id'],
         ]);
 
         Term::query()->update(['is_active' => false]);
@@ -119,15 +119,26 @@ class TermController extends Controller
         return redirect()->route('aop.terms.index')->with('status', 'Active term updated.');
     }
 
+    public function selectForSchedule(Request $request, Term $term)
+    {
+        $request->user()->forceFill(['selected_term_id' => $term->id])->save();
+
+        return redirect()
+            ->route('aop.terms.index')
+            ->with('status', $term->code.' selected for the upcoming term-scoped schedule workspace.');
+    }
+
     public function makeDraft(Term $term)
     {
         $draft = $term->cloneToDraft();
-        return redirect()->route('aop.terms.index')->with('status', 'Draft ' . $draft->code . ' created from ' . $term->code . '.');
+
+        return redirect()->route('aop.terms.index')->with('status', 'Draft '.$draft->code.' created from '.$term->code.'.');
     }
 
     public function publish(Term $term)
     {
         $term->update(['status' => 'published']);
-        return redirect()->route('aop.terms.index')->with('status', 'Term ' . $term->code . ' has been published.');
+
+        return redirect()->route('aop.terms.index')->with('status', 'Term '.$term->code.' has been published.');
     }
 }

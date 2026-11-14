@@ -71,6 +71,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/terms/active', [TermController::class, 'setActive'])->name('terms.setActive');
         Route::post('/terms/{term}/draft', [TermController::class, 'makeDraft'])->name('terms.draft');
         Route::post('/terms/{term}/publish', [TermController::class, 'publish'])->name('terms.publish');
+        Route::post('/terms/{term}/select-schedule', [TermController::class, 'selectForSchedule'])->name('terms.schedule.select');
 
         // Instructors
         Route::get('/instructors', [InstructorController::class, 'index'])->name('instructors.index');
