@@ -202,3 +202,9 @@ This file tracks what each phase changed so the project remains understandable w
 - Ran the additive selected-term migration as batch 25 and atomically selected `/var/www/aop-releases/fa7dfb6`.
 - Verified production database integrity and foreign keys, deployed route hashes, current compiled assets, HTTPS login, protected hidden files, service health and read-only application code.
 - Release `dc60a9d` remains available for code rollback; its schema is compatible with the additive nullable column.
+
+## Admin dashboard hotfix `2560003` — deployed 2026-11-14
+- Fixed a production 500 on the authenticated admin dashboard caused by a missing `App\Models\Instructor` import in `DashboardController`.
+- Added an admin-dashboard regression request and verified the full suite at 78 tests / 276 assertions.
+- Deployed the single controller fix as release `2560003`, reloaded PHP-FPM, and directly exercised the production controller to confirm it returns the `aop.dashboard` view.
+- Public root/login, SQLite integrity, foreign keys and service health remain good.

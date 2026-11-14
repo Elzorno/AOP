@@ -2,7 +2,7 @@
 
 Prepared 14 November 2026. Status: phases 1–2 and the instructor-identity portion of phase 3 are deployed; per-user term selection is implemented and verified in the isolated workspace, while explicit term-scoped scheduling routes remain pending.
 
-Current production release: `fa7dfb6` through `/var/www/aop-current`. The isolated suite passes 77 tests / 274 assertions. The additive `users.selected_term_id` migration is deployed. Offering routes are the first explicit term-scoped slice: create/delete targets come from the route, cross-term resources are rejected, and non-active term pages do not expose still-legacy section writes. Verified pre-migration checkpoint: `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`.
+Current production release: `2560003` through `/var/www/aop-current`. The isolated suite passes 78 tests / 276 assertions. The additive `users.selected_term_id` migration is deployed. Offering routes are the first explicit term-scoped slice: create/delete targets come from the route, cross-term resources are rejected, and non-active term pages do not expose still-legacy section writes. Release `2560003` also fixes the admin-dashboard missing-import 500 found after deployment. Verified pre-migration checkpoint: `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`.
 
 ## Outcome and constraints
 
