@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Aop;
 
 use App\Http\Controllers\Controller;
 use App\Models\CatalogCourse;
+use App\Models\Instructor;
 use App\Models\InstructorPreference;
 use App\Models\OfficeHourBlock;
 use App\Models\Room;

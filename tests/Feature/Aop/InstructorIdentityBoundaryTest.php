@@ -15,6 +15,16 @@ class InstructorIdentityBoundaryTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_admin_dashboard_loads_summary_counts(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->get('/dashboard')
+            ->assertOk()
+            ->assertViewIs('aop.dashboard');
+    }
+
     public function test_linked_instructor_access_survives_an_unrelated_account_email(): void
     {
         $term = $this->activeTerm();
