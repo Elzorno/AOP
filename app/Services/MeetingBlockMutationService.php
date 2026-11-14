@@ -22,12 +22,6 @@ class MeetingBlockMutationService
             ]);
         }
 
-        if ((bool) $term->schedule_locked) {
-            throw ValidationException::withMessages([
-                'term' => 'Schedule is locked for the active term. Unlock it before making schedule changes.',
-            ]);
-        }
-
         $days = $attributes['days'] ?? ($attributes['days_json'] ?? $meetingBlock->days_json ?? []);
         $days = ScheduleConflictService::normalizeDays($days);
         if (count($days) === 0) {
@@ -67,11 +61,10 @@ class MeetingBlockMutationService
             $meetingBlock->id,
         );
 
-        if ($roomConflicts->count() > 0) {
+        $roomConflictLabels = ScheduleConflictService::formatRoomConflictMessages($roomConflicts);
+        if ($roomConflictLabels !== []) {
             throw ValidationException::withMessages([
-                'conflicts' => 'Room conflict with: '.$roomConflicts
-                    ->map(fn ($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))
-                    ->implode('; '),
+                'conflicts' => 'Room conflict with: '.implode('; ', $roomConflictLabels),
             ]);
         }
 

@@ -5,11 +5,12 @@
     <section class="page-header">
       <span class="page-eyebrow">Weekly Grid</span>
       <h1 class="page-title">Schedule — {{ $term->code }}</h1>
-      <p class="page-subtitle">Drag blocks up or down to adjust meeting times. Day columns are fixed — dragging between days is disabled.</p>
+      <p class="page-subtitle">Drag class blocks up or down to adjust meeting times. Open labs are shown for room visibility but are edited from the Open Labs screen.</p>
 
       <div class="toolbar-line">
         <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
         <a class="btn secondary" href="{{ route('aop.schedule.sections.index') }}">Section Directory</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index') }}">Open Labs</a>
       </div>
     </section>
 

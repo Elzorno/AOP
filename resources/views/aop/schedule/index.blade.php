@@ -8,16 +8,19 @@
             + $summary['meeting_blocks_missing_room_count']
             + $summary['room_conflict_count']
             + $summary['instructor_conflict_count']
+            + ($summary['labtech_conflict_count'] ?? 0)
+            + ($summary['labtech_over_limit_count'] ?? 0)
         : 0;
-    $conflictCount   = $summary ? ($summary['room_conflict_count'] + $summary['instructor_conflict_count']) : 0;
+    $conflictCount   = $summary ? ($summary['room_conflict_count'] + $summary['instructor_conflict_count'] + ($summary['labtech_conflict_count'] ?? 0)) : 0;
     $missingCount    = $summary
         ? $summary['sections_missing_instructor_count']
             + $summary['sections_missing_meeting_blocks_count']
             + $summary['meeting_blocks_missing_room_count']
         : 0;
     $officeHourIssues = $summary['office_hours_failing_count'] ?? 0;
-    $isPublishReady   = $summary && $blockingIssues === 0 && $officeHourIssues === 0;
-    $scheduleLocked   = (bool) ($summary['schedule_locked'] ?? false);
+    $labTechIssues    = $summary['labtech_over_limit_count'] ?? 0;
+    $openLabCount     = $summary['open_labs_count'] ?? 0;
+    $scheduleLocked   = false;
 
     $oldOfferingId        = old('offering_id') ? (int) old('offering_id') : null;
     $oldSectionId         = old('section_id') ? (int) old('section_id') : null;
@@ -31,7 +34,7 @@
     ])->filter(fn ($value) => filled($value))->isNotEmpty();
 
     $validateDone  = $term && $blockingIssues === 0 && $officeHourIssues === 0;
-    $publishDone   = $term && !empty($summary['latest_publication_version']);
+    $exportReady   = $term && ($summary['sections_count'] ?? 0) > 0;
 
     $dayAbbr = [
         'Monday' => 'Mon', 'Tuesday' => 'Tue', 'Wednesday' => 'Wed',
@@ -54,6 +57,8 @@
             <span class="sched-stat-sep">·</span>
             <span>{{ $summary['sections_count'] }} section{{ $summary['sections_count'] === 1 ? '' : 's' }}</span>
             <span class="sched-stat-sep">·</span>
+            <span>{{ $openLabCount }} open lab{{ $openLabCount === 1 ? '' : 's' }}</span>
+            <span class="sched-stat-sep">·</span>
             @if ($conflictCount > 0)
               <span class="sched-stat-danger">{{ $conflictCount }} conflict{{ $conflictCount === 1 ? '' : 's' }}</span>
             @else
@@ -63,8 +68,10 @@
               <span class="sched-stat-sep">·</span>
               <span class="sched-stat-warn">{{ $missingCount }} missing</span>
             @endif
-            <span class="sched-stat-sep">·</span>
-            <span class="{{ $scheduleLocked ? 'sched-stat-warn' : 'sched-stat-muted' }}">{{ $scheduleLocked ? 'Locked' : 'Editable' }}</span>
+            @if ($labTechIssues > 0)
+              <span class="sched-stat-sep">·</span>
+              <span class="sched-stat-danger">{{ $labTechIssues }} lab tech over limit</span>
+            @endif
             @if ($term->enforce_schedule_blocks)
               <span class="sched-stat-sep">·</span>
               <span class="sched-stat-warn" title="Non-canonical blocks are rejected as hard errors">Blocks enforced</span>
@@ -76,17 +83,17 @@
       </div>
       <div class="sched-header-actions">
         @if ($term)
-          @if ($isPublishReady && !$scheduleLocked)
-            <a class="btn success" href="{{ route('aop.schedule.publish.index') }}">Ready to publish</a>
-          @elseif ($blockingIssues > 0 || $officeHourIssues > 0)
+          @if ($blockingIssues > 0 || $officeHourIssues > 0)
             <a class="btn" href="{{ route('aop.schedule.readiness.index') }}">
               Review {{ $blockingIssues + $officeHourIssues }} issue{{ ($blockingIssues + $officeHourIssues) === 1 ? '' : 's' }}
             </a>
           @endif
+          <a class="btn success" href="{{ route('aop.schedule.reports.exportRegistrar') }}">Download Registrar CSV</a>
           <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index') }}">Open Labs</a>
           <a class="btn secondary" href="{{ route('aop.schedule.calendar.index') }}">Calendar</a>
           <a class="btn secondary" href="{{ route('aop.schedule.grids.index') }}">Grids</a>
-          <a class="btn secondary" href="{{ route('aop.schedule.publish.index') }}">Publish</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.reports.index') }}">Registrar Export</a>
         @else
           <a class="btn" href="{{ route('aop.terms.index') }}">Manage Terms</a>
         @endif
@@ -132,18 +139,18 @@
           <span class="stage-step-note">Conflicts, minutes &amp; hours</span>
         </a>
         <a
-          href="{{ route('aop.schedule.publish.index') }}"
-          class="stage-step {{ $publishDone ? 'stage-step-done' : '' }}"
+          href="{{ route('aop.schedule.reports.index') }}"
+          class="stage-step {{ $exportReady ? 'stage-step-done' : '' }}"
         >
           <span class="stage-step-icon">
-            @if ($publishDone)
+            @if ($exportReady)
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
             @else
               3
             @endif
           </span>
-          <span class="stage-step-label">Publish</span>
-          <span class="stage-step-note">Lock &amp; snapshot</span>
+          <span class="stage-step-label">Export</span>
+          <span class="stage-step-note">Registrar-ready CSV</span>
         </a>
       </nav>
 
@@ -200,16 +207,6 @@
           @endif
 
           <a class="dist-health-detail-link" href="{{ route('aop.schedule.readiness.index') }}#distribution">Details</a>
-        </div>
-      @endif
-
-      {{-- ── LOCK BANNER ──────────────────────────────────────────────────── --}}
-      @if ($scheduleLocked)
-        <div class="lock-banner" role="alert">
-          <svg class="lock-banner-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-          </svg>
-          <span class="lock-banner-text">The schedule is locked. Unlock the term before creating or editing offerings, sections, or meeting blocks.</span>
         </div>
       @endif
 
@@ -309,7 +306,7 @@
                 <li>Add an offering for the active term.</li>
                 <li>Add sections inside each offering card below.</li>
                 <li>Add meeting blocks and resolve conflicts inline.</li>
-                <li>Review Readiness, then lock and publish.</li>
+                <li>Review Readiness, then download the registrar CSV.</li>
               </ol>
               @if($availableCourses->isEmpty())
                 <div class="status-note mt-4">Every active catalog course already has an offering this term. Add more sections below, or activate additional courses in Catalog.</div>
@@ -453,6 +450,7 @@
                         <label for="instructor_id_{{ $offering->id }}">Instructor</label>
                         <select id="instructor_id_{{ $offering->id }}" name="instructor_id">
                           <option value="">Unassigned</option>
+                          <option value="{{ \App\Models\Section::STAFF_ASSIGNMENT }}" {{ old('offering_id') == $offering->id && old('instructor_id') === \App\Models\Section::STAFF_ASSIGNMENT ? 'selected' : '' }}>STAFF</option>
                           @foreach($instructors as $instructor)
                             <option value="{{ $instructor->id }}" {{ old('offering_id') == $offering->id && (string) old('instructor_id') === (string) $instructor->id ? 'selected' : '' }}>
                               {{ $instructor->name }}

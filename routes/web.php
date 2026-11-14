@@ -3,9 +3,12 @@
 use App\Http\Controllers\Aop\CatalogCourseController;
 use App\Http\Controllers\Aop\DashboardController;
 use App\Http\Controllers\Aop\InstructorController;
+use App\Http\Controllers\Aop\LabTechController;
 use App\Http\Controllers\Aop\RoomController;
 use App\Http\Controllers\Aop\TermController;
 use App\Http\Controllers\Aop\Schedule\ScheduleHomeController;
+use App\Http\Controllers\Aop\Schedule\OpenLabController;
+use App\Http\Controllers\Aop\Schedule\ScheduledEventController;
 use App\Http\Controllers\Aop\Schedule\OfferingController;
 use App\Http\Controllers\Aop\Schedule\SectionController;
 use App\Http\Controllers\Aop\Schedule\MeetingBlockController;
@@ -73,6 +76,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/instructors/{instructor}', [InstructorController::class, 'update'])->name('instructors.update');
         Route::post('/instructors/{instructor}/preferences', [InstructorPreferenceController::class, 'upsert'])->name('instructors.preferences.upsert');
 
+        // Lab Techs
+        Route::get('/labtechs', [LabTechController::class, 'index'])->name('labtechs.index');
+        Route::get('/labtechs/create', [LabTechController::class, 'create'])->name('labtechs.create');
+        Route::post('/labtechs', [LabTechController::class, 'store'])->name('labtechs.store');
+        Route::get('/labtechs/{labTech}/edit', [LabTechController::class, 'edit'])->name('labtechs.edit');
+        Route::put('/labtechs/{labTech}', [LabTechController::class, 'update'])->name('labtechs.update');
+
         // Rooms
         Route::get('/rooms', [RoomController::class, 'index'])->name('rooms.index');
         Route::get('/rooms/create', [RoomController::class, 'create'])->name('rooms.create');
@@ -89,6 +99,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Schedule (active term)
         Route::get('/schedule', [ScheduleHomeController::class, 'index'])->name('schedule.home');
+        Route::get('/schedule/events', [ScheduledEventController::class, 'index'])->name('schedule.events.index');
+        Route::get('/schedule/events/create', [ScheduledEventController::class, 'create'])->name('schedule.events.create');
+        Route::post('/schedule/events', [ScheduledEventController::class, 'store'])->name('schedule.events.store');
 
         // Offerings
         Route::get('/schedule/offerings', [OfferingController::class, 'index'])->name('schedule.offerings.index');
@@ -122,10 +135,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/schedule/office-hours/{instructor}/preferences', [App\Http\Controllers\Aop\Schedule\InstructorPreferenceController::class, 'upsert'])->name('schedule.officeHours.preferences.upsert');
         Route::delete('/schedule/office-hours/{instructor}/preferences', [App\Http\Controllers\Aop\Schedule\InstructorPreferenceController::class, 'destroy'])->name('schedule.officeHours.preferences.destroy');
 
+        // Open Labs
+        Route::get('/schedule/open-labs', [OpenLabController::class, 'index'])->name('schedule.openLabs.index');
+        Route::get('/schedule/open-labs/create', [OpenLabController::class, 'create'])->name('schedule.openLabs.create');
+        Route::post('/schedule/open-labs', [OpenLabController::class, 'store'])->name('schedule.openLabs.store');
+        Route::get('/schedule/open-labs/{openLab}/edit', [OpenLabController::class, 'edit'])->name('schedule.openLabs.edit');
+        Route::put('/schedule/open-labs/{openLab}', [OpenLabController::class, 'update'])->name('schedule.openLabs.update');
+        Route::delete('/schedule/open-labs/{openLab}', [OpenLabController::class, 'destroy'])->name('schedule.openLabs.destroy');
+
         // Schedule Grids (active term)
         Route::get('/schedule/grids', [ScheduleGridController::class, 'index'])->name('schedule.grids.index');
         Route::get('/schedule/grids/instructors/{instructor}', [ScheduleGridController::class, 'instructor'])->name('schedule.grids.instructor');
+        Route::get('/schedule/grids/instructors/{instructor}/pdf', [ScheduleGridController::class, 'instructorPdf'])->name('schedule.grids.instructor.pdf');
         Route::get('/schedule/grids/rooms/{room}', [ScheduleGridController::class, 'room'])->name('schedule.grids.room');
+        Route::get('/schedule/grids/rooms/{room}/pdf', [ScheduleGridController::class, 'roomPdf'])->name('schedule.grids.room.pdf');
 
         // Distribution preview (AJAX)
         Route::get('/schedule/distribution/preview', [ScheduleHomeController::class, 'distributionPreview'])->name('schedule.distribution.preview');
@@ -137,11 +160,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Schedule Reports (active term)
         Route::get('/schedule/reports', [ScheduleReportsController::class, 'index'])->name('schedule.reports.index');
+        Route::get('/schedule/reports/export/registrar', [ScheduleReportsController::class, 'exportRegistrar'])->name('schedule.reports.exportRegistrar');
         Route::get('/schedule/reports/export/term', [ScheduleReportsController::class, 'exportTerm'])->name('schedule.reports.exportTerm');
         Route::get('/schedule/reports/export/instructors/{instructor}', [ScheduleReportsController::class, 'exportInstructor'])->name('schedule.reports.exportInstructor');
         Route::get('/schedule/reports/export/rooms/{room}', [ScheduleReportsController::class, 'exportRoom'])->name('schedule.reports.exportRoom');
 
-        // Publish Snapshots (active term)
+        // Legacy schedule snapshots remain downloadable; new exports use the registrar CSV report.
         Route::get('/schedule/publish', [SchedulePublishController::class, 'index'])->name('schedule.publish.index');
         Route::post('/schedule/publish', [SchedulePublishController::class, 'store'])->name('schedule.publish.store');
         Route::get('/schedule/publish/{publication}/download/term', [SchedulePublishController::class, 'downloadTerm'])->name('schedule.publish.downloadTerm');

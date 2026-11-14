@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Aop\Schedule;
 
 use App\Http\Controllers\Controller;
 use App\Models\MeetingBlock;
+use App\Models\OpenLab;
 use App\Models\Room;
+use App\Models\ScheduledEvent;
 use App\Models\Term;
 use App\Services\MeetingBlockMutationService;
 use Illuminate\Http\Request;
@@ -39,12 +41,7 @@ class ScheduleCalendarController extends Controller
         $term  = $this->activeTermOrFail();
         $rooms = Room::where('is_active', true)->orderBy('name')->get();
 
-        $meetingBlocks = MeetingBlock::query()
-            ->with(['section.offering.catalogCourse', 'section.instructor', 'room'])
-            ->whereHas('section.offering', fn ($q) => $q->where('term_id', $term->id))
-            ->get();
-
-        $events = $this->buildEvents($meetingBlocks);
+        $events = $this->buildEvents($this->scheduledEventsForTerm($term));
 
         return view('aop.schedule.calendar.index', [
             'term'       => $term,
@@ -60,12 +57,7 @@ class ScheduleCalendarController extends Controller
     {
         $term = $this->activeTermOrFail();
 
-        $meetingBlocks = MeetingBlock::query()
-            ->with(['section.offering.catalogCourse', 'section.instructor', 'room'])
-            ->whereHas('section.offering', fn ($q) => $q->where('term_id', $term->id))
-            ->get();
-
-        return response()->json($this->buildEvents($meetingBlocks));
+        return response()->json($this->buildEvents($this->scheduledEventsForTerm($term)));
     }
 
     public function update(Request $request, MeetingBlockMutationService $mutationService)
@@ -116,42 +108,51 @@ class ScheduleCalendarController extends Controller
 
     // -----------------------------------------------------------------------
 
-    private function buildEvents($meetingBlocks): array
+    private function scheduledEventsForTerm(Term $term)
+    {
+        $events = ScheduledEvent::query()
+            ->with(['room', 'source'])
+            ->where('term_id', $term->id)
+            ->get();
+
+        $events->loadMorph('source', [
+            MeetingBlock::class => ['section.offering.catalogCourse', 'section.instructor'],
+            OpenLab::class => ['labTech'],
+            \App\Models\OfficeHourBlock::class => ['instructor'],
+        ]);
+
+        return $events;
+    }
+
+    private function buildEvents($scheduledEvents): array
     {
         $events = [];
 
-        foreach ($meetingBlocks as $mb) {
-            $days = $mb->days_json ?? [];
+        foreach ($scheduledEvents as $scheduledEvent) {
+            $days = $scheduledEvent->days_json ?? [];
             if (empty($days)) {
                 continue;
             }
 
-            $startStr = $mb->starts_at ? substr((string) $mb->starts_at, 0, 5) : null;
-            $endStr   = $mb->ends_at   ? substr((string) $mb->ends_at,   0, 5) : null;
+            $startStr = $scheduledEvent->starts_at ? substr((string) $scheduledEvent->starts_at, 0, 5) : null;
+            $endStr   = $scheduledEvent->ends_at ? substr((string) $scheduledEvent->ends_at, 0, 5) : null;
             if (!$startStr || !$endStr) {
                 continue;
             }
 
-            $course      = $mb->section->offering->catalogCourse;
-            $instructor  = $mb->section->instructor;
-            $room        = $mb->room;
-            $type        = $mb->type->value;
-
-            // Build title shown inside the FullCalendar event block
-            $lines   = [];
-            $lines[] = $course->code . ' ' . $mb->section->section_code . ' (' . $type . ')';
-            if ($room) {
-                $lines[] = $room->name;
-            }
-            if ($instructor) {
-                $lines[] = $instructor->name;
-            }
-            $title = implode("\n", $lines);
-
-            $color = $instructor?->color_hex_css ?? '#3b82f6';
-
-            // One FullCalendar event per day — all share a groupId so they
-            // move together when dragged.
+            $isOpenLab = $scheduledEvent->event_type === ScheduledEvent::TYPE_OPEN_LAB;
+            $isClass = $scheduledEvent->event_type === ScheduledEvent::TYPE_CLASS;
+            $source = $scheduledEvent->source;
+            $instructor = $isClass ? $source?->section?->instructor : ($isOpenLab ? null : $source?->instructor);
+            $staffName = $isOpenLab
+                ? $source?->labTech?->name
+                : ($isClass ? $source?->section?->instructor_display_name : $instructor?->name);
+            $title = implode("\n", array_filter([
+                ($isOpenLab ? 'Open Lab: ' : '').$scheduledEvent->display_name.($scheduledEvent->category ? ' ('.$scheduledEvent->category.')' : ''),
+                $scheduledEvent->room?->name,
+                $staffName ? ($isOpenLab ? 'Lab Tech: ' : '').$staffName : null,
+            ]));
+            $color = $isOpenLab ? '#D97706' : ($isClass ? ($instructor?->color_hex_css ?? '#3b82f6') : '#0F766E');
             foreach ($days as $day) {
                 $date = self::DAY_MAP[$day] ?? null;
                 if ($date === null) {
@@ -159,20 +160,20 @@ class ScheduleCalendarController extends Controller
                 }
 
                 $events[] = [
-                    'id'              => $mb->id . '_' . $day,
-                    'groupId'         => (string) $mb->id,
-                    'title'           => $title,
-                    'start'           => $date . 'T' . $startStr,
-                    'end'             => $date . 'T' . $endStr,
+                    'id' => 'scheduled_event_'.$scheduledEvent->id.'_'.$day,
+                    'groupId' => 'scheduled_event_'.$scheduledEvent->id,
+                    'title' => $title,
+                    'start' => $date.'T'.$startStr,
+                    'end' => $date.'T'.$endStr,
                     'backgroundColor' => $color,
-                    'borderColor'     => $color,
-                    'extendedProps'   => [
-                        'blockId'    => $mb->id,
-                        'type'       => $type,
-                        'course'     => $course->code,
-                        'section'    => $mb->section->section_code,
-                        'instructor' => $instructor?->name,
-                        'room'       => $room?->name,
+                    'borderColor' => $isOpenLab ? '#B45309' : $color,
+                    'editable' => $isClass,
+                    'extendedProps' => [
+                        'eventKind' => $scheduledEvent->event_type,
+                        'blockId' => $isClass ? $source?->id : null,
+                        'scheduledEventId' => $scheduledEvent->id,
+                        'room' => $scheduledEvent->room?->name,
+                        'staff' => $staffName,
                     ],
                 ];
             }

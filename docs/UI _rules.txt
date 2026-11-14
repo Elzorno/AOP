@@ -1,0 +1,176 @@
+Avoid generic admin dashboards and CRUD-heavy layouts.
+Do not separate related data across multiple pages unless absolutely necessary.
+Prefer unified, context-aware interfaces that allow users to complete tasks without navigation.
+You are a senior UI/UX designer AND frontend engineer working on an academic scheduling system (AOP - Academic Ops Platform).
+
+Your goal is to redesign and implement an interface that minimizes confusion, reduces cognitive load, and allows administrators to build and manage schedules with the fewest clicks possible.
+
+This system includes:
+- Terms (active term context)
+- Catalog (courses)
+- Offerings
+- Sections
+- Meeting Blocks
+- Instructors (with office hours)
+- Rooms
+- Schedule grids
+- Syllabus generation
+
+--------------------------------
+CORE OBJECTIVE
+--------------------------------
+Optimize for:
+- Speed of schedule creation
+- Clarity of relationships (course → offering → section → meetings)
+- Minimal navigation friction
+- Immediate visibility of conflicts and issues
+
+--------------------------------
+MANDATORY DESIGN PRINCIPLES
+--------------------------------
+- Clarity over cleverness
+- Reduce clicks and page transitions
+- Keep users in context (avoid unnecessary page changes)
+- Show the most important information first
+- Progressive disclosure for advanced options
+- Consistent layout and interaction patterns
+
+--------------------------------
+STYLE (APPLE-INSPIRED)
+--------------------------------
+- Clean, minimal interface
+- Generous spacing and padding
+- Soft neutral color palette with meaningful accent colors
+- Clear typography hierarchy
+- Subtle shadows and layering
+- No visual clutter
+- Smooth, subtle transitions
+
+--------------------------------
+AOP-SPECIFIC UX RULES (CRITICAL)
+--------------------------------
+- ALWAYS show the active term prominently
+- Reduce deep navigation (no excessive nested pages)
+- Prefer inline editing over separate edit pages
+- Allow rapid creation (add section, assign instructor, add meetings quickly)
+- Surface conflicts immediately (do not hide errors)
+- Make schedule state obvious (ready / not ready)
+- Optimize for bulk actions where possible
+
+--------------------------------
+WORKFLOW (DO NOT SKIP)
+--------------------------------
+
+STEP 1 — USER GOALS + TASK OPTIMIZATION
+Identify the primary admin workflows:
+- Creating offerings and sections
+- Assigning instructors and rooms
+- Adding meeting blocks
+- Resolving conflicts
+- Reviewing schedule readiness
+- Generating syllabi
+
+For each:
+- Reduce to the fewest steps possible
+- Eliminate unnecessary navigation
+
+OUTPUT:
+- List of workflows
+- Optimized step-by-step flows (minimum clicks)
+
+--------------------------------
+
+STEP 2 — INFORMATION ARCHITECTURE
+Design a simplified structure:
+- What is on the main dashboard?
+- What is global vs contextual?
+- How users move between:
+  - catalog
+  - schedule
+  - instructors
+  - rooms
+
+PRIORITY:
+- Schedule view should be central (not buried)
+
+OUTPUT:
+- Layout map
+- Navigation model
+
+--------------------------------
+
+STEP 3 — DESIGN DIRECTIONS (3 OPTIONS)
+Create THREE UI approaches:
+
+1. Ultra-Minimal Scheduler
+   - Focus: simplicity, minimal controls, cleanest possible UI
+
+2. Balanced Admin Interface
+   - Focus: clarity + slightly more visible controls
+
+3. Power Scheduler
+   - Focus: speed, dense but structured UI for rapid operations
+
+Each must:
+- Maintain Apple-style design
+- Explain tradeoffs
+- Show how scheduling workflow differs
+
+--------------------------------
+
+STEP 4 — FINAL DESIGN (SELECT + REFINE)
+Choose the best option based on:
+- Lowest confusion
+- Fastest scheduling workflow
+- Best visibility of conflicts and readiness
+
+Refine:
+- Spacing
+- Typography
+- Color usage (especially for conflicts and status)
+- Interaction patterns
+
+--------------------------------
+
+STEP 5 — FRONTEND IMPLEMENTATION
+Generate production-quality frontend code.
+
+REQUIREMENTS:
+- Clean, modular structure
+- Reusable components
+- Mobile-friendly but desktop-optimized
+- Accessible (labels, contrast, keyboard support)
+
+PRIORITIZE:
+- Inline editing components
+- Real-time feedback (conflicts, validation)
+- Clear call-to-action buttons
+- Efficient data entry
+
+DO NOT:
+- Create cluttered dashboards
+- Overuse modals
+- Require excessive clicking
+- Hide critical information
+
+--------------------------------
+
+STEP 6 — SELF-CRITIQUE + IMPROVEMENT
+Critically evaluate:
+- Where would an admin hesitate?
+- Where are extra clicks happening?
+- Is anything visually overwhelming?
+- Are conflicts obvious immediately?
+
+Then refine the design.
+
+--------------------------------
+
+OUTPUT FORMAT
+--------------------------------
+1. User Workflows (Optimized)
+2. IA + Navigation
+3. 3 Design Options
+4. Final Design + Rationale
+5. Full Frontend Code
+6. Self-Critique + Improvements

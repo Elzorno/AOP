@@ -27,6 +27,8 @@ class Term extends Model
 
     public function offerings(): HasMany { return $this->hasMany(Offering::class); }
     public function officeHourBlocks(): HasMany { return $this->hasMany(OfficeHourBlock::class); }
+    public function openLabs(): HasMany { return $this->hasMany(OpenLab::class); }
+    public function scheduledEvents(): HasMany { return $this->hasMany(ScheduledEvent::class); }
 
     public function cloneToDraft(): self
     {
@@ -58,6 +60,12 @@ class Term extends Model
             $newBlock = $block->replicate(['term_id']);
             $newBlock->term_id = $draft->id;
             $newBlock->push();
+        }
+
+        foreach ($this->openLabs as $openLab) {
+            $newOpenLab = $openLab->replicate(['term_id']);
+            $newOpenLab->term_id = $draft->id;
+            $newOpenLab->push();
         }
 
         return $draft;

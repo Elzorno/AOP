@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ScheduleEventSyncService;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,6 +18,22 @@ class Instructor extends Model
 
     public function sections(): HasMany { return $this->hasMany(Section::class); }
     public function officeHourBlocks(): HasMany { return $this->hasMany(OfficeHourBlock::class); }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (self $instructor) {
+            // The foreign keys null/cascade legacy rows directly, so clean the projection before they run.
+            ScheduledEventStaffAssignment::query()
+                ->where('staff_type', 'instructor')
+                ->where('staff_id', $instructor->id)
+                ->delete();
+
+            app(ScheduleEventSyncService::class)->removeForSources(
+                OfficeHourBlock::class,
+                $instructor->officeHourBlocks()->pluck('id')->all(),
+            );
+        });
+    }
 
     public static function normalizeColorHex(null|string $value): ?string
     {

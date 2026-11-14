@@ -39,11 +39,6 @@ class MeetingBlockController extends Controller
         return $term;
     }
 
-    private function ensureScheduleUnlocked(Term $term): void
-    {
-        abort_if($term->schedule_locked, 403, 'Schedule is locked for the active term. Unlock it before making schedule changes.');
-    }
-
     private function sectionCardResponse(Section $section, Term $term, ?string $htmxError = null, ?int $openBlockId = null): Response
     {
         $section->load(['meetingBlocks.room', 'instructor', 'offering.catalogCourse']);
@@ -58,7 +53,7 @@ class MeetingBlockController extends Controller
             'modalities'       => SectionModality::cases(),
             'meetingBlockTypes'=> MeetingBlockType::cases(),
             'weekDays'         => ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
-            'scheduleLocked'   => (bool) $term->schedule_locked,
+            'scheduleLocked'   => false,
             'focusSectionId'   => null,
             'dayAbbr'          => ['Monday'=>'Mon','Tuesday'=>'Tue','Wednesday'=>'Wed','Thursday'=>'Thu','Friday'=>'Fri','Saturday'=>'Sat','Sunday'=>'Sun'],
             'htmxError'        => $htmxError,
@@ -69,7 +64,6 @@ class MeetingBlockController extends Controller
     public function store(Request $request, Section $section, ScheduleConflictService $conflicts, ScheduleRuleWarningService $ruleWarnings)
     {
         $term = $this->ensureSectionInActiveTerm($section);
-        $this->ensureScheduleUnlocked($term);
 
         $data = $request->validate([
             'type' => ['required', Rule::enum(MeetingBlockType::class)],
@@ -102,8 +96,9 @@ class MeetingBlockController extends Controller
         // Room conflicts: class vs class only
         $roomConflicts = $conflicts->roomConflictsForMeetingBlock($term, (int)($data['room_id'] ?? 0), $days, $data['starts_at'], $data['ends_at']);
 
-        if ($roomConflicts->count() > 0) {
-            $msg = 'Room conflict with: ' . $roomConflicts->map(fn($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
+        $roomConflictLabels = ScheduleConflictService::formatRoomConflictMessages($roomConflicts);
+        if ($roomConflictLabels !== []) {
+            $msg = 'Room conflict with: ' . implode('; ', $roomConflictLabels);
             if ($isHtmx) return $this->sectionCardResponse($section, $term, $msg);
             return back()->withErrors(['conflicts' => $msg])->withInput();
         }
@@ -171,7 +166,6 @@ class MeetingBlockController extends Controller
     public function destroy(Request $request, Section $section, MeetingBlock $meetingBlock)
     {
         $term = $this->ensureSectionInActiveTerm($section);
-        $this->ensureScheduleUnlocked($term);
         abort_if($meetingBlock->section_id !== $section->id, 400, 'Meeting block not in section.');
 
         $before = $meetingBlock->only(['type','days_json','starts_at','ends_at','room_id','notes']);

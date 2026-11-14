@@ -12,11 +12,6 @@ class Offering extends Model
         'term_id','catalog_course_id',
         'delivery_method','notes',
         'prereq_override','coreq_override',
-        'default_syllabus_block_set_json',
-    ];
-
-    protected $casts = [
-        'default_syllabus_block_set_json' => 'array',
     ];
 
     public function term(): BelongsTo { return $this->belongsTo(Term::class); }

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Instructor;
 use App\Models\MeetingBlock;
 use App\Models\OfficeHourBlock;
+use App\Models\OpenLab;
 use App\Models\Room;
 use App\Models\SchedulePublication;
 use App\Models\Section;
@@ -30,120 +31,14 @@ class SchedulePublishController extends Controller
 
     public function index()
     {
-        $term = Term::where('is_active', true)->first();
-
-        $publications = collect();
-        $latest = null;
-
-        if ($term) {
-            $publications = SchedulePublication::where('term_id', $term->id)
-                ->orderByDesc('version')
-                ->get();
-            $latest = $publications->first();
-        }
-
-        $readiness = $term ? $this->buildPublishReadinessSummary($term) : null;
-
-        return view('aop.schedule.publish.index', [
-            'term' => $term,
-            'publications' => $publications,
-            'latest' => $latest,
-            'readiness' => $readiness,
-        ]);
+        return redirect()
+            ->route('aop.schedule.reports.index')
+            ->with('status', 'Schedule snapshots have been replaced by the registrar CSV export.');
     }
 
-    public function store(Request $request)
+    public function store(ScheduleReportsController $reports): StreamedResponse
     {
-        $term = $this->activeTermOrFail();
-
-        $data = $request->validate([
-            'notes' => ['nullable', 'string', 'max:5000'],
-            'confirm_publish_with_issues' => ['nullable', 'boolean'],
-        ]);
-
-        abort_unless($term->schedule_locked, 403, 'Schedule must be locked before publishing a snapshot.');
-
-        $readiness = $this->buildPublishReadinessSummary($term);
-        if (($readiness['total_blockers'] ?? 0) > 0 && !$request->boolean('confirm_publish_with_issues')) {
-            return back()
-                ->withErrors([
-                    'publish_gate' => 'Readiness checks still show blockers. Review issues below or confirm publish anyway.',
-                ])
-                ->withInput();
-        }
-
-        $nextVersion = (int) (SchedulePublication::where('term_id', $term->id)->max('version') ?? 0) + 1;
-        $base = sprintf('aop/published/%s/v%d', $term->code, $nextVersion);
-
-        // Gather schedule data
-        $sections = Section::query()
-            ->with(['offering.catalogCourse', 'instructor'])
-            ->whereHas('offering', fn ($q) => $q->where('term_id', $term->id))
-            ->get();
-        $sectionIds = $sections->pluck('id')->all();
-
-        $meetingBlocks = MeetingBlock::query()
-            ->with(['section.offering.catalogCourse', 'section.instructor', 'room'])
-            ->whereIn('section_id', $sectionIds)
-            ->orderBy('starts_at')
-            ->get();
-
-        $officeBlocks = OfficeHourBlock::query()
-            ->where('term_id', $term->id)
-            ->orderBy('starts_at')
-            ->get();
-
-        // Write files
-        $this->ensureDir($base);
-        $this->ensureDir($base . '/instructors');
-        $this->ensureDir($base . '/rooms');
-
-        // Term schedule CSV (classes only)
-        $termCsv = $this->buildTermCsv($term, $meetingBlocks);
-        Storage::disk('local')->put($base . '/term_schedule.csv', $termCsv);
-
-        // Instructors (classes + office hours)
-        $instructors = Instructor::where('is_active', true)->orderBy('name')->get();
-        foreach ($instructors as $ins) {
-            $insCsv = $this->buildInstructorCsv($term, $ins, $meetingBlocks, $officeBlocks);
-            // Skip empty files (no classes + no office)
-            if ($this->isCsvOnlyHeader($insCsv)) {
-                continue;
-            }
-            Storage::disk('local')->put($base . '/instructors/' . $this->safeSlug($ins->name) . '.csv', $insCsv);
-        }
-
-        // Rooms (classes only)
-        $rooms = Room::where('is_active', true)->orderBy('name')->get();
-        foreach ($rooms as $room) {
-            $roomCsv = $this->buildRoomCsv($term, $room, $meetingBlocks);
-            if ($this->isCsvOnlyHeader($roomCsv)) {
-                continue;
-            }
-            Storage::disk('local')->put($base . '/rooms/' . $this->safeSlug($room->name) . '.csv', $roomCsv);
-        }
-
-        // Create zip bundles (skip missing files safely)
-        $this->createZipFromDir($base . '/instructors', $base . '/instructors.zip');
-        $this->createZipFromDir($base . '/rooms', $base . '/rooms.zip');
-
-        // Token for public view (Phase 9)
-        $token = bin2hex(random_bytes(32));
-
-        // Persist publication record
-        SchedulePublication::create([
-            'term_id' => $term->id,
-            'version' => $nextVersion,
-            'notes' => $data['notes'] ?? null,
-            'published_at' => now(),
-            'published_by_user_id' => auth()->id(),
-            'storage_base_path' => $base,
-            'public_token' => $token,
-        ]);
-
-        return redirect()
-            ->route('aop.schedule.publish.index')
-            ->with('status', "Published schedule snapshot v{$nextVersion} for {$term->code}.");
+        return $reports->exportRegistrar();
     }
 
     private function buildPublishReadinessSummary(Term $term): array
@@ -162,8 +57,15 @@ class SchedulePublishController extends Controller
             ->where('term_id', $term->id)
             ->get();
 
-        $sectionsMissingInstructor = $sections->whereNull('instructor_id')->count();
-        $sectionsMissingMeetingBlocks = $sections->filter(fn ($s) => $s->meetingBlocks->count() === 0)->count();
+        $openLabs = OpenLab::query()
+            ->with(['room', 'labTech'])
+            ->where('term_id', $term->id)
+            ->get();
+
+        $sectionsMissingInstructor = $sections->filter(fn (Section $section) => !$section->hasInstructorAssignment())->count();
+        $sectionsMissingMeetingBlocks = $sections
+            ->filter(fn (Section $section) => $section->requiresMeetingBlocks() && $section->meetingBlocks->isEmpty())
+            ->count();
 
         $meetingBlocksMissingRoom = $meetingBlocks
             ->filter(function ($mb) {
@@ -173,8 +75,13 @@ class SchedulePublishController extends Controller
             })
             ->count();
 
-        $roomConflicts = $this->countRoomConflicts($term, $meetingBlocks);
+        $roomConflicts = $this->countRoomConflicts($term, $meetingBlocks, $openLabs);
         $instructorConflicts = $this->countInstructorConflicts($term, $meetingBlocks, $officeBlocks);
+        $labTechConflicts = $this->countLabTechConflicts($term, $openLabs);
+        $labTechOverLimit = app(\App\Services\LabTechWorkloadService::class)
+            ->summariesForTerm($term)
+            ->filter(fn (array $row) => $row['is_over_limit'])
+            ->count();
         $officeHoursFailing = $this->countOfficeHoursFailing($officeBlocks);
         $instructionalMinutesFailing = $this->countInstructionalMinutesFailing($term, $sections);
 
@@ -184,6 +91,8 @@ class SchedulePublishController extends Controller
             'meeting_blocks_missing_room' => $meetingBlocksMissingRoom,
             'room_conflicts' => $roomConflicts,
             'instructor_conflicts' => $instructorConflicts,
+            'labtech_conflicts' => $labTechConflicts,
+            'labtech_over_limit' => $labTechOverLimit,
             'office_hours_failing' => $officeHoursFailing,
             'instructional_minutes_failing' => $instructionalMinutesFailing,
         ];
@@ -195,22 +104,55 @@ class SchedulePublishController extends Controller
         ];
     }
 
-    private function countRoomConflicts(Term $term, $meetingBlocks): int
+    private function countRoomConflicts(Term $term, $meetingBlocks, $openLabs): int
     {
         $count = 0;
-        $grouped = $meetingBlocks->whereNotNull('room_id')->groupBy('room_id');
+        $meetingByRoom = $meetingBlocks->whereNotNull('room_id')->groupBy('room_id');
+        $openLabsByRoom = $openLabs->whereNotNull('room_id')->groupBy('room_id');
+        $roomIds = collect(array_unique(array_merge(
+            $meetingByRoom->keys()->all(),
+            $openLabsByRoom->keys()->all(),
+        )));
 
-        foreach ($grouped as $blocks) {
-            $list = $blocks->values();
-            $n = $list->count();
+        foreach ($roomIds as $roomId) {
+            $classList = ($meetingByRoom[$roomId] ?? collect())->values();
+            $openLabList = ($openLabsByRoom[$roomId] ?? collect())->values();
+            $n = $classList->count();
             for ($i = 0; $i < $n; $i++) {
                 for ($j = $i + 1; $j < $n; $j++) {
-                    $a = $list[$i];
-                    $b = $list[$j];
+                    $a = $classList[$i];
+                    $b = $classList[$j];
                     if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
                         continue;
                     }
                     if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                        continue;
+                    }
+                    $count++;
+                }
+            }
+
+            $m = $openLabList->count();
+            for ($i = 0; $i < $m; $i++) {
+                for ($j = $i + 1; $j < $m; $j++) {
+                    $a = $openLabList[$i];
+                    $b = $openLabList[$j];
+                    if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
+                        continue;
+                    }
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                        continue;
+                    }
+                    $count++;
+                }
+            }
+
+            foreach ($classList as $classBlock) {
+                foreach ($openLabList as $openLab) {
+                    if (!ScheduleConflictService::dayOverlap($classBlock->days_json ?? [], $openLab->days_json ?? [])) {
+                        continue;
+                    }
+                    if (!ScheduleConflictService::timesOverlap($classBlock->starts_at, $classBlock->ends_at, $openLab->starts_at, $openLab->ends_at, (int) ($term->buffer_minutes ?? 0))) {
                         continue;
                     }
                     $count++;
@@ -286,6 +228,33 @@ class SchedulePublishController extends Controller
         return $count;
     }
 
+    private function countLabTechConflicts(Term $term, $openLabs): int
+    {
+        $count = 0;
+        $byLabTech = $openLabs->groupBy('lab_tech_id');
+
+        foreach ($byLabTech as $openLabList) {
+            $list = $openLabList->values();
+            $n = $list->count();
+
+            for ($i = 0; $i < $n; $i++) {
+                for ($j = $i + 1; $j < $n; $j++) {
+                    $a = $list[$i];
+                    $b = $list[$j];
+                    if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
+                        continue;
+                    }
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                        continue;
+                    }
+                    $count++;
+                }
+            }
+        }
+
+        return $count;
+    }
+
     private function countOfficeHoursFailing($officeBlocks): int
     {
         $fullTimeInstructors = Instructor::query()
@@ -324,6 +293,10 @@ class SchedulePublishController extends Controller
         $failing = 0;
 
         foreach ($sections as $section) {
+            if (!$section->requiresMeetingBlocks()) {
+                continue;
+            }
+
             $course = $section->offering?->catalogCourse;
 
             $lectureContact = (float) ($course?->lecture_hours_per_week ?? 0);
@@ -505,24 +478,43 @@ class SchedulePublishController extends Controller
         return is_array($lines) && count(array_filter($lines, fn($l) => trim($l) !== '')) <= 1;
     }
 
-    private function buildTermCsv(Term $term, $meetingBlocks): string
+    private function buildTermCsv(Term $term, $meetingBlocks, $openLabs): string
     {
         $rows = [];
-        $rows[] = ['Term', 'Course Code', 'Section Code', 'Instructor', 'Room', 'Meeting Type', 'Days', 'Start', 'End', 'Notes'];
+        $rows[] = ['Term', 'Event Kind', 'Display Name', 'Course Code', 'Section Code', 'Assigned Staff', 'Room', 'Meeting Type', 'Days', 'Start', 'End', 'Notes'];
 
         foreach ($meetingBlocks as $mb) {
             $course = $mb->section->offering->catalogCourse;
             $rows[] = [
                 $term->code,
+                'CLASS',
+                $course->title ?? '',
                 $course->code,
                 $mb->section->section_code,
-                $mb->section->instructor?->name ?? '',
+                $mb->section->instructor_display_name ?? '',
                 $mb->room?->name ?? '',
                 $this->meetingTypeLabel($mb->type),
                 $this->daysToString($mb->days_json ?? []),
                 $this->time5($mb->starts_at),
                 $this->time5($mb->ends_at),
                 $mb->notes ?? '',
+            ];
+        }
+
+        foreach ($openLabs as $openLab) {
+            $rows[] = [
+                $term->code,
+                'OPEN_LAB',
+                $openLab->name,
+                '',
+                '',
+                $openLab->labTech?->name ?? '',
+                $openLab->room?->name ?? '',
+                'OPEN_LAB',
+                $this->daysToString($openLab->days_json ?? []),
+                $this->time5($openLab->starts_at),
+                $this->time5($openLab->ends_at),
+                $openLab->notes ?? '',
             ];
         }
 
@@ -576,10 +568,10 @@ class SchedulePublishController extends Controller
         return $this->csvWithBom($rows);
     }
 
-    private function buildRoomCsv(Term $term, Room $room, $meetingBlocks): string
+    private function buildRoomCsv(Term $term, Room $room, $meetingBlocks, $openLabs): string
     {
         $rows = [];
-        $rows[] = ['Term', 'Room', 'Course Code', 'Section Code', 'Instructor', 'Meeting Type', 'Days', 'Start', 'End', 'Notes'];
+        $rows[] = ['Term', 'Room', 'Event Kind', 'Display Name', 'Course Code', 'Section Code', 'Assigned Staff', 'Meeting Type', 'Days', 'Start', 'End', 'Notes'];
 
         foreach ($meetingBlocks as $mb) {
             if ((int)$mb->room_id !== (int)$room->id) {
@@ -589,14 +581,36 @@ class SchedulePublishController extends Controller
             $rows[] = [
                 $term->code,
                 $room->name,
+                'CLASS',
+                $course->title ?? '',
                 $course->code,
                 $mb->section->section_code,
-                $mb->section->instructor?->name ?? '',
+                $mb->section->instructor_display_name ?? '',
                 $this->meetingTypeLabel($mb->type),
                 $this->daysToString($mb->days_json ?? []),
                 $this->time5($mb->starts_at),
                 $this->time5($mb->ends_at),
                 $mb->notes ?? '',
+            ];
+        }
+
+        foreach ($openLabs as $openLab) {
+            if ((int) $openLab->room_id !== (int) $room->id) {
+                continue;
+            }
+            $rows[] = [
+                $term->code,
+                $room->name,
+                'OPEN_LAB',
+                $openLab->name,
+                '',
+                '',
+                $openLab->labTech?->name ?? '',
+                'OPEN_LAB',
+                $this->daysToString($openLab->days_json ?? []),
+                $this->time5($openLab->starts_at),
+                $this->time5($openLab->ends_at),
+                $openLab->notes ?? '',
             ];
         }
 

@@ -38,8 +38,8 @@ class SectionCardBuilderService
                 'instructor_conflict_count'=> $conflictMaps['instructor_block_counts'][$mb->id] ?? 0,
             ]);
 
-        $hasMissingInstructor = empty($section->instructor_id);
-        $hasMissingMeetings   = $meetingCards->isEmpty();
+        $hasMissingInstructor = !$section->hasInstructorAssignment();
+        $hasMissingMeetings   = $section->requiresMeetingBlocks() && $meetingCards->isEmpty();
         $hasMissingRoom       = $roomRequired && $meetingCards->contains(fn ($mc) => $mc['missing_room']);
         $roomConflictCount    = $conflictMaps['room_section_counts'][$section->id] ?? 0;
         $instructorConflictCount = $conflictMaps['instructor_section_counts'][$section->id] ?? 0;

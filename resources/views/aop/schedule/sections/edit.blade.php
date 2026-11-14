@@ -4,8 +4,9 @@
   @php
     $course = $section->offering->catalogCourse;
     $roomRequired = ($section->modality?->value ?? null) !== 'ONLINE';
-    $hasMissingInstructor = !$section->instructor_id;
-    $hasMissingMeetings = $section->meetingBlocks->isEmpty();
+    $meetingBlocksRequired = $section->requiresMeetingBlocks();
+    $hasMissingInstructor = !$section->hasInstructorAssignment();
+    $hasMissingMeetings = $meetingBlocksRequired && $section->meetingBlocks->isEmpty();
     $hasMissingRoom = $roomRequired && $section->meetingBlocks->contains(fn ($meetingBlock) => !$meetingBlock->room_id);
     $issueCount = ($hasMissingInstructor ? 1 : 0) + ($hasMissingMeetings ? 1 : 0) + ($hasMissingRoom ? 1 : 0) + count($conflictNotes);
     $oldMeetingBlockId = old('meeting_block_id') ? (int) old('meeting_block_id') : null;
@@ -21,8 +22,8 @@
       <div class="summary-strip">
         <div class="summary-stat">
           <div class="summary-stat-label">Instructor</div>
-          <div class="summary-stat-value">{{ $section->instructor?->name ?? 'Unassigned' }}</div>
-          <div class="summary-stat-note">{{ $hasMissingInstructor ? 'Assign an instructor before publishing.' : 'Primary assignment is in place.' }}</div>
+          <div class="summary-stat-value">{{ $section->instructor_display_name ?? 'Unassigned' }}</div>
+          <div class="summary-stat-note">{{ $hasMissingInstructor ? 'Assign an instructor before registrar export.' : 'Primary assignment is in place.' }}</div>
         </div>
         <div class="summary-stat">
           <div class="summary-stat-label">Modality</div>
@@ -32,7 +33,7 @@
         <div class="summary-stat">
           <div class="summary-stat-label">Meeting Blocks</div>
           <div class="summary-stat-value">{{ $section->meetingBlocks->count() }}</div>
-          <div class="summary-stat-note">{{ $hasMissingMeetings ? 'Add at least one block to make this section schedulable.' : 'Current blocks are listed below for fast editing.' }}</div>
+          <div class="summary-stat-note">{{ !$meetingBlocksRequired ? 'Online sections do not require a meeting block.' : ($hasMissingMeetings ? 'Add at least one block to make this section schedulable.' : 'Current blocks are listed below for fast editing.') }}</div>
         </div>
         <div class="summary-stat">
           <div class="summary-stat-label">Readiness</div>
@@ -72,8 +73,9 @@
                 <label for="instructor_id">Instructor</label>
                 <select id="instructor_id" name="instructor_id">
                   <option value="">Unassigned</option>
+                  <option value="{{ \App\Models\Section::STAFF_ASSIGNMENT }}" {{ old('instructor_id', $section->instructor_is_staff ? \App\Models\Section::STAFF_ASSIGNMENT : $section->instructor_id) === \App\Models\Section::STAFF_ASSIGNMENT ? 'selected' : '' }}>STAFF</option>
                   @foreach ($instructors as $instructor)
-                    <option value="{{ $instructor->id }}" {{ (string) old('instructor_id', $section->instructor_id) === (string) $instructor->id ? 'selected' : '' }}>
+                    <option value="{{ $instructor->id }}" {{ (string) old('instructor_id', $section->instructor_is_staff ? \App\Models\Section::STAFF_ASSIGNMENT : $section->instructor_id) === (string) $instructor->id ? 'selected' : '' }}>
                       {{ $instructor->name }}
                     </option>
                   @endforeach
@@ -140,7 +142,7 @@
           </div>
 
           @if($section->meetingBlocks->isEmpty())
-            <div class="status-note">No meeting blocks yet. Add one below to move this section into the schedulable state.</div>
+            <div class="status-note">{{ $meetingBlocksRequired ? 'No meeting blocks yet. Add one below to move this section into the schedulable state.' : 'No meeting block is required for this online section.' }}</div>
           @else
             <div class="meeting-stack">
               @foreach($section->meetingBlocks as $meetingBlock)
@@ -322,7 +324,7 @@
         <section class="watchlist">
           <div class="briefing-kicker">Readiness</div>
           <h2 class="watchlist-title">{{ $issueCount === 0 ? 'Section is ready' : 'Section needs attention' }}</h2>
-          <p class="watchlist-copy">Resolve the items below and this section is ready to move cleanly through readiness and publishing.</p>
+          <p class="watchlist-copy">Resolve the items below and this section is ready for the registrar export.</p>
 
           <div class="watchlist-group">
             <div class="watchlist-item">
@@ -335,9 +337,9 @@
             <div class="watchlist-item">
               <div>
                 <div class="watchlist-name">Meeting pattern</div>
-                <div class="watchlist-note">At least one block required</div>
+                <div class="watchlist-note">{{ $meetingBlocksRequired ? 'At least one block required' : 'Optional for online delivery' }}</div>
               </div>
-              <span class="watchlist-value {{ $hasMissingMeetings ? 'warn' : 'good' }}">{{ $hasMissingMeetings ? 'Missing' : 'Set' }}</span>
+              <span class="watchlist-value {{ $hasMissingMeetings ? 'warn' : 'good' }}">{{ !$meetingBlocksRequired ? 'Not required' : ($hasMissingMeetings ? 'Missing' : 'Set') }}</span>
             </div>
             <div class="watchlist-item">
               <div>

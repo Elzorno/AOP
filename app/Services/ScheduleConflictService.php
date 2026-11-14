@@ -4,11 +4,16 @@ namespace App\Services;
 
 use App\Models\MeetingBlock;
 use App\Models\OfficeHourBlock;
+use App\Models\OpenLab;
 use App\Models\Term;
 use Illuminate\Support\Collection;
 
 class ScheduleConflictService
 {
+    public function __construct(private readonly ScheduleEventQueryService $events)
+    {
+    }
+
     /**
      * Returns true if time ranges overlap (exclusive end).
      *
@@ -71,6 +76,21 @@ class ScheduleConflictService
         return array_values(array_unique($out));
     }
 
+    public static function durationMinutes(string $start, string $end): int
+    {
+        return max(0, self::toMinutes($end) - self::toMinutes($start));
+    }
+
+    /**
+     * Calculates recurring weekly minutes for a day-pattern block.
+     *
+     * Accepts either an array of day tokens or a legacy JSON/csv string.
+     */
+    public static function weeklyMinutes($days, string $start, string $end): int
+    {
+        return self::durationMinutes($start, $end) * count(self::normalizeDays($days));
+    }
+
     private static function toMinutes(string $hhmm): int
     {
         $hhmm = substr($hhmm, 0, 5);
@@ -79,31 +99,51 @@ class ScheduleConflictService
     }
 
     /**
-     * MeetingBlock room conflicts: class vs class only (office hours excluded).
+     * MeetingBlock room conflicts:
+     * - class vs class
+     * - class vs open labs
      */
-    public function roomConflictsForMeetingBlock(Term $term, int $roomId, array $days, string $startsAt, string $endsAt, ?int $ignoreMeetingBlockId = null): Collection
+    public function roomConflictsForMeetingBlock(Term $term, int $roomId, array $days, string $startsAt, string $endsAt, ?int $ignoreMeetingBlockId = null): array
     {
-        if (!$roomId) return collect();
-
-        $q = MeetingBlock::query()
-            ->where('room_id', $roomId)
-            ->whereHas('section.offering', function ($q) use ($term) {
-                $q->where('term_id', $term->id);
-            });
-
-        if ($ignoreMeetingBlockId) {
-            $q->where('id', '!=', $ignoreMeetingBlockId);
+        if (!$roomId) {
+            return [
+                'meeting_blocks' => collect(),
+                'open_labs' => collect(),
+            ];
         }
 
-        $candidates = $q->get();
+        $events = $this->events->roomConflicts($term, $roomId, $days, $startsAt, $endsAt);
 
-        $buffer = (int)($term->buffer_minutes ?? 0);
+        return $this->legacyRoomConflictModels($this->withoutSource($events, MeetingBlock::class, $ignoreMeetingBlockId));
+    }
 
-        return $candidates->filter(function (MeetingBlock $mb) use ($days, $startsAt, $endsAt, $buffer) {
-            $mbDays = $mb->days_json ?? [];
-            if (!self::dayOverlap($days, $mbDays)) return false;
-            return self::timesOverlap($startsAt, $endsAt, $mb->starts_at, $mb->ends_at, $buffer);
-        })->values();
+    /**
+     * Open-lab room conflicts:
+     * - open lab vs class
+     * - open lab vs open lab
+     */
+    public function roomConflictsForOpenLab(Term $term, int $roomId, array $days, string $startsAt, string $endsAt, ?int $ignoreOpenLabId = null): array
+    {
+        if (!$roomId) {
+            return [
+                'meeting_blocks' => collect(),
+                'open_labs' => collect(),
+            ];
+        }
+
+        $events = $this->events->roomConflicts($term, $roomId, $days, $startsAt, $endsAt);
+
+        return $this->legacyRoomConflictModels($this->withoutSource($events, OpenLab::class, $ignoreOpenLabId));
+    }
+
+    public function labTechConflictsForOpenLab(Term $term, int $labTechId, array $days, string $startsAt, string $endsAt, ?int $ignoreOpenLabId = null): Collection
+    {
+        $events = $this->events->staffConflicts($term, 'lab_tech', $labTechId, $days, $startsAt, $endsAt);
+        $ids = $this->withoutSource($events, OpenLab::class, $ignoreOpenLabId)
+            ->where('source_type', OpenLab::class)
+            ->pluck('source_id');
+
+        return OpenLab::query()->with(['room', 'labTech'])->whereKey($ids)->get();
     }
 
     /**
@@ -114,35 +154,21 @@ class ScheduleConflictService
     public function instructorConflictsForMeetingBlock(Term $term, int $instructorId, array $days, string $startsAt, string $endsAt, ?int $ignoreMeetingBlockId = null): array
     {
         $buffer = (int)($term->buffer_minutes ?? 0);
+        $staffEvents = $this->withoutSource(
+            $this->events->staffConflicts($term, 'instructor', $instructorId, $days, $startsAt, $endsAt),
+            MeetingBlock::class,
+            $ignoreMeetingBlockId,
+        );
+        $meetingEventIds = $staffEvents->where('source_type', MeetingBlock::class)->pluck('source_id');
 
-        $meetingConflicts = MeetingBlock::query()
-            ->whereHas('section', function ($q) use ($instructorId) {
-                $q->where('instructor_id', $instructorId);
-            })
-            ->whereHas('section.offering', function ($q) use ($term) {
-                $q->where('term_id', $term->id);
-            });
-
-        if ($ignoreMeetingBlockId) {
-            $meetingConflicts->where('id', '!=', $ignoreMeetingBlockId);
-        }
-
-        $meetingBlocks = $meetingConflicts->get()
-            ->filter(function (MeetingBlock $mb) use ($days, $startsAt, $endsAt, $buffer) {
-                $mbDays = $mb->days_json ?? [];
-                if (!self::dayOverlap($days, $mbDays)) return false;
-                return self::timesOverlap($startsAt, $endsAt, $mb->starts_at, $mb->ends_at, $buffer);
-            })->values();
+        $meetingBlocks = MeetingBlock::query()
+            ->with(['section.offering.catalogCourse', 'room'])
+            ->whereKey($meetingEventIds)
+            ->get();
 
         $officeBlocks = OfficeHourBlock::query()
-            ->where('term_id', $term->id)
-            ->where('instructor_id', $instructorId)
-            ->get()
-            ->filter(function (OfficeHourBlock $ob) use ($days, $startsAt, $endsAt, $buffer) {
-                $obDays = $ob->days_json ?? [];
-                if (!self::dayOverlap($days, $obDays)) return false;
-                return self::timesOverlap($startsAt, $endsAt, $ob->starts_at, $ob->ends_at, $buffer);
-            })->values();
+            ->whereKey($staffEvents->where('source_type', OfficeHourBlock::class)->pluck('source_id'))
+            ->get();
 
         return [
             'meeting_blocks' => $meetingBlocks,
@@ -159,38 +185,49 @@ class ScheduleConflictService
     {
         $buffer = (int)($term->buffer_minutes ?? 0);
 
-        $officeQ = OfficeHourBlock::query()
-            ->where('term_id', $term->id)
-            ->where('instructor_id', $instructorId);
+        $staffEvents = $this->withoutSource(
+            $this->events->staffConflicts($term, 'instructor', $instructorId, $days, $startsAt, $endsAt),
+            OfficeHourBlock::class,
+            $ignoreOfficeHourBlockId,
+        );
+        $officeBlocks = OfficeHourBlock::query()
+            ->whereKey($staffEvents->where('source_type', OfficeHourBlock::class)->pluck('source_id'))
+            ->get();
+        $meetingEventIds = $staffEvents->where('source_type', MeetingBlock::class)->pluck('source_id');
 
-        if ($ignoreOfficeHourBlockId) {
-            $officeQ->where('id', '!=', $ignoreOfficeHourBlockId);
-        }
-
-        $officeBlocks = $officeQ->get()
-            ->filter(function (OfficeHourBlock $ob) use ($days, $startsAt, $endsAt, $buffer) {
-                $obDays = $ob->days_json ?? [];
-                if (!self::dayOverlap($days, $obDays)) return false;
-                return self::timesOverlap($startsAt, $endsAt, $ob->starts_at, $ob->ends_at, $buffer);
-            })->values();
-
-        $meetingBlocks = MeetingBlock::query()
-            ->whereHas('section', function ($q) use ($instructorId) {
-                $q->where('instructor_id', $instructorId);
-            })
-            ->whereHas('section.offering', function ($q) use ($term) {
-                $q->where('term_id', $term->id);
-            })
-            ->get()
-            ->filter(function (MeetingBlock $mb) use ($days, $startsAt, $endsAt, $buffer) {
-                $mbDays = $mb->days_json ?? [];
-                if (!self::dayOverlap($days, $mbDays)) return false;
-                return self::timesOverlap($startsAt, $endsAt, $mb->starts_at, $mb->ends_at, $buffer);
-            })->values();
+        $meetingBlocks = MeetingBlock::query()->whereKey($meetingEventIds)->get();
 
         return [
             'office_hour_blocks' => $officeBlocks,
             'meeting_blocks' => $meetingBlocks,
+        ];
+    }
+
+    private function withoutSource(Collection $events, string $sourceType, ?int $sourceId): Collection
+    {
+        if (!$sourceId) {
+            return $events;
+        }
+
+        return $events
+            ->reject(fn ($event) => $event->source_type === $sourceType && (int) $event->source_id === $sourceId)
+            ->values();
+    }
+
+    private function legacyRoomConflictModels(Collection $events): array
+    {
+        $meetingBlockIds = $events->where('source_type', MeetingBlock::class)->pluck('source_id');
+        $openLabIds = $events->where('source_type', OpenLab::class)->pluck('source_id');
+
+        return [
+            'meeting_blocks' => MeetingBlock::query()
+                ->with(['section.offering.catalogCourse', 'room'])
+                ->whereKey($meetingBlockIds)
+                ->get(),
+            'open_labs' => OpenLab::query()
+                ->with(['room', 'labTech'])
+                ->whereKey($openLabIds)
+                ->get(),
         ];
     }
 
@@ -203,6 +240,30 @@ class ScheduleConflictService
         $time = substr($mb->starts_at, 0, 5) . '-' . substr($mb->ends_at, 0, 5);
         $room = $mb->room?->name ?? '—';
         return "$course $sec ($days $time, Room: $room)";
+    }
+
+    public static function formatOpenLabLabel(OpenLab $openLab): string
+    {
+        $openLab->loadMissing('room', 'labTech');
+        $days = implode(',', self::normalizeDays($openLab->days_json ?? []));
+        $time = substr((string) $openLab->starts_at, 0, 5) . '-' . substr((string) $openLab->ends_at, 0, 5);
+        $room = $openLab->room?->name ?? '—';
+        $labTech = $openLab->labTech?->name ?? 'Unassigned';
+
+        return "{$openLab->name} ($days $time, Room: $room, Lab Tech: $labTech)";
+    }
+
+    public static function formatRoomConflictMessages(array $roomConflicts): array
+    {
+        $meetingBlockLabels = ($roomConflicts['meeting_blocks'] ?? collect())
+            ->map(fn (MeetingBlock $meetingBlock) => self::formatMeetingBlockLabel($meetingBlock))
+            ->all();
+
+        $openLabLabels = ($roomConflicts['open_labs'] ?? collect())
+            ->map(fn (OpenLab $openLab) => self::formatOpenLabLabel($openLab))
+            ->all();
+
+        return array_values(array_merge($meetingBlockLabels, $openLabLabels));
     }
 
     public static function formatOfficeHourLabel(OfficeHourBlock $ob): string

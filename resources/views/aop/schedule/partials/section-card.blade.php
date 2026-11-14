@@ -25,8 +25,8 @@
         {{ $course?->code ?? '' }} · Section {{ $section->section_code }}
       </h4>
       <div class="section-info-row">
-        <span class="section-info-chip {{ $section->instructor_id ? '' : 'chip-unset' }}">
-          {{ $section->instructor?->name ?? 'Instructor unassigned' }}
+        <span class="section-info-chip {{ $section->hasInstructorAssignment() ? '' : 'chip-unset' }}">
+          {{ $section->instructor_display_name ?? 'Instructor unassigned' }}
         </span>
         <span class="section-info-chip">{{ $section->modality->value }}</span>
         <span class="section-info-chip {{ count($sectionCard['meeting_cards']) === 0 ? 'chip-unset' : '' }}">
@@ -88,7 +88,7 @@
       @endforeach
     </div>
   @else
-    <div class="status-note mt-3">No meeting blocks yet — add one below to make this section schedulable.</div>
+    <div class="status-note mt-3">{{ $section->requiresMeetingBlocks() ? 'No meeting blocks yet — add one below to make this section schedulable.' : 'Online section — no meeting block required.' }}</div>
   @endif
 
   {{-- Block edit rows --}}
@@ -276,6 +276,7 @@
               <label for="section_instructor_{{ $section->id }}">Instructor</label>
               <select id="section_instructor_{{ $section->id }}" name="instructor_id">
                 <option value="">Unassigned</option>
+                <option value="{{ \App\Models\Section::STAFF_ASSIGNMENT }}" {{ $section->instructor_is_staff ? 'selected' : '' }}>STAFF</option>
                 @foreach($instructors as $instructor)
                   <option value="{{ $instructor->id }}" {{ (string) $section->instructor_id === (string) $instructor->id ? 'selected' : '' }}>
                     {{ $instructor->name }}

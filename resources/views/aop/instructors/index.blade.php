@@ -4,7 +4,7 @@
   <div class="row" style="margin-bottom:14px;">
     <div>
       <h1>Instructors</h1>
-      <p>Manage faculty and adjuncts used in the schedule and syllabi.</p>
+      <p>Manage faculty and adjuncts used in the schedule.</p>
     </div>
     <div class="actions">
       <a class="btn" href="{{ route('aop.instructors.create') }}">New Instructor</a>

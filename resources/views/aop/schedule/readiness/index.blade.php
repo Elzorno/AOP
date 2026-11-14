@@ -4,11 +4,14 @@
   @php
     $roomConflictCount = count($roomConflicts);
     $instructorConflictCount = count($instructorConflicts);
+    $labTechConflictCount = count($labTechConflicts ?? []);
     $blockingIssueCount = $sectionsMissingInstructor->count()
       + $sectionsMissingMeetingBlocks->count()
       + $meetingBlocksMissingRoom->count()
       + $roomConflictCount
       + $instructorConflictCount
+      + $labTechConflictCount
+      + ($labTechsOverLimit ?? collect())->count()
       + ($officeHoursFailing ?? collect())->count()
       + ($minutesFailing ?? collect())->count();
   @endphp
@@ -16,7 +19,7 @@
   <div class="page-shell">
     <section class="page-header">
       <span class="page-eyebrow">Readiness Review</span>
-      <h1 class="page-title">{{ $blockingIssueCount === 0 ? 'The active term is release-ready.' : 'Resolve blockers before publishing '.$term->code.'.' }}</h1>
+      <h1 class="page-title">{{ $blockingIssueCount === 0 ? 'The active term is export-ready.' : 'Review schedule issues before exporting '.$term->code.'.' }}</h1>
       <p class="page-subtitle">Instructional minutes, office hours, missing assignments, and conflicts.</p>
 
       <div class="summary-strip">
@@ -37,8 +40,13 @@
         </div>
         <div class="summary-stat">
           <div class="summary-stat-label">Conflicts</div>
-          <div class="summary-stat-value">{{ $roomConflictCount + $instructorConflictCount }}</div>
-          <div class="summary-stat-note">Room and instructor overlap checks currently failing.</div>
+          <div class="summary-stat-value">{{ $roomConflictCount + $instructorConflictCount + $labTechConflictCount }}</div>
+          <div class="summary-stat-note">Room, instructor, and lab-tech overlap checks currently failing.</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-stat-label">Lab Techs Over Limit</div>
+          <div class="summary-stat-value">{{ ($labTechsOverLimit ?? collect())->count() }}</div>
+          <div class="summary-stat-note">Weekly open-lab hours above the HR allocation.</div>
         </div>
       </div>
 
@@ -46,7 +54,8 @@
         <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
         <a class="btn secondary" href="{{ route('aop.schedule.sections.index') }}">Section Directory</a>
         <a class="btn secondary" href="{{ route('aop.schedule.officeHours.index') }}">Office Hours</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.publish.index') }}">Publishing</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index') }}">Open Labs</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.reports.index') }}">Registrar CSV</a>
       </div>
     </section>
 
@@ -83,22 +92,34 @@
                   @endphp
                   <tr>
                     <td>
-                      <span class="badge {{ $row['pass'] ? 'success' : 'danger' }}">{{ $row['pass'] ? 'Pass' : 'Fail' }}</span>
+                      @if(!$row['meeting_blocks_required'])
+                        <span class="badge info">Not required</span>
+                      @else
+                        <span class="badge {{ $row['pass'] ? 'success' : 'danger' }}">{{ $row['pass'] ? 'Pass' : 'Fail' }}</span>
+                      @endif
                     </td>
                     <td>
                       <strong>{{ $course?->code ?? '—' }}</strong> - {{ $course?->title ?? 'Untitled' }}<br>
                       <span class="text-slate-500">Section {{ $section->section_code }} · {{ str_replace('_', ' ', $section->modality?->value ?? '—') }}</span>
                     </td>
                     <td>{{ number_format($row['lecture_contact_hours'] ?? 0, 2) }} / {{ number_format($row['lab_contact_hours'] ?? 0, 2) }}</td>
-                    <td>{{ number_format($row['required_minutes']) }} min</td>
-                    <td>{{ number_format($row['scheduled_minutes']) }} min</td>
+                    <td>{{ $row['meeting_blocks_required'] ? number_format($row['required_minutes']).' min' : 'Not required' }}</td>
+                    <td>{{ $row['meeting_blocks_required'] ? number_format($row['scheduled_minutes']).' min' : 'Asynchronous' }}</td>
                     <td>
-                      <span class="badge {{ $delta >= 0 ? 'success' : 'danger' }}">
-                        {{ $delta >= 0 ? '+' : '' }}{{ number_format($delta) }} min
-                      </span>
+                      @if($row['meeting_blocks_required'])
+                        <span class="badge {{ $delta >= 0 ? 'success' : 'danger' }}">
+                          {{ $delta >= 0 ? '+' : '' }}{{ number_format($delta) }} min
+                        </span>
+                      @else
+                        —
+                      @endif
                     </td>
                     <td>
-                      <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Fix in Studio</a>
+                      @if($row['meeting_blocks_required'])
+                        <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Fix in Studio</a>
+                      @else
+                        —
+                      @endif
                     </td>
                   </tr>
                 @empty
@@ -178,6 +199,67 @@
           </p>
         </section>
 
+        <section class="workspace-card">
+          <div class="workspace-header">
+            <div>
+              <div class="briefing-kicker">Open labs</div>
+              <h2 class="workspace-title">Lab tech workload</h2>
+              <p class="workspace-copy">Weekly totals are calculated from recurring open-lab blocks in the active term.</p>
+            </div>
+          </div>
+
+          <div class="table-shell">
+            <table>
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Lab Tech</th>
+                  <th>Open Labs</th>
+                  <th>Assigned Hours / Week</th>
+                  <th>HR Limit</th>
+                  <th>Remaining</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @forelse($labTechWorkloads ?? [] as $row)
+                  @php $labTech = $row['lab_tech']; @endphp
+                  <tr>
+                    <td>
+                      @if(!$labTech->is_active)
+                        <span class="badge muted">Inactive</span>
+                      @else
+                        <span class="badge {{ $row['is_over_limit'] ? 'danger' : 'success' }}">{{ $row['is_over_limit'] ? 'Over' : 'OK' }}</span>
+                      @endif
+                    </td>
+                    <td>
+                      <strong>{{ $labTech->name }}</strong><br>
+                      <span class="text-slate-500">{{ $labTech->email ?: 'No email on file' }}</span>
+                    </td>
+                    <td>{{ $row['open_lab_count'] }}</td>
+                    <td>{{ number_format((float) $row['assigned_hours'], 2) }} hrs</td>
+                    <td>{{ number_format((float) $row['weekly_hour_limit'], 2) }} hrs</td>
+                    <td>{{ number_format((float) $row['remaining_hours'], 2) }} hrs</td>
+                    <td>
+                      <a class="btn secondary sm" href="{{ route('aop.schedule.openLabs.index') }}">Review</a>
+                    </td>
+                  </tr>
+                @empty
+                  <tr>
+                    <td colspan="7">No lab techs found.</td>
+                  </tr>
+                @endforelse
+              </tbody>
+            </table>
+          </div>
+
+          <p class="table-note">
+            {{ ($labTechsOverLimit ?? collect())->count() > 0
+                ? ($labTechsOverLimit ?? collect())->count().' lab tech(s) currently exceed their weekly HR limit.'
+                : 'All lab techs are currently within their weekly HR limits.' }}
+          </p>
+        </section>
+
         <section class="record-grid">
           <article class="record-card {{ $roomConflictCount > 0 ? 'record-card-danger' : 'record-card-good' }}">
             <div class="briefing-kicker">Room conflicts</div>
@@ -192,9 +274,11 @@
                   <div class="mini-list-item">
                     <div>
                       <div class="queue-label">{{ $conflict['room']?->name ?? 'Room' }}</div>
-                      <div class="queue-copy">{{ \App\Services\ScheduleConflictService::formatMeetingBlockLabel($conflict['a']) }} vs {{ \App\Services\ScheduleConflictService::formatMeetingBlockLabel($conflict['b']) }}</div>
+                      <div class="queue-copy">{{ $conflict['a_label'] ?? \App\Services\ScheduleConflictService::formatMeetingBlockLabel($conflict['a']) }} vs {{ $conflict['b_label'] ?? \App\Services\ScheduleConflictService::formatMeetingBlockLabel($conflict['b']) }}</div>
                     </div>
-                    <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['focus' => $conflict['a']->section_id]) }}#section-{{ $conflict['a']->section_id }}">Fix</a>
+                    @if(!empty($conflict['action_url']))
+                      <a class="btn secondary sm" href="{{ $conflict['action_url'] }}">{{ $conflict['action_label'] ?? 'Fix' }}</a>
+                    @endif
                   </div>
                 @endforeach
               </div>
@@ -224,6 +308,28 @@
               </div>
             @endif
           </article>
+
+          <article class="record-card {{ $labTechConflictCount > 0 ? 'record-card-danger' : 'record-card-good' }}">
+            <div class="briefing-kicker">Lab tech conflicts</div>
+            <h2 class="workspace-title mt-2">Coverage overlaps</h2>
+            <p class="workspace-copy">A single lab tech cannot cover two open labs at once.</p>
+
+            @if($labTechConflictCount === 0)
+              <div class="status-note mt-5">No lab tech conflicts are currently detected.</div>
+            @else
+              <div class="mini-list">
+                @foreach($labTechConflicts as $conflict)
+                  <div class="mini-list-item">
+                    <div>
+                      <div class="queue-label">{{ $conflict['lab_tech']?->name ?? 'Lab Tech' }}</div>
+                      <div class="queue-copy">{{ $conflict['a_label'] }} vs {{ $conflict['b_label'] }}</div>
+                    </div>
+                    <a class="btn secondary sm" href="{{ $conflict['action_url'] }}">{{ $conflict['action_label'] }}</a>
+                  </div>
+                @endforeach
+              </div>
+            @endif
+          </article>
         </section>
 
         {{-- Distribution metrics (informational only) --}}
@@ -232,7 +338,7 @@
             <div>
               <div class="briefing-kicker">Schedule distribution</div>
               <h2 class="workspace-title">Day and time spread</h2>
-              <p class="workspace-copy">Informational targets — not a publish gate. Targets based on institutional scheduling rules.</p>
+              <p class="workspace-copy">Informational targets — not an export gate. Targets based on institutional scheduling rules.</p>
             </div>
           </div>
 
@@ -278,7 +384,7 @@
           <p class="table-note mt-4">
             Based on {{ number_format($d['totals']['total_minutes']) }} total scheduled classroom minutes across
             {{ $d['totals']['sections'] }} section{{ $d['totals']['sections'] === 1 ? '' : 's' }}.
-            These metrics are advisory only and do not affect publishing eligibility.
+            These metrics are advisory only and do not prevent a registrar CSV export.
           </p>
         </section>
       </div>
@@ -309,7 +415,7 @@
         <section class="watchlist">
           <div class="briefing-kicker">Action lists</div>
           <h2 class="watchlist-title">Missing meeting blocks</h2>
-          <p class="watchlist-copy">These sections still need a time pattern before the schedule can be considered complete.</p>
+          <p class="watchlist-copy">In-person and hybrid sections still need a time pattern before the schedule can be considered complete. Online sections are excluded.</p>
 
           @if($sectionsMissingMeetingBlocks->isEmpty())
             <div class="status-note mt-5">Every visible section already has at least one meeting block.</div>
@@ -391,6 +497,28 @@
                   <div class="queue-copy">{{ $section->enrolled_count }}/{{ $section->section_capacity }} enrolled ({{ $fillPct }}%)</div>
                 </div>
                 <a class="btn secondary sm" href="{{ route('aop.schedule.sections.edit', $section) }}">Edit</a>
+              </div>
+            @endforeach
+          </div>
+        </section>
+        @endif
+
+        @if(($labTechsOverLimit ?? collect())->isNotEmpty())
+        <section class="watchlist watchlist-danger">
+          <div class="briefing-kicker">Coverage alert</div>
+          <h2 class="watchlist-title">Lab techs over HR limit</h2>
+          <p class="watchlist-copy">Reduce or redistribute open-lab hours before sending the schedule to the registrar.</p>
+          <div class="mini-list">
+            @foreach(($labTechsOverLimit ?? collect())->take(8) as $row)
+              <div class="mini-list-item">
+                <div>
+                  <div class="queue-label">{{ $row['lab_tech']->name }}</div>
+                  <div class="queue-copy">
+                    {{ number_format((float) $row['assigned_hours'], 2) }} scheduled /
+                    {{ number_format((float) $row['weekly_hour_limit'], 2) }} allowed
+                  </div>
+                </div>
+                <a class="btn secondary sm" href="{{ route('aop.schedule.openLabs.index') }}">Review</a>
               </div>
             @endforeach
           </div>

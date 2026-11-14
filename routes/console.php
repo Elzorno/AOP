@@ -6,22 +6,25 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Term;
+use App\Services\ScheduleEventSyncService;
 use Symfony\Component\Console\Command\Command;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Artisan::command('aop:reset-schedule-data {--force : Actually delete terms and schedule data} {--keep-files : Keep generated schedule/syllabi artifacts in storage}', function () {
+Artisan::command('aop:reset-schedule-data {--force : Actually delete terms and schedule data} {--keep-files : Keep published schedule artifacts in storage}', function () {
     $tables = [
         'terms',
         'offerings',
         'sections',
         'meeting_blocks',
+        'open_labs',
+        'scheduled_events',
+        'scheduled_event_staff_assignments',
         'office_hour_blocks',
         'instructor_term_locks',
-        'syllabi',
-        'syllabus_renders',
         'schedule_publications',
     ];
 
@@ -31,7 +34,7 @@ Artisan::command('aop:reset-schedule-data {--force : Actually delete terms and s
     }
 
     $this->warn('This will remove all terms and scheduling data, but leave the course catalog intact.');
-    $this->line('Also preserved: instructors, rooms, users, rules, and syllabus templates.');
+    $this->line('Also preserved: instructors, lab techs, rooms, users, rules, and the course catalog.');
     $this->newLine();
 
     $rows = [];
@@ -53,7 +56,7 @@ Artisan::command('aop:reset-schedule-data {--force : Actually delete terms and s
     try {
         DB::transaction(function () use ($tables) {
             // Delete dependent/legacy tables first so environments with partial/legacy schemas are cleaned safely.
-            foreach (['syllabus_renders', 'schedule_publications', 'syllabi', 'meeting_blocks', 'sections', 'offerings', 'office_hour_blocks', 'instructor_term_locks', 'terms'] as $table) {
+            foreach (['schedule_publications', 'scheduled_event_staff_assignments', 'scheduled_events', 'open_labs', 'meeting_blocks', 'sections', 'offerings', 'office_hour_blocks', 'instructor_term_locks', 'terms'] as $table) {
                 if (Schema::hasTable($table)) {
                     DB::table($table)->delete();
                 }
@@ -73,8 +76,6 @@ Artisan::command('aop:reset-schedule-data {--force : Actually delete terms and s
 
         foreach ([
             ['disk' => 'local', 'path' => 'aop/published'],
-            ['disk' => 'local', 'path' => 'aop/syllabi/generated'],
-            ['disk' => 'local', 'path' => 'aop/syllabi/_render_tmp'],
         ] as $target) {
             try {
                 Storage::disk($target['disk'])->deleteDirectory($target['path']);
@@ -85,31 +86,11 @@ Artisan::command('aop:reset-schedule-data {--force : Actually delete terms and s
 
         foreach ([
             storage_path('app/aop/published'),
-            storage_path('app/aop/syllabi/generated'),
-            storage_path('app/aop/syllabi/_render_tmp'),
             storage_path('app/private/aop/published'),
-            storage_path('app/private/aop/syllabi/generated'),
-            storage_path('app/private/aop/syllabi/_render_tmp'),
         ] as $absolutePath) {
             $deleteAbsoluteDir($absolutePath);
         }
 
-        foreach ([
-            storage_path('app/aop/syllabi'),
-            storage_path('app/private/aop/syllabi'),
-        ] as $syllabiRoot) {
-            if (!File::isDirectory($syllabiRoot)) {
-                continue;
-            }
-
-            foreach (File::directories($syllabiRoot) as $dir) {
-                if (basename($dir) === 'templates') {
-                    continue;
-                }
-
-                $deleteAbsoluteDir($dir);
-            }
-        }
     }
 
     $remainingTerms = Schema::hasTable('terms') ? DB::table('terms')->count() : 0;
@@ -124,8 +105,31 @@ Artisan::command('aop:reset-schedule-data {--force : Actually delete terms and s
     if ($this->option('keep-files')) {
         $this->comment('Generated files were preserved because --keep-files was used.');
     } else {
-        $this->comment('Generated published schedule and syllabus artifacts were removed, while syllabus templates were preserved.');
+        $this->comment('Generated published schedule artifacts were removed.');
     }
 
     return Command::SUCCESS;
 })->purpose('Delete terms and scheduling data while preserving the course catalog');
+
+Artisan::command('aop:sync-scheduled-events {--term= : Term ID to rebuild; defaults to every term}', function (ScheduleEventSyncService $sync) {
+    $terms = Term::query()
+        ->when($this->option('term'), fn ($query, $termId) => $query->whereKey($termId))
+        ->orderBy('id')
+        ->get();
+
+    if ($terms->isEmpty()) {
+        $this->error('No matching terms found.');
+        return Command::FAILURE;
+    }
+
+    $rows = $terms->map(function (Term $term) use ($sync) {
+        $counts = $sync->rebuildTerm($term);
+
+        return [$term->code, $counts['meeting_blocks'], $counts['open_labs'], $counts['office_hour_blocks']];
+    })->all();
+
+    $this->table(['Term', 'Class meetings', 'Open labs', 'Office hours'], $rows);
+    $this->info('Scheduled event projection rebuilt.');
+
+    return Command::SUCCESS;
+})->purpose('Rebuild shared scheduled events from class meetings and open labs');

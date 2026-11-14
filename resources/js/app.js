@@ -50,7 +50,11 @@ function conflictChecker(sectionId, instructorId) {
 
                 // Room conflict
                 if (this.roomId && b.room_id && String(b.room_id) === String(this.roomId)) {
-                    found.push('Room conflict with another section');
+                    found.push(
+                        b.kind === 'open_lab'
+                            ? 'Room conflict with an open lab'
+                            : 'Room conflict with another section'
+                    );
                 }
                 // Instructor conflict
                 if (instructorId && b.instructor_id && b.instructor_id === instructorId) {

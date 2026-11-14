@@ -7,8 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Instructor;
 use App\Models\MeetingBlock;
 use App\Models\OfficeHourBlock;
+use App\Models\OpenLab;
 use App\Models\Room;
 use App\Models\Term;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ScheduleGridController extends Controller
 {
@@ -39,6 +41,56 @@ class ScheduleGridController extends Controller
 
     public function instructor(Instructor $instructor)
     {
+        return view('aop.schedule.grids.instructor', [
+            ...$this->buildInstructorGridViewData($instructor),
+            'isPrint' => (bool)request()->boolean('print'),
+            'autoPrint' => true,
+        ]);
+    }
+
+    public function instructorPdf(Instructor $instructor)
+    {
+        $viewData = [
+            ...$this->buildInstructorGridViewData($instructor),
+            'isPrint' => true,
+            'isPdf' => true,
+            'autoPrint' => false,
+        ];
+
+        $filename = sprintf('instructor-grid-%s-%s.pdf', $viewData['term']->code, $this->safeFilename($instructor->name));
+
+        return Pdf::loadView('aop.schedule.grids.instructor', $viewData)
+            ->setPaper('letter', 'portrait')
+            ->download($filename);
+    }
+
+    public function room(Room $room)
+    {
+        return view('aop.schedule.grids.room', [
+            ...$this->buildRoomGridViewData($room),
+            'isPrint' => (bool)request()->boolean('print'),
+            'autoPrint' => true,
+        ]);
+    }
+
+    public function roomPdf(Room $room)
+    {
+        $viewData = [
+            ...$this->buildRoomGridViewData($room),
+            'isPrint' => true,
+            'isPdf' => true,
+            'autoPrint' => false,
+        ];
+
+        $filename = sprintf('room-grid-%s-%s.pdf', $viewData['term']->code, $this->safeFilename($room->name));
+
+        return Pdf::loadView('aop.schedule.grids.room', $viewData)
+            ->setPaper('letter', 'portrait')
+            ->download($filename);
+    }
+
+    private function buildInstructorGridViewData(Instructor $instructor): array
+    {
         $term = $this->activeTermOrFail();
         abort_if(!$instructor->is_active, 404, 'Instructor not found.');
 
@@ -46,7 +98,7 @@ class ScheduleGridController extends Controller
             ->with(['section.offering.catalogCourse', 'section.instructor', 'room'])
             ->whereHas('section', function ($q) use ($instructor, $term) {
                 $q->where('instructor_id', $instructor->id)
-                  ->whereHas('offering', fn ($qq) => $qq->where('term_id', $term->id));
+                    ->whereHas('offering', fn ($qq) => $qq->where('term_id', $term->id));
             })
             ->orderBy('starts_at')
             ->get();
@@ -63,15 +115,18 @@ class ScheduleGridController extends Controller
         foreach ($meetingBlocks as $mb) {
             $course = $mb->section->offering->catalogCourse;
             $roomName = $mb->room?->name ?? 'TBD';
-            $typeLabel = $this->formatMeetingBlockType($mb->type);
-            $label = sprintf('%s %s (%s) — %s', $course->code, $mb->section->section_code, $typeLabel, $roomName);
+            $courseCode = trim(sprintf('%s-%s', $course->code, $mb->section->section_code), '-');
+            $courseTitle = $course->title ?? '';
 
             $events[] = [
                 'kind' => 'class',
                 'days' => $mb->days_json ?? [],
                 'starts_at' => $this->normalizeTime($mb->starts_at),
                 'ends_at' => $this->normalizeTime($mb->ends_at),
-                'label' => $label,
+                'label' => $courseCode,
+                'course' => $courseCode,
+                'title' => $courseTitle,
+                'meta' => $roomName,
                 'notes' => $mb->notes,
                 'style' => $classStyle,
             ];
@@ -80,7 +135,7 @@ class ScheduleGridController extends Controller
         foreach ($officeBlocks as $ob) {
             $label = 'Office Hours';
             if (!empty($ob->notes)) {
-                $label .= ' — ' . $ob->notes;
+                $label .= ' - ' . $ob->notes;
             }
 
             $events[] = [
@@ -89,6 +144,9 @@ class ScheduleGridController extends Controller
                 'starts_at' => $this->normalizeTime($ob->starts_at),
                 'ends_at' => $this->normalizeTime($ob->ends_at),
                 'label' => $label,
+                'course' => 'Office Hours',
+                'title' => !empty($ob->notes) ? $ob->notes : 'Instructor Availability',
+                'meta' => null,
                 'notes' => null,
                 'style' => [],
             ];
@@ -97,7 +155,7 @@ class ScheduleGridController extends Controller
         [$start, $end] = $this->computeWindow($events, '08:00', '18:00', 30);
         $grid = $this->buildGrid($events, self::DAYS, $start, $end, 30);
 
-        return view('aop.schedule.grids.instructor', [
+        return [
             'term' => $term,
             'instructor' => $instructor,
             'days' => self::DAYS,
@@ -105,11 +163,10 @@ class ScheduleGridController extends Controller
             'end' => $end,
             'slot_minutes' => 30,
             'grid' => $grid,
-            'isPrint' => (bool)request()->boolean('print'),
-        ]);
+        ];
     }
 
-    public function room(Room $room)
+    private function buildRoomGridViewData(Room $room): array
     {
         $term = $this->activeTermOrFail();
         abort_if(!$room->is_active, 404, 'Room not found.');
@@ -121,30 +178,58 @@ class ScheduleGridController extends Controller
             ->orderBy('starts_at')
             ->get();
 
+        $openLabs = OpenLab::query()
+            ->with(['room', 'labTech'])
+            ->where('term_id', $term->id)
+            ->where('room_id', $room->id)
+            ->orderBy('starts_at')
+            ->get();
+
         $events = [];
 
         foreach ($meetingBlocks as $mb) {
             $course = $mb->section->offering->catalogCourse;
             $instructor = $mb->section->instructor;
-            $instructorName = $instructor?->name ?? 'TBD';
-            $typeLabel = $this->formatMeetingBlockType($mb->type);
-            $label = sprintf('%s %s (%s) — %s', $course->code, $mb->section->section_code, $typeLabel, $instructorName);
+            $instructorName = $mb->section->instructor_display_name ?? 'TBD';
+            $courseCode = trim(sprintf('%s-%s', $course->code, $mb->section->section_code), '-');
+            $courseTitle = $course->title ?? '';
 
             $events[] = [
                 'kind' => 'class',
                 'days' => $mb->days_json ?? [],
                 'starts_at' => $this->normalizeTime($mb->starts_at),
                 'ends_at' => $this->normalizeTime($mb->ends_at),
-                'label' => $label,
+                'label' => $courseCode,
+                'course' => $courseCode,
+                'title' => $courseTitle,
+                'meta' => $instructorName,
                 'notes' => $mb->notes,
                 'style' => $this->buildClassEventStyle($instructor?->color_hex_css),
+            ];
+        }
+
+        foreach ($openLabs as $openLab) {
+            $events[] = [
+                'kind' => 'open-lab',
+                'days' => $openLab->days_json ?? [],
+                'starts_at' => $this->normalizeTime($openLab->starts_at),
+                'ends_at' => $this->normalizeTime($openLab->ends_at),
+                'label' => 'Open Lab',
+                'course' => 'Open Lab',
+                'title' => $openLab->name,
+                'meta' => $openLab->labTech?->name ?? 'Lab Tech TBD',
+                'notes' => $openLab->notes,
+                'style' => [
+                    'bg' => 'rgba(217, 119, 6, 0.16)',
+                    'border' => 'rgba(180, 83, 9, 0.42)',
+                ],
             ];
         }
 
         [$start, $end] = $this->computeWindow($events, '08:00', '18:00', 30);
         $grid = $this->buildGrid($events, self::DAYS, $start, $end, 30);
 
-        return view('aop.schedule.grids.room', [
+        return [
             'term' => $term,
             'room' => $room,
             'days' => self::DAYS,
@@ -152,8 +237,15 @@ class ScheduleGridController extends Controller
             'end' => $end,
             'slot_minutes' => 30,
             'grid' => $grid,
-            'isPrint' => (bool)request()->boolean('print'),
-        ]);
+        ];
+    }
+
+    private function safeFilename(string $value): string
+    {
+        $sanitized = preg_replace('/[^a-z0-9]+/i', '-', trim($value)) ?? 'grid';
+        $sanitized = trim($sanitized, '-');
+
+        return $sanitized !== '' ? strtolower($sanitized) : 'grid';
     }
 
     private function formatMeetingBlockType($type): string

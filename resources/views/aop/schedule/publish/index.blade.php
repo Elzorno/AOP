@@ -59,6 +59,8 @@
           <div><span class="muted">Missing rooms:</span> <strong>{{ $readiness['metrics']['meeting_blocks_missing_room'] ?? 0 }}</strong></div>
           <div><span class="muted">Room conflicts:</span> <strong>{{ $readiness['metrics']['room_conflicts'] ?? 0 }}</strong></div>
           <div><span class="muted">Instructor conflicts:</span> <strong>{{ $readiness['metrics']['instructor_conflicts'] ?? 0 }}</strong></div>
+          <div><span class="muted">Lab tech conflicts:</span> <strong>{{ $readiness['metrics']['labtech_conflicts'] ?? 0 }}</strong></div>
+          <div><span class="muted">Lab tech over limit:</span> <strong>{{ $readiness['metrics']['labtech_over_limit'] ?? 0 }}</strong></div>
           <div><span class="muted">Office-hours failures:</span> <strong>{{ $readiness['metrics']['office_hours_failing'] ?? 0 }}</strong></div>
           <div><span class="muted">Instructional-minutes failures:</span> <strong>{{ $readiness['metrics']['instructional_minutes_failing'] ?? 0 }}</strong></div>
         </div>

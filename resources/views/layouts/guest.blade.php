@@ -27,7 +27,7 @@
     <div class="page">
         <div class="wrap">
             <div class="brand">Academic Ops Platform</div>
-            <p class="muted">Sign in to manage terms, scheduling, and syllabi.</p>
+            <p class="muted">Sign in to manage terms and scheduling.</p>
 
             <div class="card">
                 {{ $slot }}

@@ -27,9 +27,11 @@ This document describes business rules in plain language and points to where the
 ## Offerings and Sections
 - Offerings belong to a Term and reference a Catalog Course.
 - Sections belong to an Offering.
+- A section instructor may be a named instructor, the intentional `STAFF` placeholder, or unassigned.
 
 ## Meeting Blocks
-- A Section must have at least one Meeting Block (unless future rules allow online sections to omit them).
+- In-person and hybrid sections must have at least one Meeting Block.
+- Online sections may be asynchronous and do not require a Meeting Block.
 - Each Meeting Block includes:
   - meeting type
   - days of week (JSON)
@@ -55,13 +57,16 @@ Readiness checks must detect conflicts:
 - `app/Http/Controllers/Aop/Schedule/ScheduleReadinessController.php`
 - `app/Services/ScheduleConflictService.php`
 
-## Publish Gate
-- Schedule snapshots require the active term schedule to be locked.
-- If readiness blockers exist (missing data/conflicts/minutes/office-hours), publishing requires an explicit confirmation from the operator.
+## Registrar Schedule Export
+- The current active-term schedule can be downloaded directly as a registrar-ready CSV; no schedule lock or snapshot step is required.
+- Readiness issues remain visible and actionable, but they do not prevent CSV export.
+- The export contains every section and emits one row per meeting pattern. A section without a meeting pattern still receives one row.
+- Online sections use `Online Instruction` / `ONLIN` for registrar location fields.
+- Historical schedule snapshots remain downloadable, but new snapshots are no longer created.
 
 **Code:**
-- `app/Http/Controllers/Aop/Schedule/SchedulePublishController.php`
-- `resources/views/aop/schedule/publish/index.blade.php`
+- `app/Http/Controllers/Aop/Schedule/ScheduleReportsController.php`
+- `resources/views/aop/schedule/reports/index.blade.php`
 
 ## Instructional Minutes Check (ODHE)
 Compute scheduled minutes for each section and compare to required minutes.

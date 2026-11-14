@@ -155,3 +155,24 @@ This file tracks what each phase changed so the project remains understandable w
 - Standardized action controls to shared button variants (`btn`, `secondary`, `success`, `sm`) to remove mixed filled/text-only action styling.
 - Standardized status semantics with shared badge variants (`success`, `warn`, `danger`, `info`, `muted`) and replaced scattered inline badge colors.
 - Standardized success/error panel accents via shared panel classes (`panel-success`, `panel-danger`, `panel-warn`) for consistent alert/readability treatment.
+
+## Phase 34.2
+- Added a shared schedule-grid renderer so room and instructor grids use the same layout and print logic.
+- Added dedicated print pages for room and instructor grids with a Letter-sized landscape layout and one-page fit scaling.
+- Printable grids now hide unused days when possible so typical weekday schedules stay readable on paper.
+- Added focused feature coverage for both room and instructor print routes.
+
+## Phase 35
+- Added `STAFF` as an intentional section instructor assignment and carried that label through readiness, grids, and exports.
+- Made meeting blocks optional for online sections across readiness, filtering, and schedule handoff.
+- Replaced the lock-and-snapshot publish workflow with a direct registrar-ready CSV export using a Build / Validate / Export workflow.
+- Added registrar columns for course-section, title, faculty, credits, enrollment/capacity, days and times, term dates, campus, building, room, and a combined schedule cell.
+- Preserved historical snapshot downloads while retiring schedule-lock enforcement for current editing and export.
+- Added feature coverage for registrar formatting, STAFF display, asynchronous online sections, and legacy lock compatibility.
+
+## Preservation and modernization plan — 2026-11-14
+- Captured the current project before planning changes, including all 84 existing changed/untracked Git entries, installed dependencies, assets, runtime configuration, storage and Git metadata.
+- Created an online SQLite backup and selected server-configuration/security-report archives at `/root/aop-backups/2026-11-14T150352Z`.
+- Verified 14,320 archived regular files through isolated extraction. SQLite integrity passed, foreign-key checks returned zero violations, and all 26 table counts matched the restored snapshot.
+- Added `AOP_MODERNIZATION_PLAN.md` covering isolated baseline verification, security remediation, explicit term/account boundaries, shared mutations, authoritative events, versioned policy, workspace improvements and repeatable recovery/releases.
+- No production code, package, schema, service or application behavior changes were made. Existing source changes were not committed or overwritten. Full application boot/recovery testing remains a planned step; this checkpoint verifies files and database restoration.

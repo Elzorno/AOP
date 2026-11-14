@@ -112,7 +112,7 @@
           <div class="sequence-strip">
             <div class="sequence-chip"><strong>Copies structure</strong> Offerings, sections, and meeting blocks come forward.</div>
             <div class="sequence-chip"><strong>Optional instructors</strong> Instructor assignments are not forced into the next cycle.</div>
-            <div class="sequence-chip"><strong>Skips fragile history</strong> Locks, publications, office hours, syllabi, and render history do not carry over.</div>
+            <div class="sequence-chip"><strong>Skips fragile history</strong> Locks, publications, office hours, and change history do not carry over.</div>
           </div>
         </article>
       </div>

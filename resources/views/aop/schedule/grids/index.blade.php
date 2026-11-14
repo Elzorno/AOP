@@ -6,7 +6,7 @@
       <h1>Schedule Grids</h1>
       @if($term)
         <p style="margin-top:6px;"><strong>{{ $term->code }}</strong> — {{ $term->name }}</p>
-        <p class="muted">Instructor grid includes office hours. Room grid excludes office hours. Use Print for a printer-friendly layout.</p>
+        <p class="muted">Instructor grid includes office hours. Room grid includes classes plus open labs. Print opens a letter-size landscape sheet sized for handouts.</p>
       @else
         <p class="muted">No active term is set.</p>
       @endif
@@ -49,7 +49,7 @@
 
       <div class="card">
         <h2>Room Grid</h2>
-        <p class="muted">Classes only</p>
+        <p class="muted">Classes + open labs</p>
         <form method="get" action="" onsubmit="return false;">
           <label class="label">Room</label>
           <div class="row" style="gap:10px; align-items:flex-end;">

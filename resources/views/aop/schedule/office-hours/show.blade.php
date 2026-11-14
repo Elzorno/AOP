@@ -253,7 +253,7 @@
             <li>End time must always be after the start time.</li>
             <li>New blocks are checked against both existing office hours and class meetings.</li>
             <li>Lock availability once the instructor’s weekly pattern is finalized.</li>
-            <li>Return to readiness after changes if you are clearing publish blockers.</li>
+            <li>Return to readiness after changes if you are clearing schedule issues.</li>
           </ul>
         </section>
 

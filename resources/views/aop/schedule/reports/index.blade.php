@@ -1,31 +1,29 @@
 <x-aop-layout>
-  <x-slot:title>Schedule Reports</x-slot:title>
+  <x-slot:title>Registrar Schedule Export</x-slot:title>
 
   <div class="row" style="margin-bottom:14px;">
     <div>
-      <h1>Schedule Reports</h1>
+      <h1>Registrar Schedule Export</h1>
       @if($term)
         <p style="margin-top:6px;"><strong>{{ $term->code }}</strong> — {{ $term->name }}</p>
-        @if($latestPublication)
-          <p class="muted">Published: <span class="badge">v{{ $latestPublication->version }}</span> {{ $latestPublication->published_at->format('Y-m-d H:i') }}</p>
-        @else
-          <p class="muted">Published: <span class="badge">None</span></p>
-        @endif
-        <p class="muted">Exports are scoped to the active term.</p>
+        <p class="muted">Download the current schedule directly—no lock or publishing step is required.</p>
       @else
         <p class="muted">No active term is set.</p>
       @endif
     </div>
     <div class="actions">
       <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
-      @if($term)
-        <a class="btn" href="{{ route('aop.schedule.publish.index') }}">Publish Snapshots</a>
-      @endif
       @if(!$term)
         <a class="btn" href="{{ route('aop.terms.index') }}">Go to Terms</a>
       @endif
     </div>
   </div>
+
+  @if(session('status'))
+    <div class="card panel-success" style="margin-bottom:14px;">
+      <strong>{{ session('status') }}</strong>
+    </div>
+  @endif
 
   @if(!$term)
     <div class="card">
@@ -33,6 +31,29 @@
       <p>You must set an active term before schedule reports and exports can be generated.</p>
     </div>
   @else
+    <div class="card panel-success" style="margin-bottom:14px;">
+      <h2>Registrar-ready CSV</h2>
+      <p class="muted" style="margin-top:6px;">
+        Each section is included. Sections with multiple meeting patterns receive one row per pattern, while online sections without a meeting time receive one complete online row.
+      </p>
+      <p class="muted" style="margin-top:6px;">
+        Columns include course and section, title, faculty, credits, capacity and seats open, status, modality, days and times, term dates, campus, building, room, and a registrar-style combined schedule cell.
+      </p>
+
+      <div style="margin-top:12px;">
+        <a class="btn" href="{{ route('aop.schedule.reports.exportRegistrar') }}">Download Registrar CSV</a>
+      </div>
+
+      <div class="status-note" style="margin-top:12px;">
+        Term dates: {{ $term->starts_on?->format('n/j/Y') ?? 'Start date not set' }}
+        to {{ $effectiveEndDate?->format('n/j/Y') ?? 'End date not set' }}.
+        @if($endDateIsCalculated)
+          The end date is calculated from the start date and {{ $term->weeks_in_term }}-week term length because no explicit end date is set.
+          <a href="{{ route('aop.terms.edit', $term) }}">Set the official end date</a> if needed.
+        @endif
+      </div>
+    </div>
+
     <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 14px;">
       <div class="card">
         <h2>Overview</h2>
@@ -41,10 +62,12 @@
           <div><strong>Sections:</strong> {{ $stats['sections'] ?? 0 }}</div>
           <div><strong>Meeting Blocks:</strong> {{ $stats['meeting_blocks'] ?? 0 }}</div>
           <div><strong>Office Hours Blocks:</strong> {{ $stats['office_hours_blocks'] ?? 0 }}</div>
+          <div><strong>Open Labs:</strong> {{ $stats['open_labs'] ?? 0 }}</div>
+          <div><strong>Lab Techs Over Limit:</strong> {{ $stats['lab_techs_over_limit'] ?? 0 }}</div>
         </div>
 
         <div style="margin-top:12px;">
-          <a class="btn" href="{{ route('aop.schedule.reports.exportTerm') }}">Export Term Schedule (CSV)</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.reports.exportRegistrar') }}">Download Registrar CSV</a>
         </div>
       </div>
 
@@ -55,6 +78,8 @@
           <a class="btn" href="{{ route('aop.schedule.grids.index') }}">Schedule Grids</a>
           <a class="btn" href="{{ route('aop.schedule.sections.index') }}">Sections</a>
           <a class="btn" href="{{ route('aop.schedule.officeHours.index') }}">Office Hours</a>
+          <a class="btn" href="{{ route('aop.schedule.openLabs.index') }}">Open Labs</a>
+          <a class="btn" href="{{ route('aop.labtechs.index') }}">Lab Techs</a>
         </div>
       </div>
     </div>
@@ -85,7 +110,7 @@
 
       <div class="card">
         <h2>Export Room Schedule</h2>
-        <p class="muted">Includes classes only (office hours excluded).</p>
+        <p class="muted">Includes classes and open labs (office hours excluded).</p>
         <div class="row" style="gap:10px; align-items:flex-end;">
           <div style="flex:1;">
             <label class="label">Room</label>
@@ -139,7 +164,7 @@
                 @foreach($unassigned['sections_missing_meeting_blocks'] as $s)
                   <li>
                     {{ $s->offering->catalogCourse->code }} {{ $s->section_code }}
-                    <span class="muted"> — {{ $s->instructor?->name ?? 'TBD Instructor' }}</span>
+                    <span class="muted"> — {{ $s->instructor_display_name ?? 'TBD Instructor' }}</span>
                   </li>
                 @endforeach
               </ul>
@@ -157,7 +182,7 @@
                 @foreach($unassigned['meeting_blocks_missing_room'] as $mb)
                   <li>
                     {{ $mb->section->offering->catalogCourse->code }} {{ $mb->section->section_code }}
-                    <span class="muted"> — {{ $mb->section->instructor?->name ?? 'TBD Instructor' }}</span>
+                    <span class="muted"> — {{ $mb->section->instructor_display_name ?? 'TBD Instructor' }}</span>
                     <span class="muted"> ({{ substr((string)$mb->starts_at,0,5) }}–{{ substr((string)$mb->ends_at,0,5) }})</span>
                   </li>
                 @endforeach

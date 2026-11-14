@@ -30,8 +30,8 @@
         </div>
         <div class="summary-stat">
           <div class="summary-stat-label">Schedule State</div>
-          <div class="summary-stat-value">{{ $term->schedule_locked ? 'Locked' : 'Open' }}</div>
-          <div class="summary-stat-note">{{ $term->schedule_locked ? 'Creation is paused until the term is unlocked.' : 'Offerings and sections can still be updated.' }}</div>
+          <div class="summary-stat-value">Editable</div>
+          <div class="summary-stat-note">Offerings and sections can be updated until the CSV is handed to the registrar.</div>
         </div>
       </div>
 

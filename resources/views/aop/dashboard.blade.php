@@ -89,7 +89,7 @@
       <a href="{{ route('aop.schedule.home') }}" class="dock-item">
         <div class="dock-kicker">Execution</div>
         <h2 class="dock-title">Schedule</h2>
-        <p class="dock-copy">Build, review, and publish the active term schedule.</p>
+        <p class="dock-copy">Build, review, and export the active term schedule.</p>
         <div class="dock-meta">Launch schedule</div>
       </a>
 
@@ -147,8 +147,8 @@
             <div class="flex gap-4">
               <div class="sequence-index">3</div>
               <div>
-                <div class="sequence-label">Execute and publish</div>
-                <h2 class="sequence-title">Build and publish the schedule.</h2>
+                <div class="sequence-label">Build and export</div>
+                <h2 class="sequence-title">Build and export the schedule.</h2>
                 <p class="sequence-copy">Open the active term schedule.</p>
               </div>
             </div>
@@ -160,7 +160,7 @@
           <div class="sequence-strip">
             <div class="sequence-chip"><strong>{{ number_format($counts['sections']) }} sections</strong> Existing records that feed scheduling work.</div>
             <div class="sequence-chip"><strong>{{ $activeTerm ? 'Ready to move' : 'Blocked by context' }}</strong> Set the term before scheduling.</div>
-            <div class="sequence-chip"><strong>Readiness</strong> Review blockers before publish.</div>
+            <div class="sequence-chip"><strong>Readiness</strong> Review issues before registrar export.</div>
           </div>
         </article>
       </div>

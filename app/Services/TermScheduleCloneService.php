@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\InstructorTermLock;
+use App\Models\OpenLab;
 use App\Models\MeetingBlock;
 use App\Models\Offering;
 use App\Models\OfficeHourBlock;
@@ -37,6 +38,7 @@ class TermScheduleCloneService
             $offeringsCopied = 0;
             $sectionsCopied = 0;
             $meetingBlocksCopied = 0;
+            $openLabsCopied = 0;
 
             $sourceOfferings = Offering::query()
                 ->with(['sections.meetingBlocks'])
@@ -52,7 +54,6 @@ class TermScheduleCloneService
                     'notes' => $sourceOffering->notes,
                     'prereq_override' => $sourceOffering->prereq_override,
                     'coreq_override' => $sourceOffering->coreq_override,
-                    'default_syllabus_block_set_json' => $sourceOffering->default_syllabus_block_set_json,
                 ]);
                 $offeringsCopied++;
 
@@ -61,6 +62,7 @@ class TermScheduleCloneService
                         'offering_id' => $targetOffering->id,
                         'section_code' => $sourceSection->section_code,
                         'instructor_id' => $copyInstructorAssignments ? $sourceSection->instructor_id : null,
+                        'instructor_is_staff' => $copyInstructorAssignments && $sourceSection->instructor_is_staff,
                         'modality' => $sourceSection->modality?->value ?? (string) $sourceSection->modality,
                         'notes' => $sourceSection->notes,
                     ]);
@@ -97,6 +99,24 @@ class TermScheduleCloneService
                 }
             }
 
+            $sourceOpenLabs = OpenLab::query()
+                ->where('term_id', $sourceTerm->id)
+                ->get();
+
+            foreach ($sourceOpenLabs as $sourceOpenLab) {
+                OpenLab::create([
+                    'term_id' => $targetTerm->id,
+                    'name' => $sourceOpenLab->name,
+                    'room_id' => $sourceOpenLab->room_id,
+                    'lab_tech_id' => $sourceOpenLab->lab_tech_id,
+                    'days_json' => $sourceOpenLab->days_json ?? [],
+                    'starts_at' => $sourceOpenLab->starts_at,
+                    'ends_at' => $sourceOpenLab->ends_at,
+                    'notes' => $sourceOpenLab->notes,
+                ]);
+                $openLabsCopied++;
+            }
+
             return [
                 'term' => $targetTerm,
                 'counts' => [
@@ -104,6 +124,7 @@ class TermScheduleCloneService
                     'sections'      => $sectionsCopied,
                     'meeting_blocks'=> $meetingBlocksCopied,
                     'office_hours'  => $officeHoursCopied,
+                    'open_labs'     => $openLabsCopied,
                 ],
             ];
         });
@@ -115,10 +136,11 @@ class TermScheduleCloneService
         $hasSections = Section::whereHas('offering', fn($q) => $q->where('term_id', $targetTerm->id))->exists();
         $hasMeetingBlocks = MeetingBlock::whereHas('section.offering', fn($q) => $q->where('term_id', $targetTerm->id))->exists();
         $hasOfficeHours = OfficeHourBlock::where('term_id', $targetTerm->id)->exists();
+        $hasOpenLabs = OpenLab::where('term_id', $targetTerm->id)->exists();
         $hasInstructorLocks = InstructorTermLock::where('term_id', $targetTerm->id)->exists();
         $hasPublications = SchedulePublication::where('term_id', $targetTerm->id)->exists();
 
-        if ($hasOfferings || $hasSections || $hasMeetingBlocks || $hasOfficeHours || $hasInstructorLocks || $hasPublications) {
+        if ($hasOfferings || $hasSections || $hasMeetingBlocks || $hasOfficeHours || $hasOpenLabs || $hasInstructorLocks || $hasPublications) {
             throw ValidationException::withMessages([
                 'clone' => 'The target term is not clean. Cloning only runs into a brand-new or empty term.',
             ]);

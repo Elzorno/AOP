@@ -75,7 +75,8 @@ class TermController extends Controller
             'Copied '.$counts['offerings'].' offerings, '.$counts['sections'].' sections, and '.$counts['meeting_blocks'].' meeting blocks.',
             !empty($data['copy_instructor_assignments']) ? 'Instructor assignments copied.' : 'Instructor assignments left blank.',
             $counts['office_hours'] > 0 ? $counts['office_hours'].' office hour blocks copied.' : 'Office hours not copied.',
-            'Locks, publications, syllabi, and render history were not copied.',
+            $counts['open_labs'] > 0 ? $counts['open_labs'].' open lab blocks copied.' : 'Open labs not copied.',
+            'Locks, publications, office hours, and change history were not copied.',
         ];
 
         return redirect()->route('aop.terms.index')->with('status', implode(' ', $parts));

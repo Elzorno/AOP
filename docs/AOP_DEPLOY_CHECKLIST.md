@@ -65,8 +65,8 @@ php artisan optimize
 - confirm an active term can be selected
 - confirm schedule grids render correctly
 - confirm Readiness loads without errors
-- confirm a schedule can be locked and published
-- confirm the public published-schedule link opens and downloads work
+- confirm the registrar CSV downloads without locking the schedule
+- confirm the CSV includes course-section, faculty, room/location, days, times, and term dates
 - confirm syllabi HTML/JSON/DOCX/PDF generation works on the host
 
 ## 8. Release checklist

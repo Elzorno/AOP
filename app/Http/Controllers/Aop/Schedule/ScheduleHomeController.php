@@ -10,8 +10,8 @@ use App\Models\Instructor;
 use App\Models\MeetingBlock;
 use App\Models\Offering;
 use App\Models\OfficeHourBlock;
+use App\Models\OpenLab;
 use App\Models\Room;
-use App\Models\SchedulePublication;
 use App\Models\Section;
 use App\Models\Term;
 use App\Services\ScheduleConflictService;
@@ -25,18 +25,12 @@ class ScheduleHomeController extends Controller
     {
         $term = Term::where('is_active', true)->first();
 
-        $latestPublication = null;
-        if ($term) {
-            $latestPublication = SchedulePublication::where('term_id', $term->id)->orderByDesc('version')->first();
-        }
-
-        $summary = $term ? $this->buildTermSummary($term, $latestPublication) : null;
+        $summary = $term ? $this->buildTermSummary($term) : null;
         $workspace = $term ? $this->buildWorkspace($term, $request) : $this->emptyWorkspace();
         $distributionStats = $term ? $distributionService->compute($term) : null;
 
         return view('aop.schedule.index', array_merge([
             'term' => $term,
-            'latestPublication' => $latestPublication,
             'summary' => $summary,
             'distributionStats' => $distributionStats,
         ], $workspace));
@@ -101,7 +95,12 @@ class ScheduleHomeController extends Controller
             ->where('term_id', $term->id)
             ->get();
 
-        $conflictMaps = $this->buildConflictMaps($term, $meetingBlocks, $officeBlocks);
+        $openLabs = OpenLab::query()
+            ->with(['room', 'labTech'])
+            ->where('term_id', $term->id)
+            ->get();
+
+        $conflictMaps = $this->buildConflictMaps($term, $meetingBlocks, $officeBlocks, $openLabs);
 
         $offeringCards = $offerings->map(function (Offering $offering) use (
             $queryText,
@@ -140,8 +139,8 @@ class ScheduleHomeController extends Controller
                         });
 
                     $roomRequired = $section->modality?->value !== SectionModality::ONLINE->value;
-                    $hasMissingInstructor = empty($section->instructor_id);
-                    $hasMissingMeetings = $meetingCards->isEmpty();
+                    $hasMissingInstructor = !$section->hasInstructorAssignment();
+                    $hasMissingMeetings = $section->requiresMeetingBlocks() && $meetingCards->isEmpty();
                     $hasMissingRoom = $roomRequired && $meetingCards->contains(fn (array $meetingCard) => $meetingCard['missing_room']);
                     $roomConflictCount = $conflictMaps['room_section_counts'][$section->id] ?? 0;
                     $instructorConflictCount = $conflictMaps['instructor_section_counts'][$section->id] ?? 0;
@@ -175,7 +174,7 @@ class ScheduleHomeController extends Controller
                         ($course?->code ?? '').' '.
                         ($course?->title ?? '').' '.
                         $section->section_code.' '.
-                        ($section->instructor?->name ?? '')
+                        ($section->instructor_display_name ?? '')
                     );
 
                     return [
@@ -263,15 +262,28 @@ class ScheduleHomeController extends Controller
         );
 
         // Serialize meeting blocks for client-side conflict detection
-        $meetingBlocksJson = $meetingBlocks->map(fn (MeetingBlock $mb) => [
-            'id'            => $mb->id,
-            'section_id'    => $mb->section_id,
-            'room_id'       => $mb->room_id,
-            'instructor_id' => $mb->section?->instructor_id,
-            'days'          => $mb->days_json ?? [],
-            'starts_at'     => substr((string) $mb->starts_at, 0, 5),
-            'ends_at'       => substr((string) $mb->ends_at, 0, 5),
-        ])->values()->toArray();
+        $meetingBlocksJson = array_merge(
+            $meetingBlocks->map(fn (MeetingBlock $mb) => [
+                'id'            => $mb->id,
+                'kind'          => 'class',
+                'section_id'    => $mb->section_id,
+                'room_id'       => $mb->room_id,
+                'instructor_id' => $mb->section?->instructor_id,
+                'days'          => $mb->days_json ?? [],
+                'starts_at'     => substr((string) $mb->starts_at, 0, 5),
+                'ends_at'       => substr((string) $mb->ends_at, 0, 5),
+            ])->values()->all(),
+            $openLabs->map(fn (OpenLab $openLab) => [
+                'id'            => $openLab->id,
+                'kind'          => 'open_lab',
+                'section_id'    => null,
+                'room_id'       => $openLab->room_id,
+                'instructor_id' => null,
+                'days'          => $openLab->days_json ?? [],
+                'starts_at'     => substr((string) $openLab->starts_at, 0, 5),
+                'ends_at'       => substr((string) $openLab->ends_at, 0, 5),
+            ])->values()->all(),
+        );
 
         return [
             'availableCourses' => $availableCourses,
@@ -317,7 +329,7 @@ class ScheduleHomeController extends Controller
         ]);
     }
 
-    private function buildConflictMaps(Term $term, $meetingBlocks, $officeBlocks): array
+    private function buildConflictMaps(Term $term, $meetingBlocks, $officeBlocks, $openLabs): array
     {
         $roomSectionCounts = [];
         $instructorSectionCounts = [];
@@ -354,6 +366,33 @@ class ScheduleHomeController extends Controller
 
                     $sectionNotes[$a->section_id][] = $roomName.' conflict with '.$labelB;
                     $sectionNotes[$b->section_id][] = $roomName.' conflict with '.$labelA;
+                }
+            }
+        }
+
+        $openLabsByRoom = $openLabs->whereNotNull('room_id')->groupBy('room_id');
+        $roomIds = collect(array_unique(array_merge(
+            $byRoom->keys()->all(),
+            $openLabsByRoom->keys()->all(),
+        )));
+
+        foreach ($roomIds as $roomId) {
+            $classList = ($byRoom[$roomId] ?? collect())->values();
+            $openLabList = ($openLabsByRoom[$roomId] ?? collect())->values();
+
+            foreach ($classList as $classBlock) {
+                foreach ($openLabList as $openLab) {
+                    if (!ScheduleConflictService::dayOverlap($classBlock->days_json ?? [], $openLab->days_json ?? [])) {
+                        continue;
+                    }
+
+                    if (!ScheduleConflictService::timesOverlap($classBlock->starts_at, $classBlock->ends_at, $openLab->starts_at, $openLab->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                        continue;
+                    }
+
+                    $roomSectionCounts[$classBlock->section_id] = ($roomSectionCounts[$classBlock->section_id] ?? 0) + 1;
+                    $roomBlockCounts[$classBlock->id] = ($roomBlockCounts[$classBlock->id] ?? 0) + 1;
+                    $sectionNotes[$classBlock->section_id][] = ($classBlock->room?->name ?? 'Room').' conflict with '.ScheduleConflictService::formatOpenLabLabel($openLab);
                 }
             }
         }
@@ -452,7 +491,7 @@ class ScheduleHomeController extends Controller
         return str_contains(mb_strtolower($haystack), mb_strtolower($needle));
     }
 
-    private function buildTermSummary(Term $term, ?SchedulePublication $latestPublication): array
+    private function buildTermSummary(Term $term): array
     {
         $offeringsCount = Offering::where('term_id', $term->id)->count();
 
@@ -466,41 +505,87 @@ class ScheduleHomeController extends Controller
             ->whereHas('section.offering', fn ($q) => $q->where('term_id', $term->id))
             ->get();
 
+        $openLabs = OpenLab::query()
+            ->with(['room', 'labTech'])
+            ->where('term_id', $term->id)
+            ->get();
+
         $officeBlocks = OfficeHourBlock::query()
             ->where('term_id', $term->id)
             ->get();
 
+        $labTechOverLimitCount = app(\App\Services\LabTechWorkloadService::class)
+            ->summariesForTerm($term)
+            ->filter(fn (array $row) => $row['is_over_limit'])
+            ->count();
+
         return [
             'offerings_count' => $offeringsCount,
             'sections_count' => $sections->count(),
-            'sections_missing_instructor_count' => $sections->whereNull('instructor_id')->count(),
-            'sections_missing_meeting_blocks_count' => $sections->filter(fn ($section) => $section->meetingBlocks->count() === 0)->count(),
+            'open_labs_count' => $openLabs->count(),
+            'sections_missing_instructor_count' => $sections->filter(fn (Section $section) => !$section->hasInstructorAssignment())->count(),
+            'sections_missing_meeting_blocks_count' => $sections
+                ->filter(fn (Section $section) => $section->requiresMeetingBlocks() && $section->meetingBlocks->isEmpty())
+                ->count(),
             'meeting_blocks_missing_room_count' => $meetingBlocks->whereNull('room_id')->count(),
-            'room_conflict_count' => $this->countRoomConflicts($term, $meetingBlocks),
+            'room_conflict_count' => $this->countRoomConflicts($term, $meetingBlocks, $openLabs),
             'instructor_conflict_count' => $this->countInstructorConflicts($term, $meetingBlocks, $officeBlocks),
+            'labtech_conflict_count' => $this->countLabTechConflicts($term, $openLabs),
+            'labtech_over_limit_count' => $labTechOverLimitCount,
             'office_hours_failing_count' => $this->countOfficeHoursFailing($term, $officeBlocks),
-            'latest_publication_version' => $latestPublication?->version,
             'term_status' => (string) ($term->status ?? 'draft'),
-            'schedule_locked' => (bool) ($term->schedule_locked ?? false),
         ];
     }
 
-    private function countRoomConflicts(Term $term, $meetingBlocks): int
+    private function countRoomConflicts(Term $term, $meetingBlocks, $openLabs): int
     {
         $count = 0;
-        $grouped = $meetingBlocks->whereNotNull('room_id')->groupBy('room_id');
+        $meetingByRoom = $meetingBlocks->whereNotNull('room_id')->groupBy('room_id');
+        $openLabsByRoom = $openLabs->whereNotNull('room_id')->groupBy('room_id');
+        $roomIds = collect(array_unique(array_merge(
+            $meetingByRoom->keys()->all(),
+            $openLabsByRoom->keys()->all(),
+        )));
 
-        foreach ($grouped as $blocks) {
-            $list = $blocks->values();
-            $n = $list->count();
+        foreach ($roomIds as $roomId) {
+            $classList = ($meetingByRoom[$roomId] ?? collect())->values();
+            $openLabList = ($openLabsByRoom[$roomId] ?? collect())->values();
+            $n = $classList->count();
             for ($i = 0; $i < $n; $i++) {
                 for ($j = $i + 1; $j < $n; $j++) {
-                    $a = $list[$i];
-                    $b = $list[$j];
+                    $a = $classList[$i];
+                    $b = $classList[$j];
                     if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
                         continue;
                     }
                     if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                        continue;
+                    }
+                    $count++;
+                }
+            }
+
+            $m = $openLabList->count();
+            for ($i = 0; $i < $m; $i++) {
+                for ($j = $i + 1; $j < $m; $j++) {
+                    $a = $openLabList[$i];
+                    $b = $openLabList[$j];
+                    if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
+                        continue;
+                    }
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                        continue;
+                    }
+                    $count++;
+                }
+            }
+
+            foreach ($classList as $classBlock) {
+                foreach ($openLabList as $openLab) {
+                    if (!ScheduleConflictService::dayOverlap($classBlock->days_json ?? [], $openLab->days_json ?? [])) {
+                        continue;
+                    }
+                    if (!ScheduleConflictService::timesOverlap($classBlock->starts_at, $classBlock->ends_at, $openLab->starts_at, $openLab->ends_at, (int) ($term->buffer_minutes ?? 0))) {
                         continue;
                     }
                     $count++;
@@ -551,6 +636,33 @@ class ScheduleHomeController extends Controller
                         continue;
                     }
                     if (!ScheduleConflictService::timesOverlap($classBlock->starts_at, $classBlock->ends_at, $officeBlock->starts_at, $officeBlock->ends_at, (int) ($term->buffer_minutes ?? 0))) {
+                        continue;
+                    }
+                    $count++;
+                }
+            }
+        }
+
+        return $count;
+    }
+
+    private function countLabTechConflicts(Term $term, $openLabs): int
+    {
+        $count = 0;
+        $byLabTech = $openLabs->groupBy('lab_tech_id');
+
+        foreach ($byLabTech as $openLabList) {
+            $list = $openLabList->values();
+            $n = $list->count();
+
+            for ($i = 0; $i < $n; $i++) {
+                for ($j = $i + 1; $j < $n; $j++) {
+                    $a = $list[$i];
+                    $b = $list[$j];
+                    if (!ScheduleConflictService::dayOverlap($a->days_json ?? [], $b->days_json ?? [])) {
+                        continue;
+                    }
+                    if (!ScheduleConflictService::timesOverlap($a->starts_at, $a->ends_at, $b->starts_at, $b->ends_at, (int) ($term->buffer_minutes ?? 0))) {
                         continue;
                     }
                     $count++;

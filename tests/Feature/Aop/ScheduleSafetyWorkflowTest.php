@@ -8,7 +8,6 @@ use App\Models\MeetingBlock;
 use App\Models\Offering;
 use App\Models\OfficeHourBlock;
 use App\Models\Room;
-use App\Models\SchedulePublication;
 use App\Models\Section;
 use App\Models\Term;
 use App\Models\User;
@@ -21,7 +20,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
 
     private static int $courseCounter = 100;
 
-    public function test_calendar_update_blocked_when_schedule_locked(): void
+    public function test_legacy_schedule_lock_no_longer_blocks_calendar_updates(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
         $term = $this->createActiveTerm(['schedule_locked' => true]);
@@ -43,11 +42,10 @@ class ScheduleSafetyWorkflowTest extends TestCase
             'ends_at' => '11:00',
         ]);
 
-        $response->assertStatus(422)
-            ->assertJsonPath('status', 'error')
-            ->assertJsonPath('errors.term.0', 'Schedule is locked for the active term. Unlock it before making schedule changes.');
+        $response->assertOk()
+            ->assertJsonPath('status', 'success');
 
-        $this->assertSame('09:00', substr((string) $block->fresh()->starts_at, 0, 5));
+        $this->assertSame('10:00', substr((string) $block->fresh()->starts_at, 0, 5));
     }
 
     public function test_calendar_update_rejects_end_before_or_equal_start(): void
@@ -215,80 +213,88 @@ class ScheduleSafetyWorkflowTest extends TestCase
         $response->assertDontSeeText($withBlock->section_code);
     }
 
-    public function test_publish_requires_confirmation_when_readiness_has_blockers(): void
+    public function test_online_sections_are_excluded_from_missing_meeting_block_checks(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
-        $term = $this->createActiveTerm(['schedule_locked' => true]);
+        $term = $this->createActiveTerm();
 
-        // Create a section with missing instructor and no meeting blocks to trigger blockers.
+        $online = $this->createSection($term, [
+            'section_code' => 'ONLINE-01',
+            'modality' => 'ONLINE',
+        ]);
+        $inPerson = $this->createSection($term, [
+            'section_code' => 'CAMPUS-01',
+            'modality' => 'IN_PERSON',
+        ]);
+
+        $this->actingAs($admin)->get(route('aop.schedule.sections.index', [
+            'missing' => 'meeting_blocks',
+        ]))
+            ->assertOk()
+            ->assertSeeText($inPerson->section_code)
+            ->assertDontSeeText($online->section_code);
+
+        $this->actingAs($admin)->get(route('aop.schedule.readiness.index'))
+            ->assertOk()
+            ->assertViewHas('sectionsMissingMeetingBlocks', function ($sections) use ($online, $inPerson) {
+                return $sections->contains('id', $inPerson->id)
+                    && !$sections->contains('id', $online->id);
+            });
+    }
+
+    public function test_online_section_without_meeting_blocks_can_be_exported(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $term = $this->createActiveTerm();
+        $instructor = Instructor::create([
+            'name' => 'Online Instructor',
+            'email' => 'online@example.test',
+            'is_full_time' => false,
+            'is_active' => true,
+        ]);
+        $section = $this->createSection($term, [
+            'section_code' => 'ONLINE-PUBLISH-01',
+            'modality' => 'ONLINE',
+            'instructor_id' => $instructor->id,
+        ]);
+        $section->offering->catalogCourse->update([
+            'contact_hours_per_week' => 3,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('aop.schedule.reports.exportRegistrar'));
+
+        $response->assertOk()->assertDownload('aop_2026sp_registrar_schedule.csv');
+        $this->assertStringContainsString('ONLINE-PUBLISH-01', $response->streamedContent());
+        $this->assertStringContainsString('Online Instruction', $response->streamedContent());
+    }
+
+    public function test_legacy_publish_endpoint_downloads_current_csv_without_lock_or_override(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $term = $this->createActiveTerm();
+
         $this->createSection($term, [
             'section_code' => 'PUB-BLOCK-01',
             'instructor_id' => null,
         ]);
 
-        $response = $this->actingAs($admin)->post(route('aop.schedule.publish.store'), [
-            'notes' => 'Attempt publish with blockers.',
-        ]);
+        $response = $this->actingAs($admin)->post(route('aop.schedule.publish.store'));
 
-        $response->assertSessionHasErrors('publish_gate');
+        $response->assertOk()->assertDownload('aop_2026sp_registrar_schedule.csv');
+        $this->assertStringContainsString('PUB-BLOCK-01', $response->streamedContent());
         $this->assertDatabaseCount('schedule_publications', 0);
     }
 
-    public function test_publish_allows_override_when_readiness_has_blockers(): void
+    public function test_legacy_lock_action_clears_old_lock_and_opens_registrar_export(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
         $term = $this->createActiveTerm(['schedule_locked' => true]);
 
-        $this->createSection($term, [
-            'section_code' => 'PUB-OVERRIDE-01',
-            'instructor_id' => null,
-        ]);
+        $this->actingAs($admin)
+            ->post(route('aop.schedule.lock'))
+            ->assertRedirect(route('aop.schedule.reports.index'));
 
-        $response = $this->actingAs($admin)->post(route('aop.schedule.publish.store'), [
-            'notes' => 'Intentional publish with known blockers.',
-            'confirm_publish_with_issues' => '1',
-        ]);
-
-        $response->assertRedirect(route('aop.schedule.publish.index'));
-
-        $publication = SchedulePublication::query()->first();
-        $this->assertNotNull($publication);
-        $this->assertSame(1, $publication->version);
-    }
-
-    public function test_publish_without_blockers_does_not_require_override(): void
-    {
-        $admin = User::factory()->create(['is_admin' => true]);
-        $term = $this->createActiveTerm(['schedule_locked' => true]);
-
-        $instructor = Instructor::create([
-            'name' => 'Dr. Publish Ready',
-            'email' => 'publish-ready@example.test',
-            'is_full_time' => false,
-            'is_active' => true,
-        ]);
-
-        $room = Room::create(['name' => 'PUB-101', 'is_active' => true]);
-        $section = $this->createSection($term, [
-            'section_code' => 'PUB-CLEAN-01',
-            'instructor_id' => $instructor->id,
-        ]);
-
-        MeetingBlock::create([
-            'section_id' => $section->id,
-            'type' => 'LECTURE',
-            'days_json' => ['Mon', 'Wed'],
-            'starts_at' => '10:00',
-            'ends_at' => '11:15',
-            'room_id' => $room->id,
-        ]);
-
-        $response = $this->actingAs($admin)->post(route('aop.schedule.publish.store'), [
-            'notes' => 'Publish clean schedule snapshot.',
-        ]);
-
-        $response->assertRedirect(route('aop.schedule.publish.index'));
-        $this->assertDatabaseCount('schedule_publications', 1);
+        $this->assertFalse((bool) $term->fresh()->schedule_locked);
     }
 
     private function createActiveTerm(array $overrides = []): Term

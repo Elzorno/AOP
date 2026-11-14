@@ -2,8 +2,10 @@
   <x-slot:title>Sections</x-slot:title>
 
   @php
-    $sectionsMissingInstructorCount = $sections->whereNull('instructor_id')->count();
-    $sectionsMissingMeetingsCount = $sections->filter(fn ($section) => $section->meetingBlocks->isEmpty())->count();
+    $sectionsMissingInstructorCount = $sections->filter(fn ($section) => !$section->hasInstructorAssignment())->count();
+    $sectionsMissingMeetingsCount = $sections
+        ->filter(fn ($section) => $section->requiresMeetingBlocks() && $section->meetingBlocks->isEmpty())
+        ->count();
     $sectionsMissingRoomsCount = $sections->filter(function ($section) {
         $roomRequired = ($section->modality?->value ?? null) !== 'ONLINE';
 
@@ -74,6 +76,7 @@
             <label for="instructor_id">Instructor</label>
             <select id="instructor_id" name="instructor_id">
               <option value="">All instructors</option>
+              <option value="{{ \App\Models\Section::STAFF_ASSIGNMENT }}" {{ $filters['instructor_id'] === \App\Models\Section::STAFF_ASSIGNMENT ? 'selected' : '' }}>STAFF</option>
               @foreach ($instructors as $i)
                 <option value="{{ $i->id }}" {{ (int) $filters['instructor_id'] === $i->id ? 'selected' : '' }}>{{ $i->name }}</option>
               @endforeach
@@ -128,6 +131,7 @@
           <span class="bulk-bar-count" id="bulk-bar-count">0 selected</span>
           <select name="instructor_id" id="bulk-instructor" class="bulk-bar-select">
             <option value="">Unassign instructor</option>
+            <option value="{{ \App\Models\Section::STAFF_ASSIGNMENT }}">STAFF</option>
             @foreach ($instructors as $i)
               <option value="{{ $i->id }}">{{ $i->name }}</option>
             @endforeach
@@ -141,8 +145,9 @@
             @php
               $course = $section->offering->catalogCourse;
               $roomRequired = ($section->modality?->value ?? null) !== 'ONLINE';
-              $missingInstructor = !$section->instructor_id;
-              $missingMeetings = $section->meetingBlocks->isEmpty();
+              $missingInstructor = !$section->hasInstructorAssignment();
+              $meetingBlocksRequired = $section->requiresMeetingBlocks();
+              $missingMeetings = $meetingBlocksRequired && $section->meetingBlocks->isEmpty();
               $missingRoom = $roomRequired && $section->meetingBlocks->contains(fn ($meetingBlock) => !$meetingBlock->room_id);
               $lowEnrollment = $section->section_capacity && $section->enrolled_count <= floor($section->section_capacity * 0.70);
               $enrollPct = ($section->section_capacity > 0) ? round(($section->enrolled_count / $section->section_capacity) * 100) : null;
@@ -171,7 +176,7 @@
                   <p class="offering-copy">{{ $course->title }}</p>
                 </div>
                 <div class="section-badges">
-                  <span class="badge info">{{ $section->meetingBlocks->count() }} meeting block{{ $section->meetingBlocks->count() === 1 ? '' : 's' }}</span>
+                  <span class="badge info">{{ !$meetingBlocksRequired && $section->meetingBlocks->isEmpty() ? 'No meeting required' : $section->meetingBlocks->count().' meeting block'.($section->meetingBlocks->count() === 1 ? '' : 's') }}</span>
                   @if($issueCount === 0)
                     <span class="badge success">Ready</span>
                   @endif
@@ -193,7 +198,7 @@
               <div class="directory-meta">
                 <div class="offering-meta-card">
                   <strong class="block text-slate-900">Instructor</strong>
-                  <span>{{ $section->instructor?->name ?? 'Unassigned' }}</span>
+                  <span>{{ $section->instructor_display_name ?? 'Unassigned' }}</span>
                 </div>
                 <div class="offering-meta-card">
                   <strong class="block text-slate-900">Modality</strong>
@@ -216,7 +221,7 @@
                   <strong class="block text-slate-900">Meetings</strong>
                   <span>
                     @if($section->meetingBlocks->isEmpty())
-                      None scheduled yet
+                      {{ $meetingBlocksRequired ? 'None scheduled yet' : 'Not required for online delivery' }}
                     @else
                       {{ $section->meetingBlocks->map(fn ($meetingBlock) => implode('/', $meetingBlock->days_json ?? []).' '.substr($meetingBlock->starts_at, 0, 5))->implode(', ') }}
                     @endif

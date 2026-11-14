@@ -38,6 +38,7 @@
         ['route' => 'aop.terms.index', 'label' => 'Terms', 'match' => 'aop.terms.*'],
         ['route' => 'aop.catalog.index', 'label' => 'Catalog', 'match' => 'aop.catalog.*'],
         ['route' => 'aop.instructors.index', 'label' => 'Instructors', 'match' => 'aop.instructors.*'],
+        ['route' => 'aop.labtechs.index', 'label' => 'Lab Techs', 'match' => 'aop.labtechs.*'],
         ['route' => 'aop.rooms.index', 'label' => 'Rooms', 'match' => 'aop.rooms.*'],
       ],
     ],
@@ -46,10 +47,12 @@
   /* Schedule sub-nav: visible when inside any schedule.* route */
   $scheduleSubNav = [
     ['route' => 'aop.schedule.home',            'label' => 'Studio',    'match' => 'aop.schedule.home'],
+    ['route' => 'aop.schedule.events.index',    'label' => 'Events',    'match' => 'aop.schedule.events.*'],
+    ['route' => 'aop.schedule.openLabs.index',  'label' => 'Open Labs', 'match' => 'aop.schedule.openLabs.*'],
     ['route' => 'aop.schedule.readiness.index', 'label' => 'Readiness', 'match' => 'aop.schedule.readiness.*'],
     ['route' => 'aop.schedule.calendar.index',  'label' => 'Calendar',  'match' => 'aop.schedule.calendar.*'],
     ['route' => 'aop.schedule.grids.index',     'label' => 'Grids',     'match' => 'aop.schedule.grids.*'],
-    ['route' => 'aop.schedule.publish.index',   'label' => 'Publish',   'match' => 'aop.schedule.publish.*'],
+    ['route' => 'aop.schedule.reports.index',   'label' => 'Registrar Export', 'match' => 'aop.schedule.reports.*'],
   ];
   $inSchedule = request()->routeIs('aop.schedule.*');
 @endphp

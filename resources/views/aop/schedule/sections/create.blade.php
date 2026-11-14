@@ -50,6 +50,7 @@
               <label for="instructor_id">Instructor</label>
               <select id="instructor_id" name="instructor_id">
                 <option value="">Unassigned</option>
+                <option value="{{ \App\Models\Section::STAFF_ASSIGNMENT }}" {{ old('instructor_id') === \App\Models\Section::STAFF_ASSIGNMENT ? 'selected' : '' }}>STAFF</option>
                 @foreach ($instructors as $instructor)
                   <option value="{{ $instructor->id }}" {{ (string) old('instructor_id') === (string) $instructor->id ? 'selected' : '' }}>
                     {{ $instructor->name }}
