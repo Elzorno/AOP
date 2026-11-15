@@ -2,7 +2,7 @@
 
 Prepared 14 November 2026. Status: phases 1–4 are deployed. All supported scheduling writes use typed commands and shared transactional mutation services; the write-path inventory is recorded in `docs/SCHEDULE_WRITE_PATH_INVENTORY.md`. Phase 5 is in its expand/reconcile stage with non-destructive reconciliation and constrained staff references deployed.
 
-Current production release: `6791bdc` through `/var/www/aop-current`. The isolated suite passes 123 tests / 497 assertions. Phase 4 is complete. In Phase 5, mutation-time conflicts, the calendar, lab-tech workload and schedule suggestions now read scheduled-event time, room and staff facts. Production has 37 sources and 37 events with zero missing, mismatched, unmatched or incorrectly linked records. Release `5af0682` is the immediate application rollback target. Verified pre-release database checkpoint: `/root/aop-backups/20261115T173915Z-pre-6791bdc`.
+Current production release: `26b276c` through `/var/www/aop-current`. The isolated suite passes 124 tests / 499 assertions. Phase 4 is complete. In Phase 5, mutation-time conflicts, calendar, lab-tech workload, suggestions, readiness and the schedule-home workspace now read scheduled-event time, room and staff facts. Production has 37 sources and 37 events with zero missing, mismatched, unmatched or incorrectly linked records. Release `6791bdc` is the immediate application rollback target. Verified pre-release database checkpoint: `/root/aop-backups/20261115T174731Z-pre-26b276c`.
 
 ## Outcome and constraints
 
@@ -230,5 +230,6 @@ Release `dc60a9d` was the initial security and phase-3 identity checkpoint: null
 - Completed the phase-4 write boundary in `92286e6`. Meeting blocks, open labs and office hours now require typed commands across form, calendar, unified-event and clone entry points; `docs/SCHEDULE_WRITE_PATH_INVENTORY.md` records the audited paths.
 - Linked every type-specific source to its scheduled event in `5af0682` with nullable unique foreign keys for the expand stage. All 37 production links backfilled successfully, and reconciliation now checks link parity independently from event fields and staff.
 - Cut schedule suggestions over to scheduled-event time, room and staff data in `6791bdc`. A divergence test proves suggestion availability follows the event ledger rather than duplicated source fields.
+- Cut readiness and schedule-home conflict/summary reads over in `26b276c` through a shared in-memory event adapter. A divergence test proves readiness follows event time and room fields while existing view contracts remain intact.
 - Widened `schedule_change_logs.section_id` to nullable so non-section schedule operations can use the same audit mechanism without placeholder section records.
-- Verified 123 tests / 497 assertions, migration status, SQLite integrity and foreign keys, reconciliation and link parity, service resolution, suggestion and calendar routes, and HTTPS login. Release `5af0682` is the immediate application rollback target.
+- Verified 124 tests / 499 assertions, migration status, SQLite integrity and foreign keys, reconciliation and link parity, adapter resolution, readiness/home routes, and HTTPS login. Release `6791bdc` is the immediate application rollback target.
