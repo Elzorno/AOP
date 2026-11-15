@@ -195,10 +195,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Distribution preview (AJAX)
         Route::get('/schedule/distribution/preview', [ScheduleHomeController::class, 'distributionPreview'])->name('schedule.distribution.preview');
 
-        // Schedule Calendar (active term)
-        Route::get('/schedule/calendar', [ScheduleCalendarController::class, 'index'])->name('schedule.calendar.index');
-        Route::get('/schedule/calendar/events', [ScheduleCalendarController::class, 'events'])->name('schedule.calendar.events');
-        Route::post('/schedule/calendar/update', [ScheduleCalendarController::class, 'update'])->name('schedule.calendar.update');
+        // Schedule Calendar
+        Route::prefix('/terms/{term}/schedule/calendar')->group(function () {
+            Route::get('/', [ScheduleCalendarController::class, 'index'])->name('schedule.calendar.index');
+            Route::get('/events', [ScheduleCalendarController::class, 'events'])->name('schedule.calendar.events');
+            Route::post('/update', [ScheduleCalendarController::class, 'update'])->name('schedule.calendar.update');
+        });
+
+        Route::get('/schedule/calendar', function (Request $request) {
+            $term = $request->user()->selectedTerm
+                ?? Term::query()->where('is_active', true)->firstOrFail();
+
+            return redirect()->route('aop.schedule.calendar.index', $term);
+        })->name('schedule.calendar.legacy');
 
         // Schedule Reports (active term)
         Route::get('/schedule/reports', [ScheduleReportsController::class, 'index'])->name('schedule.reports.index');

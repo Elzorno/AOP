@@ -56,7 +56,7 @@
         const blockId  = info.event.extendedProps.blockId;
 
         try {
-          const res  = await fetch('{{ route('aop.schedule.calendar.update') }}', {
+          const res  = await fetch('{{ route('aop.schedule.calendar.update', $term) }}', {
             method:  'POST',
             headers: {
               'Content-Type':  'application/json',

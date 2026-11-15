@@ -18,7 +18,7 @@ class MeetingBlockMutationService
 
         if ((int) $meetingBlock->section->offering->term_id !== (int) $term->id) {
             throw ValidationException::withMessages([
-                'blockId' => 'Meeting block does not belong to the active term.',
+                'blockId' => 'Meeting block does not belong to the requested term.',
             ]);
         }
 

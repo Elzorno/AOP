@@ -56,7 +56,7 @@
         @endforeach
       </ul>
       <div class="issue-callout-actions">
-        <a class="btn secondary sm" href="{{ route('aop.schedule.calendar.index') }}">Fix in Calendar</a>
+        <a class="btn secondary sm" href="{{ route('aop.schedule.calendar.index', $term) }}">Fix in Calendar</a>
         <a class="btn secondary sm" href="{{ route('aop.schedule.readiness.index') }}">Review Readiness</a>
       </div>
     </div>

@@ -238,3 +238,9 @@ This file tracks what each phase changed so the project remains understandable w
 ## Explicit scheduled-event release `8809a40` — deployed 2026-11-15
 - Atomically deployed the scheduled-event route slice without a schema migration; release `d556c0f` remains available for rollback.
 - Rebuilt production caches, reloaded PHP-FPM, and verified cached routes, real production event-index rendering, SQLite integrity, HTTPS login and service health.
+
+## Explicit calendar term boundary — development checkpoint 2026-11-15
+- Moved the calendar page, event feed and drag/drop mutation under `/aop/terms/{term}/schedule/calendar`.
+- Calendar reads use the requested term, while mutations verify the meeting block belongs to that term before updating it.
+- Updated schedule links and navigation; the compatibility GET redirects to the user's selected term.
+- Verified non-active-term rendering and feeds plus cross-term mutation rejection; the full suite passes 92 tests / 323 assertions.

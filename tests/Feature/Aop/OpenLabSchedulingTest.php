@@ -373,7 +373,7 @@ class OpenLabSchedulingTest extends TestCase
             'ends_at' => '11:00',
         ]);
 
-        $this->actingAs($admin)->getJson(route('aop.schedule.calendar.events'))
+        $this->actingAs($admin)->getJson(route('aop.schedule.calendar.events', $term))
             ->assertOk()
             ->assertJsonFragment([
                 'eventKind' => ScheduledEvent::TYPE_OPEN_LAB,

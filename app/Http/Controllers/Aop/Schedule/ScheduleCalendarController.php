@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Aop\Schedule;
 
 use App\Http\Controllers\Controller;
 use App\Models\MeetingBlock;
+use App\Models\OfficeHourBlock;
 use App\Models\OpenLab;
 use App\Models\Room;
 use App\Models\ScheduledEvent;
@@ -29,23 +30,15 @@ class ScheduleCalendarController extends Controller
         'Sun' => '2026-01-11',
     ];
 
-    private function activeTermOrFail(): Term
+    public function index(Term $term)
     {
-        $term = Term::where('is_active', true)->first();
-        abort_if(!$term, 400, 'No active term is set.');
-        return $term;
-    }
-
-    public function index()
-    {
-        $term  = $this->activeTermOrFail();
         $rooms = Room::where('is_active', true)->orderBy('name')->get();
 
         $events = $this->buildEvents($this->scheduledEventsForTerm($term));
 
         return view('aop.schedule.calendar.index', [
-            'term'       => $term,
-            'rooms'      => $rooms,
+            'term' => $term,
+            'rooms' => $rooms,
             'eventsJson' => json_encode($events, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG),
         ]);
     }
@@ -53,21 +46,18 @@ class ScheduleCalendarController extends Controller
     /**
      * Still available as a JSON endpoint for future use / manual refresh.
      */
-    public function events(Request $request)
+    public function events(Term $term)
     {
-        $term = $this->activeTermOrFail();
-
         return response()->json($this->buildEvents($this->scheduledEventsForTerm($term)));
     }
 
-    public function update(Request $request, MeetingBlockMutationService $mutationService)
+    public function update(Request $request, Term $term, MeetingBlockMutationService $mutationService)
     {
-        $term = $this->activeTermOrFail();
         $data = $request->validate([
-            'blockId'   => 'required|integer|exists:meeting_blocks,id',
+            'blockId' => 'required|integer|exists:meeting_blocks,id',
             'starts_at' => 'required|date_format:H:i',
-            'ends_at'   => 'required|date_format:H:i',
-            'roomId'    => 'sometimes|nullable|integer|exists:rooms,id',
+            'ends_at' => 'required|date_format:H:i',
+            'roomId' => 'sometimes|nullable|integer|exists:rooms,id',
         ]);
 
         $block = MeetingBlock::findOrFail($data['blockId']);
@@ -75,7 +65,7 @@ class ScheduleCalendarController extends Controller
         try {
             $attributes = [
                 'starts_at' => $data['starts_at'],
-                'ends_at'   => $data['ends_at'],
+                'ends_at' => $data['ends_at'],
             ];
 
             if (array_key_exists('roomId', $data)) {
@@ -85,23 +75,23 @@ class ScheduleCalendarController extends Controller
             $updated = $mutationService->update($term, $block, $attributes);
 
             return response()->json([
-                'status'  => 'success',
+                'status' => 'success',
                 'message' => 'Meeting block updated.',
-                'block'   => [
-                    'id'        => $updated->id,
+                'block' => [
+                    'id' => $updated->id,
                     'starts_at' => substr((string) $updated->starts_at, 0, 5),
-                    'ends_at'   => substr((string) $updated->ends_at,   0, 5),
-                    'room_id'   => $updated->room_id,
+                    'ends_at' => substr((string) $updated->ends_at, 0, 5),
+                    'room_id' => $updated->room_id,
                 ],
             ]);
         } catch (ValidationException $e) {
-            $errors       = $e->errors();
+            $errors = $e->errors();
             $firstMessage = collect($errors)->flatten()->first() ?? 'Update failed.';
 
             return response()->json([
-                'status'  => 'error',
+                'status' => 'error',
                 'message' => $firstMessage,
-                'errors'  => $errors,
+                'errors' => $errors,
             ], 422);
         }
     }
@@ -118,7 +108,7 @@ class ScheduleCalendarController extends Controller
         $events->loadMorph('source', [
             MeetingBlock::class => ['section.offering.catalogCourse', 'section.instructor'],
             OpenLab::class => ['labTech'],
-            \App\Models\OfficeHourBlock::class => ['instructor'],
+            OfficeHourBlock::class => ['instructor'],
         ]);
 
         return $events;
@@ -135,8 +125,8 @@ class ScheduleCalendarController extends Controller
             }
 
             $startStr = $scheduledEvent->starts_at ? substr((string) $scheduledEvent->starts_at, 0, 5) : null;
-            $endStr   = $scheduledEvent->ends_at ? substr((string) $scheduledEvent->ends_at, 0, 5) : null;
-            if (!$startStr || !$endStr) {
+            $endStr = $scheduledEvent->ends_at ? substr((string) $scheduledEvent->ends_at, 0, 5) : null;
+            if (! $startStr || ! $endStr) {
                 continue;
             }
 

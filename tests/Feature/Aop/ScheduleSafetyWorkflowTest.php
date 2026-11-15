@@ -36,7 +36,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
             'room_id' => $room->id,
         ]);
 
-        $response = $this->actingAs($admin)->postJson(route('aop.schedule.calendar.update'), [
+        $response = $this->actingAs($admin)->postJson(route('aop.schedule.calendar.update', $term), [
             'blockId' => $block->id,
             'starts_at' => '10:00',
             'ends_at' => '11:00',
@@ -64,7 +64,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
             'room_id' => $room->id,
         ]);
 
-        $response = $this->actingAs($admin)->postJson(route('aop.schedule.calendar.update'), [
+        $response = $this->actingAs($admin)->postJson(route('aop.schedule.calendar.update', $term), [
             'blockId' => $block->id,
             'starts_at' => '10:00',
             'ends_at' => '10:00',
@@ -101,7 +101,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
             'room_id' => $room->id,
         ]);
 
-        $response = $this->actingAs($admin)->postJson(route('aop.schedule.calendar.update'), [
+        $response = $this->actingAs($admin)->postJson(route('aop.schedule.calendar.update', $term), [
             'blockId' => $target->id,
             'starts_at' => '09:30',
             'ends_at' => '10:30',
@@ -144,7 +144,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
             'ends_at' => '12:00',
         ]);
 
-        $response = $this->actingAs($admin)->postJson(route('aop.schedule.calendar.update'), [
+        $response = $this->actingAs($admin)->postJson(route('aop.schedule.calendar.update', $term), [
             'blockId' => $target->id,
             'starts_at' => '11:30',
             'ends_at' => '12:30',
@@ -172,7 +172,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
             'room_id' => $room->id,
         ]);
 
-        $response = $this->actingAs($admin)->postJson(route('aop.schedule.calendar.update'), [
+        $response = $this->actingAs($admin)->postJson(route('aop.schedule.calendar.update', $term), [
             'blockId' => $block->id,
             'starts_at' => '10:00',
             'ends_at' => '11:15',
