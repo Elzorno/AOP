@@ -42,7 +42,7 @@ class MeetingBlockMutationService
             $this->log($term, $section, $block, 'created', null, $this->snapshot($block), $actorId);
 
             return $block->fresh(['section.offering.catalogCourse', 'section.instructor', 'room']);
-        });
+        }, 3);
     }
 
     public function update(Term $term, MeetingBlock $meetingBlock, array $attributes, ?int $actorId = null): MeetingBlock
@@ -53,7 +53,7 @@ class MeetingBlockMutationService
             $this->log($term, $updated->section, $updated, 'updated', $before, $this->snapshot($updated), $actorId);
 
             return $updated;
-        });
+        }, 3);
     }
 
     public function delete(Term $term, Section $section, MeetingBlock $meetingBlock, ?int $actorId = null): void
@@ -70,7 +70,7 @@ class MeetingBlockMutationService
             $before = $this->snapshot($meetingBlock);
             $meetingBlock->delete();
             $this->log($term, $section, null, 'deleted', $before, null, $actorId);
-        });
+        }, 3);
     }
 
     private function performUpdate(Term $term, MeetingBlock $meetingBlock, array $attributes): MeetingBlock

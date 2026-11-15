@@ -25,7 +25,7 @@ class OpenLabMutationService
             $this->log($term, 'created_open_lab', null, $this->snapshot($openLab), $actorId);
 
             return $openLab->fresh(['room', 'labTech']);
-        });
+        }, 3);
     }
 
     public function update(Term $term, OpenLab $openLab, array $attributes, ?int $actorId = null): OpenLab
@@ -41,7 +41,7 @@ class OpenLabMutationService
             $this->log($term, 'updated_open_lab', $before, $this->snapshot($openLab), $actorId);
 
             return $openLab->fresh(['room', 'labTech']);
-        });
+        }, 3);
     }
 
     public function delete(Term $term, OpenLab $openLab, ?int $actorId = null): void
@@ -54,7 +54,7 @@ class OpenLabMutationService
             $before = $this->snapshot($openLab);
             $openLab->delete();
             $this->log($term, 'deleted_open_lab', $before, null, $actorId);
-        });
+        }, 3);
     }
 
     private function validatedPayload(Term $term, array $attributes, ?int $ignoreOpenLabId = null): array

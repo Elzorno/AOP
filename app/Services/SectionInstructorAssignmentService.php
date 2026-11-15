@@ -26,7 +26,7 @@ class SectionInstructorAssignmentService
             $this->log($term, $section, $before, $this->snapshot($section), $actorId);
 
             return $section->fresh(['offering.catalogCourse', 'instructor', 'meetingBlocks.room']);
-        });
+        }, 3);
     }
 
     public function assignMany(Term $term, array $sectionIds, mixed $instructorValue, ?int $actorId = null): Collection
@@ -55,7 +55,7 @@ class SectionInstructorAssignmentService
             }
 
             return $sections->fresh(['instructor']);
-        });
+        }, 3);
     }
 
     private function assignmentFrom(array $attributes): array

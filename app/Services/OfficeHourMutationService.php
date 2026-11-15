@@ -27,7 +27,7 @@ class OfficeHourMutationService
             $this->log($term, 'created_office_hour', null, $this->snapshot($block), $actorId);
 
             return $block->fresh('instructor');
-        });
+        }, 3);
     }
 
     public function update(Term $term, Instructor $instructor, OfficeHourBlock $block, array $attributes, ?int $actorId = null): OfficeHourBlock
@@ -41,7 +41,7 @@ class OfficeHourMutationService
             $this->log($term, 'updated_office_hour', $before, $this->snapshot($block), $actorId);
 
             return $block->fresh('instructor');
-        });
+        }, 3);
     }
 
     public function delete(Term $term, Instructor $instructor, OfficeHourBlock $block, ?int $actorId = null): void
@@ -53,7 +53,7 @@ class OfficeHourMutationService
             $before = $this->snapshot($block);
             $block->delete();
             $this->log($term, 'deleted_office_hour', $before, null, $actorId);
-        });
+        }, 3);
     }
 
     private function assertMutable(Term $term, Instructor $instructor): void

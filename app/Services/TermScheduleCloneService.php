@@ -149,7 +149,7 @@ class TermScheduleCloneService
                     'open_labs' => $openLabsCopied,
                 ],
             ];
-        });
+        }, 3);
     }
 
     private function assertTargetTermIsClean(Term $targetTerm): void
