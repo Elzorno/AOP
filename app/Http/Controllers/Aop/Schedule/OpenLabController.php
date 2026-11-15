@@ -17,26 +17,13 @@ class OpenLabController extends Controller
 {
     private const ALLOWED_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    private function activeTermOrFail(): Term
+    private function ensureOpenLabInTerm(Term $term, OpenLab $openLab): void
     {
-        $term = Term::where('is_active', true)->first();
-        abort_if(!$term, 400, 'No active term is set. Go to Terms and set an active term.');
-
-        return $term;
+        abort_if((int) $openLab->term_id !== (int) $term->id, 404, 'Open lab not in this term.');
     }
 
-    private function ensureOpenLabInActiveTerm(OpenLab $openLab): Term
+    public function index(Term $term, LabTechWorkloadService $workloads)
     {
-        $term = $this->activeTermOrFail();
-        abort_if((int) $openLab->term_id !== (int) $term->id, 400, 'Open lab not in active term.');
-
-        return $term;
-    }
-
-    public function index(LabTechWorkloadService $workloads)
-    {
-        $term = $this->activeTermOrFail();
-
         return view('aop.schedule.open-labs.index', [
             'term' => $term,
             'scheduleLocked' => false,
@@ -50,10 +37,8 @@ class OpenLabController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Term $term)
     {
-        $term = $this->activeTermOrFail();
-
         return view('aop.schedule.open-labs.create', [
             'term' => $term,
             'scheduleLocked' => false,
@@ -63,10 +48,8 @@ class OpenLabController extends Controller
         ]);
     }
 
-    public function store(Request $request, ScheduleConflictService $conflicts, LabTechWorkloadService $workloads)
+    public function store(Request $request, Term $term, ScheduleConflictService $conflicts, LabTechWorkloadService $workloads)
     {
-        $term = $this->activeTermOrFail();
-
         $data = $this->validatePayload($request);
         $days = array_values(array_unique($data['days']));
 
@@ -83,12 +66,12 @@ class OpenLabController extends Controller
             'notes' => $data['notes'] ?? null,
         ]);
 
-        return redirect()->route('aop.schedule.openLabs.index')->with('status', 'Open lab added.');
+        return redirect()->route('aop.schedule.openLabs.index', $term)->with('status', 'Open lab added.');
     }
 
-    public function edit(OpenLab $openLab)
+    public function edit(Term $term, OpenLab $openLab)
     {
-        $term = $this->ensureOpenLabInActiveTerm($openLab);
+        $this->ensureOpenLabInTerm($term, $openLab);
         $openLab->load(['room', 'labTech']);
 
         return view('aop.schedule.open-labs.edit', [
@@ -101,9 +84,9 @@ class OpenLabController extends Controller
         ]);
     }
 
-    public function update(Request $request, OpenLab $openLab, ScheduleConflictService $conflicts, LabTechWorkloadService $workloads)
+    public function update(Request $request, Term $term, OpenLab $openLab, ScheduleConflictService $conflicts, LabTechWorkloadService $workloads)
     {
-        $term = $this->ensureOpenLabInActiveTerm($openLab);
+        $this->ensureOpenLabInTerm($term, $openLab);
 
         $data = $this->validatePayload($request);
         $days = array_values(array_unique($data['days']));
@@ -120,16 +103,16 @@ class OpenLabController extends Controller
             'notes' => $data['notes'] ?? null,
         ]);
 
-        return redirect()->route('aop.schedule.openLabs.index')->with('status', 'Open lab updated.');
+        return redirect()->route('aop.schedule.openLabs.index', $term)->with('status', 'Open lab updated.');
     }
 
-    public function destroy(OpenLab $openLab)
+    public function destroy(Term $term, OpenLab $openLab)
     {
-        $term = $this->ensureOpenLabInActiveTerm($openLab);
+        $this->ensureOpenLabInTerm($term, $openLab);
 
         $openLab->delete();
 
-        return redirect()->route('aop.schedule.openLabs.index')->with('status', 'Open lab removed.');
+        return redirect()->route('aop.schedule.openLabs.index', $term)->with('status', 'Open lab removed.');
     }
 
     private function validatePayload(Request $request): array

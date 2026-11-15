@@ -7,7 +7,7 @@
       <p class="muted">Open labs require a room, a lab tech, and a schedule that does not collide with class use.</p>
     </div>
     <div class="actions">
-      <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index') }}">Back</a>
+      <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index', $term) }}">Back</a>
     </div>
   </div>
 
@@ -27,7 +27,7 @@
         <a class="btn secondary" href="{{ route('aop.labtechs.index') }}">Lab Techs</a>
       </div>
     @else
-      <form method="POST" action="{{ route('aop.schedule.openLabs.store') }}">
+      <form method="POST" action="{{ route('aop.schedule.openLabs.store', $term) }}">
         @csrf
 
         <label>Name</label>

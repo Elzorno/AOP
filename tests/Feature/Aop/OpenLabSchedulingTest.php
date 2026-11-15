@@ -3,15 +3,15 @@
 namespace Tests\Feature\Aop;
 
 use App\Models\CatalogCourse;
-use App\Models\LabTech;
 use App\Models\Instructor;
+use App\Models\LabTech;
 use App\Models\MeetingBlock;
 use App\Models\Offering;
-use App\Models\OpenLab;
 use App\Models\OfficeHourBlock;
+use App\Models\OpenLab;
 use App\Models\Room;
-use App\Models\Section;
 use App\Models\ScheduledEvent;
+use App\Models\Section;
 use App\Models\Term;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -45,7 +45,7 @@ class OpenLabSchedulingTest extends TestCase
             'room_id' => $room->id,
         ]);
 
-        $response = $this->actingAs($admin)->post(route('aop.schedule.openLabs.store'), [
+        $response = $this->actingAs($admin)->post(route('aop.schedule.openLabs.store', $term), [
             'name' => 'Open Lab Coverage',
             'room_id' => $room->id,
             'lab_tech_id' => $labTech->id,
@@ -70,7 +70,7 @@ class OpenLabSchedulingTest extends TestCase
             'is_active' => true,
         ]);
 
-        $response = $this->actingAs($admin)->post(route('aop.schedule.openLabs.store'), [
+        $response = $this->actingAs($admin)->post(route('aop.schedule.openLabs.store', $term), [
             'name' => 'Extended Open Lab',
             'room_id' => $room->id,
             'lab_tech_id' => $labTech->id,

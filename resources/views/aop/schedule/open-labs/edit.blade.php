@@ -7,7 +7,7 @@
       <p class="muted">{{ $openLab->name }} · {{ $openLab->room?->name ?? 'No room' }}</p>
     </div>
     <div class="actions">
-      <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index') }}">Back</a>
+      <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index', $term) }}">Back</a>
     </div>
   </div>
 
@@ -19,7 +19,7 @@
   @endif
 
   <div class="card">
-    <form method="POST" action="{{ route('aop.schedule.openLabs.update', $openLab) }}">
+    <form method="POST" action="{{ route('aop.schedule.openLabs.update', [$term, $openLab]) }}">
       @csrf
       @method('PUT')
 
@@ -81,7 +81,7 @@
   </div>
 
   <div class="card" style="margin-top:16px;">
-    <form method="POST" action="{{ route('aop.schedule.openLabs.destroy', $openLab) }}" onsubmit="return confirm('Remove this open lab?');">
+    <form method="POST" action="{{ route('aop.schedule.openLabs.destroy', [$term, $openLab]) }}" onsubmit="return confirm('Remove this open lab?');">
       @csrf
       @method('DELETE')
       <button class="btn danger" type="submit" {{ $scheduleLocked ? 'disabled' : '' }}>Remove Open Lab</button>

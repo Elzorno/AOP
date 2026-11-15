@@ -10,7 +10,7 @@
       @endif
     </div>
     <div class="actions">
-      <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index') }}">Open Labs</a>
+      <a class="btn secondary" href="{{ route('aop.schedule.openLabs.legacy') }}">Open Labs</a>
       <a class="btn" href="{{ route('aop.labtechs.create') }}">New Lab Tech</a>
     </div>
   </div>

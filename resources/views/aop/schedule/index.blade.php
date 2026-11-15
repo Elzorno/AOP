@@ -90,7 +90,7 @@
           @endif
           <a class="btn success" href="{{ route('aop.schedule.reports.exportRegistrar') }}">Download Registrar CSV</a>
           <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
-          <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index') }}">Open Labs</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index', $term) }}">Open Labs</a>
           <a class="btn secondary" href="{{ route('aop.schedule.calendar.index') }}">Calendar</a>
           <a class="btn secondary" href="{{ route('aop.schedule.grids.index') }}">Grids</a>
           <a class="btn secondary" href="{{ route('aop.schedule.reports.index') }}">Registrar Export</a>

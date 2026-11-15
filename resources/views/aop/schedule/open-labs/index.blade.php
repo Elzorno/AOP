@@ -39,7 +39,7 @@
         <a class="btn secondary" href="{{ route('aop.labtechs.index') }}">Lab Techs</a>
         <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
         @if(!$scheduleLocked)
-          <a class="btn" href="{{ route('aop.schedule.openLabs.create') }}">New Open Lab</a>
+          <a class="btn" href="{{ route('aop.schedule.openLabs.create', $term) }}">New Open Lab</a>
         @endif
       </div>
     </section>
@@ -78,7 +78,7 @@
                     <td>{{ substr((string) $openLab->starts_at, 0, 5) }} - {{ substr((string) $openLab->ends_at, 0, 5) }}</td>
                     <td>{{ number_format(\App\Services\ScheduleConflictService::weeklyMinutes($openLab->days_json ?? [], (string) $openLab->starts_at, (string) $openLab->ends_at) / 60, 2) }}</td>
                     <td>{{ $openLab->notes ?: '—' }}</td>
-                    <td><a class="btn secondary sm" href="{{ route('aop.schedule.openLabs.edit', $openLab) }}">Edit</a></td>
+                    <td><a class="btn secondary sm" href="{{ route('aop.schedule.openLabs.edit', [$term, $openLab]) }}">Edit</a></td>
                   </tr>
                 @empty
                   <tr>

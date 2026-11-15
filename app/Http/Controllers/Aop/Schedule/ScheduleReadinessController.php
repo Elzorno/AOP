@@ -365,7 +365,7 @@ class ScheduleReadinessController extends Controller
                         'b' => $b,
                         'a_label' => ScheduleConflictService::formatOpenLabLabel($a),
                         'b_label' => ScheduleConflictService::formatOpenLabLabel($b),
-                        'action_url' => route('aop.schedule.openLabs.index'),
+                        'action_url' => route('aop.schedule.openLabs.index', $term),
                         'action_label' => 'Open Labs',
                     ];
                 }
@@ -489,7 +489,7 @@ class ScheduleReadinessController extends Controller
                         'lab_tech' => $a->labTech,
                         'a_label' => ScheduleConflictService::formatOpenLabLabel($a),
                         'b_label' => ScheduleConflictService::formatOpenLabLabel($b),
-                        'action_url' => route('aop.schedule.openLabs.index'),
+                        'action_url' => route('aop.schedule.openLabs.index', $term),
                         'action_label' => 'Open Labs',
                     ];
                 }

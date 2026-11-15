@@ -1,8 +1,8 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: phases 1–2 and the identity, offering, section and meeting-block portions of phase 3 are deployed; remaining schedule resources still need explicit term routes.
+Prepared 14 November 2026. Status: phases 1–2 and the identity, offering, section and meeting-block portions of phase 3 are deployed; the explicit open-lab slice is verified for deployment, while remaining schedule resources still need explicit term routes.
 
-Current production release: `811483a` through `/var/www/aop-current`. The isolated suite passes 82 tests / 287 assertions. Section CRUD, bulk assignment, suggestions and nested meeting-block mutations now use explicit term routes. Cross-term and mixed-term requests fail before mutation, and scoped directory/create/edit pages render for non-active terms. Releases `2560003` and `fa7dfb6` remain available for rollback. Verified pre-migration checkpoint: `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`.
+Current production release: `811483a` through `/var/www/aop-current`. The isolated suite passes 86 tests / 303 assertions. Open-lab list/create/edit/store/update/delete now use explicit term routes in the verified development slice; cross-term mutations return 404 and compatibility navigation follows the user's selected term. Releases `2560003` and `fa7dfb6` remain available for rollback. Verified pre-migration checkpoint: `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`.
 
 ## Outcome and constraints
 

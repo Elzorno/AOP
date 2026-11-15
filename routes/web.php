@@ -160,12 +160,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/schedule/office-hours/{instructor}/preferences', [InstructorPreferenceController::class, 'destroy'])->name('schedule.officeHours.preferences.destroy');
 
         // Open Labs
-        Route::get('/schedule/open-labs', [OpenLabController::class, 'index'])->name('schedule.openLabs.index');
-        Route::get('/schedule/open-labs/create', [OpenLabController::class, 'create'])->name('schedule.openLabs.create');
-        Route::post('/schedule/open-labs', [OpenLabController::class, 'store'])->name('schedule.openLabs.store');
-        Route::get('/schedule/open-labs/{openLab}/edit', [OpenLabController::class, 'edit'])->name('schedule.openLabs.edit');
-        Route::put('/schedule/open-labs/{openLab}', [OpenLabController::class, 'update'])->name('schedule.openLabs.update');
-        Route::delete('/schedule/open-labs/{openLab}', [OpenLabController::class, 'destroy'])->name('schedule.openLabs.destroy');
+        Route::prefix('/terms/{term}/schedule/open-labs')->group(function () {
+            Route::get('/', [OpenLabController::class, 'index'])->name('schedule.openLabs.index');
+            Route::get('/create', [OpenLabController::class, 'create'])->name('schedule.openLabs.create');
+            Route::post('/', [OpenLabController::class, 'store'])->name('schedule.openLabs.store');
+            Route::get('/{openLab}/edit', [OpenLabController::class, 'edit'])->name('schedule.openLabs.edit');
+            Route::put('/{openLab}', [OpenLabController::class, 'update'])->name('schedule.openLabs.update');
+            Route::delete('/{openLab}', [OpenLabController::class, 'destroy'])->name('schedule.openLabs.destroy');
+        });
+
+        Route::get('/schedule/open-labs', function (Request $request) {
+            $term = $request->user()->selectedTerm
+                ?? Term::query()->where('is_active', true)->firstOrFail();
+
+            return redirect()->route('aop.schedule.openLabs.index', $term);
+        })->name('schedule.openLabs.legacy');
 
         // Schedule Grids (active term)
         Route::get('/schedule/grids', [ScheduleGridController::class, 'index'])->name('schedule.grids.index');

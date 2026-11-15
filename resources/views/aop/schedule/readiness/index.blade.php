@@ -54,7 +54,7 @@
         <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
         <a class="btn secondary" href="{{ route('aop.schedule.sections.index', $term) }}">Section Directory</a>
         <a class="btn secondary" href="{{ route('aop.schedule.officeHours.index') }}">Office Hours</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index') }}">Open Labs</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index', $term) }}">Open Labs</a>
         <a class="btn secondary" href="{{ route('aop.schedule.reports.index') }}">Registrar CSV</a>
       </div>
     </section>
@@ -241,7 +241,7 @@
                     <td>{{ number_format((float) $row['weekly_hour_limit'], 2) }} hrs</td>
                     <td>{{ number_format((float) $row['remaining_hours'], 2) }} hrs</td>
                     <td>
-                      <a class="btn secondary sm" href="{{ route('aop.schedule.openLabs.index') }}">Review</a>
+                      <a class="btn secondary sm" href="{{ route('aop.schedule.openLabs.index', $term) }}">Review</a>
                     </td>
                   </tr>
                 @empty
@@ -518,7 +518,7 @@
                     {{ number_format((float) $row['weekly_hour_limit'], 2) }} allowed
                   </div>
                 </div>
-                <a class="btn secondary sm" href="{{ route('aop.schedule.openLabs.index') }}">Review</a>
+                <a class="btn secondary sm" href="{{ route('aop.schedule.openLabs.index', $term) }}">Review</a>
               </div>
             @endforeach
           </div>

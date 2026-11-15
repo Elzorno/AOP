@@ -219,3 +219,9 @@ This file tracks what each phase changed so the project remains understandable w
 ## Explicit section and meeting-block release `811483a` — deployed 2026-11-14
 - Atomically deployed the verified section/meeting-block route slice without a schema migration; release `2560003` remains available for rollback.
 - Rebuilt production caches, reloaded PHP-FPM, and verified the cached explicit routes, real production section-directory rendering, SQLite integrity, HTTPS login/assets and service health.
+
+## Explicit open-lab term boundary — development checkpoint 2026-11-15
+- Moved open-lab list/create/edit and all mutations under `/aop/terms/{term}/schedule/open-labs`.
+- Open-lab writes derive their term from the URL, while update/delete verify the resource belongs to that term before mutation.
+- Updated readiness, calendar, reports, schedule studio, event links and navigation; the compatibility GET redirects to the user's selected term.
+- Verified non-active-term rendering and writes plus cross-term rejection; the full suite passes 86 tests / 303 assertions.

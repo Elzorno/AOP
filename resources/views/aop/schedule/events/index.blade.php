@@ -29,7 +29,7 @@
                 <td>{{ $event->notes ?: '—' }}</td>
                 <td>
                   @if($event->source_type === \App\Models\OpenLab::class)
-                    <a class="btn secondary sm" href="{{ route('aop.schedule.openLabs.edit', $event->source_id) }}">Edit</a>
+                    <a class="btn secondary sm" href="{{ route('aop.schedule.openLabs.edit', [$term, $event->source_id]) }}">Edit</a>
                   @elseif($event->source_type === \App\Models\MeetingBlock::class)
                     @php($sectionId = $event->source?->section_id)
                     @if($sectionId)<a class="btn secondary sm" href="{{ route('aop.schedule.sections.edit', [$term, $sectionId]) }}">Edit</a>@endif
