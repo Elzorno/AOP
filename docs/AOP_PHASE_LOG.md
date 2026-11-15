@@ -234,3 +234,7 @@ This file tracks what each phase changed so the project remains understandable w
 - Moved scheduled-event list/create/store under `/aop/terms/{term}/schedule/events` and updated navigation/forms.
 - Class-event creation rejects a section from another term before creating a meeting block; open-lab event sources use the route term.
 - Verified non-active-term pages and writes plus selected-term compatibility redirects; the full suite passes 89 tests / 314 assertions.
+
+## Explicit scheduled-event release `8809a40` — deployed 2026-11-15
+- Atomically deployed the scheduled-event route slice without a schema migration; release `d556c0f` remains available for rollback.
+- Rebuilt production caches, reloaded PHP-FPM, and verified cached routes, real production event-index rendering, SQLite integrity, HTTPS login and service health.
