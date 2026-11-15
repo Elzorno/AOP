@@ -235,7 +235,7 @@ class OpenLabSchedulingTest extends TestCase
         ]);
     }
 
-    public function test_scheduled_event_projection_can_be_rebuilt_for_one_term(): void
+    public function test_scheduled_event_projection_repair_restores_missing_rows_without_deleting_unmatched_rows(): void
     {
         $term = $this->createActiveTerm();
         $room = Room::create(['name' => 'ATC-234', 'is_active' => true]);
@@ -255,6 +255,16 @@ class OpenLabSchedulingTest extends TestCase
             'ends_at' => '12:00',
         ]);
         ScheduledEvent::query()->delete();
+        $unmatched = ScheduledEvent::query()->create([
+            'term_id' => $term->id,
+            'event_type' => 'future_type',
+            'source_type' => 'Future\\AuthoritativeEvent',
+            'source_id' => 999,
+            'display_name' => 'Preserve for reconciliation',
+            'days_json' => ['Mon'],
+            'starts_at' => '08:00',
+            'ends_at' => '09:00',
+        ]);
 
         $this->artisan('aop:sync-scheduled-events', ['--term' => $term->id])
             ->assertExitCode(0);
@@ -262,6 +272,10 @@ class OpenLabSchedulingTest extends TestCase
         $this->assertDatabaseHas('scheduled_events', [
             'term_id' => $term->id,
             'event_type' => ScheduledEvent::TYPE_OPEN_LAB,
+        ]);
+        $this->assertDatabaseHas('scheduled_events', [
+            'id' => $unmatched->id,
+            'display_name' => 'Preserve for reconciliation',
         ]);
     }
 

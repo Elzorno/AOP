@@ -129,7 +129,7 @@ Artisan::command('aop:sync-scheduled-events {--term= : Term ID to rebuild; defau
     })->all();
 
     $this->table(['Term', 'Class meetings', 'Open labs', 'Office hours'], $rows);
-    $this->info('Scheduled event projection rebuilt.');
+    $this->info('Scheduled event projection repaired without deleting unmatched events.');
 
     return Command::SUCCESS;
-})->purpose('Rebuild shared scheduled events from class meetings and open labs');
+})->purpose('Non-destructively repair shared scheduled events from current source records');

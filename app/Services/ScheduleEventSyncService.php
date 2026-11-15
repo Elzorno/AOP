@@ -7,6 +7,7 @@ use App\Models\OfficeHourBlock;
 use App\Models\OpenLab;
 use App\Models\ScheduledEvent;
 use App\Models\Term;
+use Illuminate\Support\Facades\DB;
 
 class ScheduleEventSyncService
 {
@@ -105,27 +106,40 @@ class ScheduleEventSyncService
 
     public function rebuildTerm(Term $term): array
     {
-        ScheduledEvent::query()
-            ->where('term_id', $term->id)
-            ->whereIn('source_type', [MeetingBlock::class, OpenLab::class, OfficeHourBlock::class])
-            ->delete();
+        return DB::transaction(function () use ($term) {
+            $meetingBlocks = MeetingBlock::query()
+                ->with(['section.offering.catalogCourse', 'section.instructor'])
+                ->whereHas('section.offering', fn ($offerings) => $offerings->where('term_id', $term->id))
+                ->get();
+            $openLabs = OpenLab::query()->where('term_id', $term->id)->get();
+            $officeHourBlocks = OfficeHourBlock::query()->where('term_id', $term->id)->get();
 
-        $meetingBlocks = MeetingBlock::query()
-            ->with(['section.offering.catalogCourse', 'section.instructor'])
-            ->whereHas('section.offering', fn ($offerings) => $offerings->where('term_id', $term->id))
-            ->get();
-        $openLabs = OpenLab::query()->where('term_id', $term->id)->get();
-        $officeHourBlocks = OfficeHourBlock::query()->where('term_id', $term->id)->get();
+            $expectedSources = collect([
+                MeetingBlock::class => $meetingBlocks->pluck('id')->all(),
+                OpenLab::class => $openLabs->pluck('id')->all(),
+                OfficeHourBlock::class => $officeHourBlocks->pluck('id')->all(),
+            ]);
+            $unmatchedEvents = ScheduledEvent::query()
+                ->where('term_id', $term->id)
+                ->get()
+                ->reject(fn (ScheduledEvent $event) => in_array(
+                    (int) $event->source_id,
+                    $expectedSources->get($event->source_type, []),
+                    true,
+                ))
+                ->count();
 
-        $meetingBlocks->each(fn (MeetingBlock $meetingBlock) => $this->syncMeetingBlock($meetingBlock));
-        $openLabs->each(fn (OpenLab $openLab) => $this->syncOpenLab($openLab));
-        $officeHourBlocks->each(fn (OfficeHourBlock $officeHourBlock) => $this->syncOfficeHourBlock($officeHourBlock));
+            $meetingBlocks->each(fn (MeetingBlock $meetingBlock) => $this->syncMeetingBlock($meetingBlock));
+            $openLabs->each(fn (OpenLab $openLab) => $this->syncOpenLab($openLab));
+            $officeHourBlocks->each(fn (OfficeHourBlock $officeHourBlock) => $this->syncOfficeHourBlock($officeHourBlock));
 
-        return [
-            'meeting_blocks' => $meetingBlocks->count(),
-            'open_labs' => $openLabs->count(),
-            'office_hour_blocks' => $officeHourBlocks->count(),
-        ];
+            return [
+                'meeting_blocks' => $meetingBlocks->count(),
+                'open_labs' => $openLabs->count(),
+                'office_hour_blocks' => $officeHourBlocks->count(),
+                'unmatched_events_preserved' => $unmatchedEvents,
+            ];
+        }, 3);
     }
 
     private function upsert(object $source, array $attributes): ScheduledEvent
