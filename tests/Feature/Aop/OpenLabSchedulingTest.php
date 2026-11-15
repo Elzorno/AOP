@@ -14,6 +14,7 @@ use App\Models\ScheduledEvent;
 use App\Models\Section;
 use App\Models\Term;
 use App\Models\User;
+use App\Services\ScheduleSuggestionService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,36 @@ class OpenLabSchedulingTest extends TestCase
     use RefreshDatabase;
 
     private static int $courseCounter = 900;
+
+    public function test_schedule_suggestions_use_authoritative_event_time_and_room(): void
+    {
+        $term = $this->createActiveTerm();
+        $occupiedRoom = Room::create(['name' => 'ATC-227A', 'is_active' => true]);
+        $availableRoom = Room::create(['name' => 'ATC-227B', 'is_active' => true]);
+        $existingSection = $this->createSection($term);
+        $targetSection = $this->createSection($term);
+        $block = MeetingBlock::create([
+            'section_id' => $existingSection->id,
+            'type' => 'LECTURE',
+            'days_json' => ['Tue'],
+            'starts_at' => '13:00',
+            'ends_at' => '14:00',
+            'room_id' => $occupiedRoom->id,
+        ]);
+        ScheduledEvent::query()
+            ->where('source_type', MeetingBlock::class)
+            ->where('source_id', $block->id)
+            ->update(['days_json' => json_encode(['Mon', 'Wed', 'Fri']), 'starts_at' => '08:00', 'ends_at' => '08:55']);
+
+        $suggestions = app(ScheduleSuggestionService::class)->suggestSlots($targetSection, 'LECTURE', 20);
+        $slot = collect($suggestions)->first(
+            fn (array $suggestion) => $suggestion['days'] === ['Mon', 'Wed', 'Fri'] && $suggestion['starts_at'] === '08:00'
+        );
+
+        $this->assertNotNull($slot);
+        $this->assertNotContains($occupiedRoom->id, array_column($slot['available_rooms'], 'id'));
+        $this->assertContains($availableRoom->id, array_column($slot['available_rooms'], 'id'));
+    }
 
     public function test_open_lab_creation_rejects_room_overlap_with_class(): void
     {

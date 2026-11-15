@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\InstructorPreference;
-use App\Models\MeetingBlock;
 use App\Models\Room;
 use App\Models\Section;
 
@@ -23,6 +22,8 @@ use App\Models\Section;
  */
 class ScheduleSuggestionService
 {
+    public function __construct(private readonly ScheduleEventQueryService $events) {}
+
     /**
      * Returns up to $limit canonical slot suggestions for $section.
      *
@@ -59,10 +60,8 @@ class ScheduleSuggestionService
             return [];
         }
 
-        // Load all existing blocks in the term for conflict checking
-        $existingBlocks = MeetingBlock::query()
-            ->whereHas('section.offering', fn ($q) => $q->where('term_id', $term->id))
-            ->get();
+        // Scheduled events own the time, room, and staff facts used for suggestions.
+        $existingEvents = $this->events->forTerm($term);
 
         // Load active rooms
         $rooms = Room::where('is_active', true)->get();
@@ -107,14 +106,16 @@ class ScheduleSuggestionService
             // 1. Check instructor availability
             if ($instructorId) {
                 $conflict = false;
-                foreach ($existingBlocks as $block) {
-                    if ((int) $block->section->instructor_id !== (int) $instructorId) {
+                foreach ($existingEvents as $event) {
+                    if (!$event->staffAssignments->contains(
+                        fn ($assignment) => (int) $assignment->instructor_id === (int) $instructorId
+                    )) {
                         continue;
                     }
-                    if (!ScheduleConflictService::dayOverlap($days, $block->days_json ?? [])) {
+                    if (!ScheduleConflictService::dayOverlap($days, $event->days_json ?? [])) {
                         continue;
                     }
-                    if (ScheduleConflictService::timesOverlap($startsAt, $endsAt, $block->starts_at, $block->ends_at, $buffer)) {
+                    if (ScheduleConflictService::timesOverlap($startsAt, $endsAt, $event->starts_at, $event->ends_at, $buffer)) {
                         $conflict = true;
                         break;
                     }
@@ -128,14 +129,14 @@ class ScheduleSuggestionService
             $availableRooms = [];
             foreach ($rooms as $room) {
                 $roomConflict = false;
-                foreach ($existingBlocks as $block) {
-                    if ((int) $block->room_id !== (int) $room->id) {
+                foreach ($existingEvents as $event) {
+                    if ((int) $event->room_id !== (int) $room->id) {
                         continue;
                     }
-                    if (!ScheduleConflictService::dayOverlap($days, $block->days_json ?? [])) {
+                    if (!ScheduleConflictService::dayOverlap($days, $event->days_json ?? [])) {
                         continue;
                     }
-                    if (ScheduleConflictService::timesOverlap($startsAt, $endsAt, $block->starts_at, $block->ends_at, $buffer)) {
+                    if (ScheduleConflictService::timesOverlap($startsAt, $endsAt, $event->starts_at, $event->ends_at, $buffer)) {
                         $roomConflict = true;
                         break;
                     }
