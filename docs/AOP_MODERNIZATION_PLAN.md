@@ -1,8 +1,8 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: phases 1–3 and the phase-4 meeting-block, open-lab, office-hours and instructor-assignment mutation slices are deployed.
+Prepared 14 November 2026. Status: phases 1–3 and the phase-4 meeting-block, open-lab, office-hours, instructor-assignment and cloning mutation slices are deployed.
 
-Current production release: `f229c1e` through `/var/www/aop-current`. The isolated suite passes 114 tests / 441 assertions. Meeting-block, open-lab, office-hours and section instructor-assignment entry points share transactional hard validation, event projection and audit logging. Release `2a9cf98` remains available for immediate application rollback. Verified pre-release database checkpoint: `/root/aop-backups/20261115T164402Z-pre-f229c1e`.
+Current production release: `cddb0bd` through `/var/www/aop-current`. The isolated suite passes 116 tests / 459 assertions. Meeting-block, open-lab, office-hours, section instructor-assignment and term-cloning entry points share transactional hard validation, event projection and audit logging. Release `f229c1e` remains available for immediate application rollback. Verified pre-release database checkpoint: `/root/aop-backups/20261115T164654Z-pre-cddb0bd`.
 
 ## Outcome and constraints
 
@@ -218,5 +218,6 @@ Release `dc60a9d` was the initial security and phase-3 identity checkpoint: null
 - Deployed transactional open-lab mutations in `c231c9c`, including form and unified-event entry points, hard room/lab-tech/workload validation, event projection and actor/term audit records.
 - Deployed transactional office-hours mutations in `2a9cf98`, covering administrator and instructor self-service entry points with lock, ownership, conflict, projection and audit guarantees.
 - Deployed atomic section instructor reassignment and bulk assignment in `f229c1e`. New assignments are checked against class and office-hour conflicts, including overlaps within the submitted bulk set, before any section changes.
+- Consolidated the explicit and draft term clones in `cddb0bd`. Meeting blocks, optional office hours and open labs now use the shared mutation services inside one outer transaction; capacities are preserved, source locks/publications/history remain excluded, and a failed invariant check rolls back the complete target term.
 - Widened `schedule_change_logs.section_id` to nullable so non-section schedule operations can use the same audit mechanism without placeholder section records.
-- Verified 114 tests / 441 assertions, migration status, SQLite integrity and foreign keys, route boot, service resolution, HTTPS login, secure cookies and security headers. Release `2a9cf98` is the immediate application rollback target.
+- Verified 116 tests / 459 assertions, migration status, SQLite integrity and foreign keys, route boot, service resolution, HTTPS login, secure cookies and security headers. Release `f229c1e` is the immediate application rollback target.
