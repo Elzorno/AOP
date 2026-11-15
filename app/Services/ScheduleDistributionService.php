@@ -24,12 +24,15 @@ class ScheduleDistributionService
     private const PEAK_START = '09:30';
     private const PEAK_END   = '15:00';
 
+    public function __construct(private readonly ScheduleEventReadAdapter $eventReads) {}
+
     /** @return array{friday_pct: float, peak_hour_pct: float, mwf_pct: float, tr_pct: float, gep_online_pct: float, program_online_pct: float, totals: array} */
     public function compute(Term $term): array
     {
         $blocks = MeetingBlock::query()
             ->whereHas('section.offering', fn ($q) => $q->where('term_id', $term->id))
             ->get();
+        $this->eventReads->meetingBlocks($blocks);
 
         $totalSections = Section::query()
             ->whereHas('offering', fn ($q) => $q->where('term_id', $term->id))

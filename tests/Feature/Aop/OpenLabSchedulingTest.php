@@ -15,6 +15,7 @@ use App\Models\Section;
 use App\Models\Term;
 use App\Models\User;
 use App\Services\ScheduleSuggestionService;
+use App\Services\ScheduleDistributionService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,27 @@ class OpenLabSchedulingTest extends TestCase
     use RefreshDatabase;
 
     private static int $courseCounter = 900;
+
+    public function test_distribution_metrics_use_authoritative_event_recurrence(): void
+    {
+        $term = $this->createActiveTerm();
+        $room = Room::create(['name' => 'ATC-225A', 'is_active' => true]);
+        $block = MeetingBlock::create([
+            'section_id' => $this->createSection($term)->id,
+            'type' => 'LECTURE',
+            'days_json' => ['Tue'],
+            'starts_at' => '08:00',
+            'ends_at' => '08:55',
+            'room_id' => $room->id,
+        ]);
+        ScheduledEvent::query()->where('source_type', MeetingBlock::class)->where('source_id', $block->id)
+            ->update(['days_json' => json_encode(['Fri'])]);
+
+        $result = app(ScheduleDistributionService::class)->compute($term);
+
+        $this->assertSame(1, $result['totals']['sections_with_friday']);
+        $this->assertSame(100.0, $result['friday_pct']);
+    }
 
     public function test_readiness_conflicts_use_authoritative_event_fields(): void
     {
