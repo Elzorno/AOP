@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Services\ScheduleEventSyncService;
+use App\Services\ScheduleSourceWriteGuard;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -25,7 +25,7 @@ class OfficeHourBlock extends Model
 
     protected static function booted(): void
     {
-        static::saved(fn (self $officeHourBlock) => app(ScheduleEventSyncService::class)->syncOfficeHourBlock($officeHourBlock));
-        static::deleting(fn (self $officeHourBlock) => app(ScheduleEventSyncService::class)->removeForSource($officeHourBlock));
+        static::saving(fn () => ScheduleSourceWriteGuard::assertExplicitMutation());
+        static::deleting(fn () => ScheduleSourceWriteGuard::assertExplicitMutation());
     }
 }

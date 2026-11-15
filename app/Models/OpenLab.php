@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Services\ScheduleEventSyncService;
+use App\Services\ScheduleSourceWriteGuard;
 
 class OpenLab extends Model
 {
@@ -45,7 +45,7 @@ class OpenLab extends Model
 
     protected static function booted(): void
     {
-        static::saved(fn (self $openLab) => app(ScheduleEventSyncService::class)->syncOpenLab($openLab));
-        static::deleting(fn (self $openLab) => app(ScheduleEventSyncService::class)->removeForSource($openLab));
+        static::saving(fn () => ScheduleSourceWriteGuard::assertExplicitMutation());
+        static::deleting(fn () => ScheduleSourceWriteGuard::assertExplicitMutation());
     }
 }

@@ -7,6 +7,7 @@ use App\Models\OpenLab;
 use App\Models\Room;
 use App\Models\Term;
 use App\Models\User;
+use App\Services\ScheduleSourceWriteGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -139,6 +140,32 @@ class ExplicitOpenLabTermBoundaryTest extends TestCase
 
         $this->assertDatabaseHas('scheduled_events', ['id' => $eventId, 'display_name' => 'Event First']);
         $this->assertDatabaseHas('open_labs', ['id' => $openLab->id, 'name' => 'Event First']);
+    }
+
+    public function test_direct_legacy_schedule_writes_are_rejected(): void
+    {
+        $term = $this->term('CURRENT', true);
+        [$room, $labTech] = $this->resources();
+        $openLab = OpenLab::query()->create([
+            'term_id' => $term->id,
+            ...$this->payload($room, $labTech),
+            'days_json' => ['Mon'],
+        ]);
+
+        ScheduleSourceWriteGuard::enable();
+        try {
+            $openLab->update(['name' => 'Bypassed mutation service']);
+            $this->fail('A direct legacy schedule write was accepted.');
+        } catch (\LogicException $exception) {
+            $this->assertSame(
+                'Direct legacy schedule writes are disabled. Use the scheduling mutation service.',
+                $exception->getMessage(),
+            );
+        } finally {
+            ScheduleSourceWriteGuard::disableForTestFixtures();
+        }
+
+        $this->assertSame('Open Lab', $openLab->refresh()->name);
     }
 
     public function test_legacy_get_redirects_to_the_users_selected_term(): void

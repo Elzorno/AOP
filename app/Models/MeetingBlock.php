@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MeetingBlockType;
-use App\Services\ScheduleEventSyncService;
+use App\Services\ScheduleSourceWriteGuard;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -24,7 +24,7 @@ class MeetingBlock extends Model
 
     protected static function booted(): void
     {
-        static::saved(fn (self $meetingBlock) => app(ScheduleEventSyncService::class)->syncMeetingBlock($meetingBlock));
-        static::deleting(fn (self $meetingBlock) => app(ScheduleEventSyncService::class)->removeForSource($meetingBlock));
+        static::saving(fn () => ScheduleSourceWriteGuard::assertExplicitMutation());
+        static::deleting(fn () => ScheduleSourceWriteGuard::assertExplicitMutation());
     }
 }
