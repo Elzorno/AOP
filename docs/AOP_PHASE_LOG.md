@@ -314,3 +314,7 @@ This file tracks what each phase changed so the project remains understandable w
 - Wrapped persistence, scheduled-event projection hooks and schedule change logging in the same database transaction.
 - Routed both form and calendar updates through the service, so calendar edits now produce the same actor-aware audit evidence.
 - Verified create/update/delete audit behavior and existing conflict workflows; the full suite passes 109 tests / 393 assertions.
+
+## Consolidated meeting-block release `f63b59c` — deployed 2026-11-15
+- Atomically deployed the service consolidation without a schema migration; release `26387ce` remains available for rollback.
+- Rebuilt production caches, reloaded PHP-FPM and nginx, and verified cached mutation routes, service resolution, SQLite integrity, HTTPS login and service health.

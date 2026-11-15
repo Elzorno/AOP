@@ -1,8 +1,8 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: phases 1–3 are deployed. The first phase-4 slice consolidates meeting-block create/update/delete and calendar updates and is verified for deployment.
+Prepared 14 November 2026. Status: phases 1–3 and the first phase-4 meeting-block mutation slice are deployed.
 
-Current production release: `26387ce` through `/var/www/aop-current`. The isolated suite passes 109 tests / 393 assertions. Meeting-block create, update, calendar update and delete share transactional hard validation, event projection and audit logging. Release `5fb4ea0` remains available for immediate rollback. Verified pre-migration checkpoint: `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`.
+Current production release: `f63b59c` through `/var/www/aop-current`. The isolated suite passes 109 tests / 393 assertions. Meeting-block create, update, calendar update and delete share transactional hard validation, event projection and audit logging. Release `26387ce` remains available for immediate rollback. Verified pre-migration checkpoint: `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`.
 
 ## Outcome and constraints
 
