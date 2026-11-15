@@ -1,8 +1,8 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: phases 1–3 and the major phase-4 schedule mutation, SQLite serialization, stale-edit and shared-preview slices are deployed. Typed command objects and the final write-path inventory remain before the phase-4 gate is complete.
+Prepared 14 November 2026. Status: phases 1–3 and the major phase-4 schedule mutation, SQLite serialization, stale-edit and shared-preview slices are deployed. Phase 5 has begun by removing the destructive scheduled-event rebuild path. Typed command objects and the final write-path inventory remain before the phase-4 gate is complete.
 
-Current production release: `8faed83` through `/var/www/aop-current`. The isolated suite passes 121 tests / 487 assertions. Configured institutional enforcement is now inside the shared evaluator used by form, calendar, unified-event and clone writes; advisory terms still receive non-blocking warnings. Release `c3b824e` remains available for immediate application rollback. Verified pre-release database checkpoint: `/root/aop-backups/20261115T170416Z-pre-8faed83`.
+Current production release: `bb17783` through `/var/www/aop-current`. The isolated suite passes 121 tests / 488 assertions. Scheduled-event repair now upserts source-backed projections transactionally while preserving unmatched events for explicit reconciliation. Release `8faed83` remains available for immediate application rollback. Verified pre-release database checkpoint: `/root/aop-backups/20261115T170745Z-pre-bb17783`.
 
 ## Outcome and constraints
 
@@ -224,5 +224,6 @@ Release `dc60a9d` was the initial security and phase-3 identity checkpoint: null
 - Deployed a shared meeting-block validation preview in `82dc3d0`. Create, update and preview normalize and evaluate the same payload; section-card forms debounce against the server endpoint instead of maintaining an independent conflict approximation. The production Vite asset was rebuilt and its public response verified.
 - Consolidated section create/delete in `c3b824e`, completing the interactive section lifecycle transaction path. Cascaded meeting deletions and projection removal are atomic, and the section audit foreign key now uses `SET NULL` so deletion history survives with the original section ID retained in its payload.
 - Closed the remaining direct clone write and enforcement bypass in `8faed83`: copied sections now use the section service, and institutional hard rules are evaluated by the shared meeting service for every entry point. Preview responses also expose advisory warnings from that evaluator.
+- Replaced the delete-and-rebuild scheduled-event command in `bb17783` with a transactional, non-destructive repair. It restores source-backed projections while preserving unmatched events for the phase-5 reconciliation workflow.
 - Widened `schedule_change_logs.section_id` to nullable so non-section schedule operations can use the same audit mechanism without placeholder section records.
-- Verified 121 tests / 487 assertions, migration status, SQLite integrity and foreign keys, transaction behavior, service resolution, route and rebuilt asset responses, HTTPS login, secure cookies and security headers. Release `c3b824e` is the immediate application rollback target.
+- Verified 121 tests / 488 assertions, migration status, SQLite integrity, transaction behavior, service resolution, route responses and HTTPS login. Release `8faed83` is the immediate application rollback target.
