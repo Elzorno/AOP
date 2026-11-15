@@ -75,7 +75,7 @@
       <h2>Publish a New Snapshot</h2>
       <p class="muted">Publishing captures CSV exports and zip bundles at a point in time. This does not change your live schedule.</p>
 
-      <form method="POST" action="{{ route('aop.schedule.publish.store') }}" style="margin-top:10px;">
+      <form method="POST" action="{{ route('aop.schedule.publish.store', $term) }}" style="margin-top:10px;">
         @csrf
         <label>Notes (optional)</label>
         <textarea name="notes" placeholder="e.g., Sent to Dean for review; labs still TBD.">{{ old('notes') }}</textarea>

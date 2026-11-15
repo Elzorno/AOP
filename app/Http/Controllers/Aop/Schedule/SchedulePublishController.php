@@ -23,24 +23,16 @@ class SchedulePublishController extends Controller
 {
     private const DAYS_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    private function activeTermOrFail(): Term
-    {
-        $term = Term::where('is_active', true)->first();
-        abort_if(! $term, 400, 'No active term is set. Go to Terms and set an active term.');
-
-        return $term;
-    }
-
-    public function index()
+    public function index(Term $term)
     {
         return redirect()
-            ->route('aop.schedule.reports.index', $this->activeTermOrFail())
+            ->route('aop.schedule.reports.index', $term)
             ->with('status', 'Schedule snapshots have been replaced by the registrar CSV export.');
     }
 
-    public function store(ScheduleReportsController $reports): StreamedResponse
+    public function store(Term $term, ScheduleReportsController $reports): StreamedResponse
     {
-        return $reports->exportRegistrar($this->activeTermOrFail());
+        return $reports->exportRegistrar($term);
     }
 
     private function buildPublishReadinessSummary(Term $term): array

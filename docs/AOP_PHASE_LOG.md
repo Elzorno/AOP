@@ -298,3 +298,9 @@ This file tracks what each phase changed so the project remains understandable w
 ## Explicit readiness release `5fb4ea0` — deployed 2026-11-15
 - Atomically deployed the readiness route slice without a schema migration; release `fb417a4` remains available for rollback.
 - Rebuilt production caches, reloaded PHP-FPM and nginx, and verified cached routes, real production readiness rendering, SQLite integrity, HTTPS login and service health.
+
+## Explicit retired-action term boundary — development checkpoint 2026-11-15
+- Moved retired publication export and schedule lock-clearing writes under explicit term routes.
+- Removed global-active-term inference from both compatibility controllers.
+- Kept historical artifact downloads bound to their publication records and retained a selected-term redirect for the legacy publication GET.
+- Verified non-active-term export isolation and lock clearing; the full suite passes 108 tests / 385 assertions.

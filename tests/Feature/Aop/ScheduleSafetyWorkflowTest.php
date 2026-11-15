@@ -280,7 +280,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
             'instructor_id' => null,
         ]);
 
-        $response = $this->actingAs($admin)->post(route('aop.schedule.publish.store'));
+        $response = $this->actingAs($admin)->post(route('aop.schedule.publish.store', $term));
 
         $response->assertOk()->assertDownload('aop_2026sp_registrar_schedule.csv');
         $this->assertStringContainsString('PUB-BLOCK-01', $response->streamedContent());
@@ -293,7 +293,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
         $term = $this->createActiveTerm(['schedule_locked' => true]);
 
         $this->actingAs($admin)
-            ->post(route('aop.schedule.lock'))
+            ->post(route('aop.schedule.lock', $term))
             ->assertRedirect(route('aop.schedule.reports.index', $term));
 
         $this->assertFalse((bool) $term->fresh()->schedule_locked);

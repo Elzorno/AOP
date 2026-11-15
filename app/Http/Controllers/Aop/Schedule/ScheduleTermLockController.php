@@ -7,28 +7,18 @@ use App\Models\Term;
 
 class ScheduleTermLockController extends Controller
 {
-    private function activeTermOrFail(): Term
+    public function lock(Term $term)
     {
-        $term = Term::where('is_active', true)->first();
-        abort_if(!$term, 400, 'No active term is set. Go to Terms and set an active term.');
-
-        return $term;
+        return $this->retireLegacyLock($term);
     }
 
-    public function lock()
+    public function unlock(Term $term)
     {
-        return $this->retireLegacyLock();
+        return $this->retireLegacyLock($term);
     }
 
-    public function unlock()
+    private function retireLegacyLock(Term $term)
     {
-        return $this->retireLegacyLock();
-    }
-
-    private function retireLegacyLock()
-    {
-        $term = $this->activeTermOrFail();
-
         if ($term->schedule_locked || $term->schedule_locked_at || $term->schedule_locked_by_user_id) {
             $term->update([
                 'schedule_locked' => false,

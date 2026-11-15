@@ -248,8 +248,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         })->name('schedule.reports.legacy');
 
         // Legacy schedule snapshots remain downloadable; new exports use the registrar CSV report.
-        Route::get('/schedule/publish', [SchedulePublishController::class, 'index'])->name('schedule.publish.index');
-        Route::post('/schedule/publish', [SchedulePublishController::class, 'store'])->name('schedule.publish.store');
+        Route::get('/terms/{term}/schedule/publish', [SchedulePublishController::class, 'index'])->name('schedule.publish.index');
+        Route::post('/terms/{term}/schedule/publish', [SchedulePublishController::class, 'store'])->name('schedule.publish.store');
+        Route::get('/schedule/publish', function (Request $request) {
+            $term = $request->user()->selectedTerm
+                ?? Term::query()->where('is_active', true)->firstOrFail();
+
+            return redirect()->route('aop.schedule.publish.index', $term);
+        })->name('schedule.publish.legacy');
         Route::get('/schedule/publish/{publication}/download/term', [SchedulePublishController::class, 'downloadTerm'])->name('schedule.publish.downloadTerm');
         Route::get('/schedule/publish/{publication}/download/instructors', [SchedulePublishController::class, 'downloadInstructorsZip'])->name('schedule.publish.downloadInstructorsZip');
         Route::get('/schedule/publish/{publication}/download/rooms', [SchedulePublishController::class, 'downloadRoomsZip'])->name('schedule.publish.downloadRoomsZip');
@@ -262,8 +268,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             return redirect()->route('aop.schedule.readiness.index', $term);
         })->name('schedule.readiness.legacy');
-        Route::post('/schedule/lock', [ScheduleTermLockController::class, 'lock'])->name('schedule.lock');
-        Route::post('/schedule/unlock', [ScheduleTermLockController::class, 'unlock'])->name('schedule.unlock');
+        Route::post('/terms/{term}/schedule/lock', [ScheduleTermLockController::class, 'lock'])->name('schedule.lock');
+        Route::post('/terms/{term}/schedule/unlock', [ScheduleTermLockController::class, 'unlock'])->name('schedule.unlock');
 
     });
 
