@@ -2,7 +2,7 @@
 
 Prepared 14 November 2026. Status: phases 1–3 and the major phase-4 schedule mutation, SQLite serialization, stale-edit and shared-preview slices are deployed. Phase 5 has begun by removing the destructive scheduled-event rebuild path. Typed command objects and the final write-path inventory remain before the phase-4 gate is complete.
 
-Current production release: `e0435c4` through `/var/www/aop-current`. The isolated suite passes 121 tests / 491 assertions. Scheduled-event reconciliation is read-only by default and reports missing, mismatched and unmatched projections before an explicit repair. Production reconciliation found 37 sources and 37 events with zero drift across four terms. Release `bb17783` remains available for immediate application rollback. Verified pre-release database checkpoint: `/root/aop-backups/20261115T171037Z-pre-e0435c4`.
+Current production release: `a65800c` through `/var/www/aop-current`. The isolated suite passes 122 tests / 492 assertions. Scheduled-event staff assignments now have typed instructor/lab-tech foreign keys and an exactly-one-target database check while retaining legacy columns during the expand stage. All 35 production assignments backfilled to valid instructor references; reconciliation remains at 37 sources and 37 events with zero drift. Release `e0435c4` remains available for application rollback with the migration's compatibility columns retained. Verified pre-release database checkpoint: `/root/aop-backups/20261115T171834Z-pre-a65800c`.
 
 ## Outcome and constraints
 
@@ -226,5 +226,6 @@ Release `dc60a9d` was the initial security and phase-3 identity checkpoint: null
 - Closed the remaining direct clone write and enforcement bypass in `8faed83`: copied sections now use the section service, and institutional hard rules are evaluated by the shared meeting service for every entry point. Preview responses also expose advisory warnings from that evaluator.
 - Replaced the delete-and-rebuild scheduled-event command in `bb17783` with a transactional, non-destructive repair. It restores source-backed projections while preserving unmatched events for the phase-5 reconciliation workflow.
 - Added dry-run reconciliation in `e0435c4`; repair now requires `--repair` and retains the exact-database maintenance guard. The production audit found 37 source records and 37 projected events with no missing, mismatched or unmatched rows across four terms.
+- Added constrained staff targets in `a65800c`. The expand-stage table retains legacy type/ID columns, adds instructor and lab-tech foreign keys, and enforces exactly one matching typed target. All 35 production assignments migrated cleanly and foreign-key validation found no violations.
 - Widened `schedule_change_logs.section_id` to nullable so non-section schedule operations can use the same audit mechanism without placeholder section records.
-- Verified 121 tests / 491 assertions, migration status, SQLite integrity, transaction behavior, service resolution, route responses and HTTPS login. Release `bb17783` is the immediate application rollback target.
+- Verified 122 tests / 492 assertions, migration status, SQLite integrity and foreign keys, reconciliation parity, service resolution, route responses and HTTPS login. Release `e0435c4` is the immediate compatible application rollback target.
