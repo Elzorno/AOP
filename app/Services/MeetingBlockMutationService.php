@@ -53,7 +53,8 @@ class MeetingBlockMutationService
         );
 
         $blockType = (string) ($attributes['type'] ?? $meetingBlock?->type?->value ?? $meetingBlock?->type ?? 'OTHER');
-        $warnings = $this->ruleWarnings->warnForBlock($days, $startsAt, $endsAt, $blockType, $term);
+        $findings = $this->ruleWarnings->findingsForBlock($days, $startsAt, $endsAt, $blockType, $term);
+        $warnings = array_map(fn ($finding) => $finding->explanation, $findings);
         if ($warnings !== [] && $this->ruleWarnings->isEnforced($term)) {
             throw ValidationException::withMessages(['schedule_rules' => implode(' | ', $warnings)]);
         }
@@ -66,6 +67,7 @@ class MeetingBlockMutationService
                 'room_id' => $roomId,
             ],
             'warnings' => $warnings,
+            'policy_findings' => array_map(fn ($finding) => $finding->toArray(), $findings),
         ];
     }
 

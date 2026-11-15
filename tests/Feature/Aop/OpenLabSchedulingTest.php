@@ -49,6 +49,8 @@ class OpenLabSchedulingTest extends TestCase
         $this->assertSame('compatibility-v1', $term->refresh()->schedule_policy_version);
         $this->assertSame('compatibility-v1', $result['policy_version']);
         $this->assertSame(12.0, $result['targets']['friday_min_pct']);
+        $this->assertContains('distribution.mwf_load', array_column($result['findings'], 'rule_id'));
+        $this->assertSame('compatibility-v1', $result['findings'][0]['policy_version']);
         $this->assertSame(1, $result['totals']['sections_with_friday']);
         $this->assertSame(100.0, $result['friday_pct']);
     }

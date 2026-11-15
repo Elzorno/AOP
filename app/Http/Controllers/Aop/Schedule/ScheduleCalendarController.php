@@ -76,6 +76,7 @@ class ScheduleCalendarController extends Controller
                 'valid' => true,
                 'normalized' => $evaluation['normalized'],
                 'warnings' => $evaluation['warnings'],
+                'policy_findings' => $evaluation['policy_findings'],
                 'errors' => [],
             ]);
         } catch (ValidationException $exception) {
@@ -83,6 +84,7 @@ class ScheduleCalendarController extends Controller
                 'valid' => false,
                 'normalized' => null,
                 'warnings' => [],
+                'policy_findings' => [],
                 'errors' => $exception->errors(),
             ]);
         }

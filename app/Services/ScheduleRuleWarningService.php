@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Data\Scheduling\SchedulePolicyFinding;
 use App\Models\Term;
+use App\Policies\SchedulePolicy;
 
 /**
  * Validates a proposed meeting block against institutional scheduling rules
@@ -40,6 +42,43 @@ class ScheduleRuleWarningService
         string $endsAt,
         string $blockType,
         ?Term $term = null
+    ): array {
+        return array_map(
+            fn (SchedulePolicyFinding $finding) => $finding->explanation,
+            $this->findingsForBlock($days, $startsAt, $endsAt, $blockType, $term),
+        );
+    }
+
+    /** @return list<SchedulePolicyFinding> */
+    public function findingsForBlock(
+        array $days,
+        string $startsAt,
+        string $endsAt,
+        string $blockType,
+        ?Term $term = null,
+    ): array {
+        $policyVersion = $term?->schedule_policy_version ?: SchedulePolicy::COMPATIBILITY_V1;
+        $severity = $term && $this->isEnforced($term) ? 'error' : 'warning';
+
+        return array_map(
+            fn (string $message) => new SchedulePolicyFinding(
+                ruleId: $this->ruleId($message),
+                category: 'institutional_policy',
+                severity: $severity,
+                affectedResources: [],
+                explanation: $message,
+                remediationUrl: null,
+                policyVersion: $policyVersion,
+            ),
+            $this->warningMessagesForBlock($days, $startsAt, $endsAt, $blockType),
+        );
+    }
+
+    private function warningMessagesForBlock(
+        array $days,
+        string $startsAt,
+        string $endsAt,
+        string $blockType,
     ): array {
         $warnings = [];
 
@@ -145,6 +184,21 @@ class ScheduleRuleWarningService
         }
 
         return $warnings;
+    }
+
+    private function ruleId(string $message): string
+    {
+        return match (true) {
+            str_starts_with($message, 'Two-day ') => 'class.two_day_afternoon_start',
+            str_starts_with($message, 'One-day-per-week ') => 'class.one_day_evening_start',
+            str_starts_with($message, 'Class start time ') => 'class.standard_opening_time',
+            str_starts_with($message, 'Class end time ') => 'class.latest_closing_time',
+            str_starts_with($message, 'Monday/Wednesday ') => 'class.faculty_meeting_window',
+            str_starts_with($message, 'This block ends after ') => 'class.day_course_closing_time',
+            str_starts_with($message, 'Start time ') => 'class.canonical_start_time',
+            str_starts_with($message, 'Duration ') => 'class.canonical_duration',
+            default => 'class.unclassified_policy_rule',
+        };
     }
 
     // -----------------------------------------------------------------------

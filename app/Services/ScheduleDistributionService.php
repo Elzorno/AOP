@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Data\Scheduling\SchedulePolicyFinding;
 use App\Models\MeetingBlock;
 use App\Models\Offering;
 use App\Models\Section;
@@ -99,6 +100,14 @@ class ScheduleDistributionService
         // Online % for GEP and program-required sections
         [$gepOnlinePct, $gepTotal, $gepOnline] = $this->onlinePctForFlag($term, 'is_gep');
         [$progOnlinePct, $progTotal, $progOnline] = $this->onlinePctForFlag($term, 'is_program_required');
+        $flags = [
+            'friday_low' => $fridayPct < $targets['friday_min_pct'] && $totalSections > 0,
+            'peak_high' => $peakPct > $targets['peak_max_pct'],
+            'mwf_high' => $mwfPct > $targets['mwf_max_pct'],
+            'tr_high' => $trPct > $targets['tr_max_pct'],
+            'gep_online_high' => $gepOnlinePct > $targets['gep_online_max_pct'],
+            'prog_online_high' => $progOnlinePct > $targets['program_online_max_pct'],
+        ];
 
         return [
             'policy_version'   => $policy->version,
@@ -121,14 +130,8 @@ class ScheduleDistributionService
                 'program_online'        => $progOnline,
             ],
             'targets' => $targets,
-            'flags' => [
-                'friday_low'       => $fridayPct < $targets['friday_min_pct'] && $totalSections > 0,
-                'peak_high'        => $peakPct > $targets['peak_max_pct'],
-                'mwf_high'         => $mwfPct > $targets['mwf_max_pct'],
-                'tr_high'          => $trPct > $targets['tr_max_pct'],
-                'gep_online_high'  => $gepOnlinePct > $targets['gep_online_max_pct'],
-                'prog_online_high' => $progOnlinePct > $targets['program_online_max_pct'],
-            ],
+            'flags' => $flags,
+            'findings' => $this->distributionFindings($term, $policy->version, $flags),
         ];
     }
 
@@ -189,6 +192,15 @@ class ScheduleDistributionService
         $mwfPct    = $newTotal > 0  ? round(($newMwf  / $newTotal) * 100, 1) : 0.0;
         $trPct     = $newTotal > 0  ? round(($newTr   / $newTotal) * 100, 1) : 0.0;
 
+        $flags = [
+            'friday_low' => $fridayPct < $targets['friday_min_pct'],
+            'peak_high' => $peakPct > $targets['peak_max_pct'],
+            'mwf_high' => $mwfPct > $targets['mwf_max_pct'],
+            'tr_high' => $trPct > $targets['tr_max_pct'],
+            'gep_online_high' => $base['flags']['gep_online_high'],
+            'prog_online_high' => $base['flags']['prog_online_high'],
+        ];
+
         return array_merge($base, [
             'friday_pct'    => $fridayPct,
             'peak_hour_pct' => $peakPct,
@@ -202,14 +214,8 @@ class ScheduleDistributionService
                 'mwf_minutes'           => $newMwf,
                 'tr_minutes'            => $newTr,
             ]),
-            'flags' => [
-                'friday_low'       => $fridayPct < $targets['friday_min_pct'],
-                'peak_high'        => $peakPct > $targets['peak_max_pct'],
-                'mwf_high'         => $mwfPct > $targets['mwf_max_pct'],
-                'tr_high'          => $trPct > $targets['tr_max_pct'],
-                'gep_online_high'  => $base['flags']['gep_online_high'],
-                'prog_online_high' => $base['flags']['prog_online_high'],
-            ],
+            'flags' => $flags,
+            'findings' => $this->distributionFindings($term, $base['policy_version'], $flags),
         ]);
     }
 
@@ -267,6 +273,33 @@ class ScheduleDistributionService
                 'gep_online_high'  => false,
                 'prog_online_high' => false,
             ],
+            'findings' => [],
         ];
+    }
+
+    private function distributionFindings(Term $term, string $policyVersion, array $flags): array
+    {
+        $definitions = [
+            'friday_low' => ['distribution.friday_coverage', 'Friday meeting coverage is below the policy target.'],
+            'peak_high' => ['distribution.peak_hour_load', 'Peak-hour classroom minutes exceed the policy target.'],
+            'mwf_high' => ['distribution.mwf_load', 'Monday/Wednesday/Friday classroom minutes exceed the policy target.'],
+            'tr_high' => ['distribution.tr_load', 'Tuesday/Thursday classroom minutes exceed the policy target.'],
+            'gep_online_high' => ['distribution.gep_online_share', 'Online GEP sections exceed the policy target.'],
+            'prog_online_high' => ['distribution.program_online_share', 'Online program-required sections exceed the policy target.'],
+        ];
+
+        return collect($definitions)
+            ->filter(fn ($definition, $flag) => (bool) ($flags[$flag] ?? false))
+            ->map(fn ($definition) => (new SchedulePolicyFinding(
+                ruleId: $definition[0],
+                category: 'distribution',
+                severity: 'advisory',
+                affectedResources: ['term:'.$term->id],
+                explanation: $definition[1],
+                remediationUrl: null,
+                policyVersion: $policyVersion,
+            ))->toArray())
+            ->values()
+            ->all();
     }
 }

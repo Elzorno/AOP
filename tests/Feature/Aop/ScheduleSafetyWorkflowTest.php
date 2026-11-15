@@ -161,6 +161,35 @@ class ScheduleSafetyWorkflowTest extends TestCase
         $this->assertSame(1, MeetingBlock::query()->count());
     }
 
+    public function test_validation_preview_returns_versioned_policy_findings(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $term = $this->createActiveTerm();
+        $room = Room::create(['name' => 'POLICY-101', 'is_active' => true]);
+        $section = $this->createSection($term);
+
+        $this->actingAs($admin)
+            ->postJson(route('aop.schedule.calendar.preview', $term), [
+                'section_id' => $section->id,
+                'type' => 'LECTURE',
+                'days' => ['Mon'],
+                'starts_at' => '13:00',
+                'ends_at' => '14:00',
+                'room_id' => $room->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('valid', true)
+            ->assertJsonPath('policy_findings.0.rule_id', 'class.one_day_evening_start')
+            ->assertJsonPath('policy_findings.0.category', 'institutional_policy')
+            ->assertJsonPath('policy_findings.0.severity', 'warning')
+            ->assertJsonPath('policy_findings.0.policy_version', 'compatibility-v1')
+            ->assertJsonStructure(['policy_findings' => [[
+                'rule_id', 'category', 'severity', 'affected_resources', 'explanation',
+                'remediation_url', 'policy_version',
+            ]]])
+            ->assertJsonPath('warnings.0', fn ($warning) => is_string($warning) && $warning !== '');
+    }
+
     public function test_calendar_update_rejects_instructor_office_hour_conflict(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
