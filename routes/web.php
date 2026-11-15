@@ -221,6 +221,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::prefix('/terms/{term}/schedule/calendar')->group(function () {
             Route::get('/', [ScheduleCalendarController::class, 'index'])->name('schedule.calendar.index');
             Route::get('/events', [ScheduleCalendarController::class, 'events'])->name('schedule.calendar.events');
+            Route::post('/preview', [ScheduleCalendarController::class, 'preview'])->name('schedule.calendar.preview');
             Route::post('/update', [ScheduleCalendarController::class, 'update'])->name('schedule.calendar.update');
         });
 

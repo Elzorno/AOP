@@ -14,29 +14,55 @@ class MeetingBlockMutationService
 {
     public function __construct(private readonly ScheduleConflictService $conflicts) {}
 
-    public function create(Term $term, Section $section, array $attributes, ?int $actorId = null): MeetingBlock
+    public function preview(Term $term, Section $section, array $attributes, ?MeetingBlock $meetingBlock = null): array
     {
         $section->loadMissing('offering', 'instructor');
         if ((int) $section->offering->term_id !== (int) $term->id) {
             throw ValidationException::withMessages([
-                'section' => 'Section does not belong to the requested term.',
+                $meetingBlock ? 'blockId' : 'section' => $meetingBlock
+                    ? 'Meeting block does not belong to the requested term.'
+                    : 'Section does not belong to the requested term.',
+            ]);
+        }
+        if ($meetingBlock && (int) $meetingBlock->section_id !== (int) $section->id) {
+            throw ValidationException::withMessages([
+                'blockId' => 'Meeting block does not belong to the requested section.',
             ]);
         }
 
+        $days = ScheduleConflictService::normalizeDays(
+            $attributes['days'] ?? $attributes['days_json'] ?? $meetingBlock?->days_json ?? [],
+        );
+        $startsAt = substr((string) ($attributes['starts_at'] ?? $meetingBlock?->starts_at ?? ''), 0, 5);
+        $endsAt = substr((string) ($attributes['ends_at'] ?? $meetingBlock?->ends_at ?? ''), 0, 5);
+        $roomId = $this->resolveRoomId($attributes, $meetingBlock?->room_id);
+        $roomId = $this->validateSchedule(
+            $term,
+            $section,
+            $days,
+            $startsAt,
+            $endsAt,
+            $roomId,
+            $meetingBlock?->id,
+        );
+
+        return [
+            'days_json' => $days,
+            'starts_at' => $startsAt,
+            'ends_at' => $endsAt,
+            'room_id' => $roomId,
+        ];
+    }
+
+    public function create(Term $term, Section $section, array $attributes, ?int $actorId = null): MeetingBlock
+    {
         return DB::transaction(function () use ($term, $section, $attributes, $actorId) {
-            $days = ScheduleConflictService::normalizeDays($attributes['days'] ?? $attributes['days_json'] ?? []);
-            $startsAt = substr((string) ($attributes['starts_at'] ?? ''), 0, 5);
-            $endsAt = substr((string) ($attributes['ends_at'] ?? ''), 0, 5);
-            $roomId = $this->resolveRoomId($attributes, null);
-            $roomId = $this->validateSchedule($term, $section, $days, $startsAt, $endsAt, $roomId);
+            $schedule = $this->preview($term, $section, $attributes);
 
             $block = MeetingBlock::query()->create([
                 'section_id' => $section->id,
                 'type' => $attributes['type'],
-                'days_json' => $days,
-                'starts_at' => $startsAt,
-                'ends_at' => $endsAt,
-                'room_id' => $roomId,
+                ...$schedule,
                 'notes' => $attributes['notes'] ?? null,
             ]);
 
@@ -78,94 +104,7 @@ class MeetingBlockMutationService
     private function performUpdate(Term $term, MeetingBlock $meetingBlock, array $attributes): MeetingBlock
     {
         $meetingBlock->loadMissing('section.offering', 'section.instructor', 'room');
-
-        if ((int) $meetingBlock->section->offering->term_id !== (int) $term->id) {
-            throw ValidationException::withMessages([
-                'blockId' => 'Meeting block does not belong to the requested term.',
-            ]);
-        }
-
-        $days = $attributes['days'] ?? ($attributes['days_json'] ?? $meetingBlock->days_json ?? []);
-        $days = ScheduleConflictService::normalizeDays($days);
-        if (count($days) === 0) {
-            throw ValidationException::withMessages([
-                'days' => 'At least one meeting day is required.',
-            ]);
-        }
-
-        $startsAt = (string) ($attributes['starts_at'] ?? $meetingBlock->starts_at);
-        $endsAt = (string) ($attributes['ends_at'] ?? $meetingBlock->ends_at);
-        $startsAt = substr($startsAt, 0, 5);
-        $endsAt = substr($endsAt, 0, 5);
-
-        if ($endsAt <= $startsAt) {
-            throw ValidationException::withMessages([
-                'ends_at' => 'End time must be after start time.',
-            ]);
-        }
-
-        $roomId = $this->resolveRoomId($attributes, $meetingBlock->room_id);
-        $modality = (string) ($meetingBlock->section->modality?->value ?? 'IN_PERSON');
-
-        if ($modality === 'ONLINE') {
-            $roomId = null;
-        } elseif (empty($roomId)) {
-            throw ValidationException::withMessages([
-                'room_id' => 'Room is required for in-person or hybrid sections.',
-            ]);
-        }
-
-        $roomConflicts = $this->conflicts->roomConflictsForMeetingBlock(
-            $term,
-            (int) ($roomId ?? 0),
-            $days,
-            $startsAt,
-            $endsAt,
-            $meetingBlock->id,
-        );
-
-        $roomConflictLabels = ScheduleConflictService::formatRoomConflictMessages($roomConflicts);
-        if ($roomConflictLabels !== []) {
-            throw ValidationException::withMessages([
-                'conflicts' => 'Room conflict with: '.implode('; ', $roomConflictLabels),
-            ]);
-        }
-
-        if (! empty($meetingBlock->section->instructor_id)) {
-            $insConflicts = $this->conflicts->instructorConflictsForMeetingBlock(
-                $term,
-                (int) $meetingBlock->section->instructor_id,
-                $days,
-                $startsAt,
-                $endsAt,
-                $meetingBlock->id,
-            );
-
-            $messages = [];
-            if ($insConflicts['meeting_blocks']->count() > 0) {
-                $messages[] = 'Instructor conflict with classes: '.$insConflicts['meeting_blocks']
-                    ->map(fn ($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))
-                    ->implode('; ');
-            }
-            if ($insConflicts['office_hour_blocks']->count() > 0) {
-                $messages[] = 'Instructor conflict with office hours: '.$insConflicts['office_hour_blocks']
-                    ->map(fn ($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))
-                    ->implode('; ');
-            }
-
-            if (! empty($messages)) {
-                throw ValidationException::withMessages([
-                    'conflicts' => implode(' | ', $messages),
-                ]);
-            }
-        }
-
-        $payload = [
-            'days_json' => $days,
-            'starts_at' => $startsAt,
-            'ends_at' => $endsAt,
-            'room_id' => $roomId,
-        ];
+        $payload = $this->preview($term, $meetingBlock->section, $attributes, $meetingBlock);
 
         if (array_key_exists('type', $attributes)) {
             $payload['type'] = $attributes['type'];

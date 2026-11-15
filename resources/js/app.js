@@ -9,65 +9,62 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 window.Alpine = Alpine;
 window.AopCalendar = { Calendar, interactionPlugin, timeGridPlugin };
 
-/**
- * Client-side conflict checker for meeting block forms.
- * Reads the serialized block list from #sched-blocks-data and checks
- * for room or instructor overlaps as the user fills in the form.
- *
- * @param {number} sectionId     - The section this form belongs to (its blocks are excluded).
- * @param {number|null} instructorId - The instructor assigned to this section (may be null).
- */
-function conflictChecker(sectionId, instructorId) {
+function conflictChecker(sectionId, blockId, previewUrl, csrfToken) {
     return {
         conflicts: [],
         days: [],
         startsAt: '',
         endsAt: '',
         roomId: '',
+        requestSequence: 0,
+        timer: null,
 
         get hasConflict() { return this.conflicts.length > 0; },
 
         check() {
-            const allBlocks = JSON.parse(
-                document.getElementById('sched-blocks-data')?.dataset?.blocks ?? '[]'
-            );
+            clearTimeout(this.timer);
 
             if (!this.startsAt || !this.endsAt || this.days.length === 0) {
                 this.conflicts = [];
                 return;
             }
 
-            const found = [];
-            for (const b of allBlocks) {
-                // Skip blocks belonging to this same section
-                if (b.section_id === sectionId) continue;
-
-                // Check day overlap
-                const dayOverlap = b.days.some(d => this.days.includes(d));
-                if (!dayOverlap) continue;
-
-                // Check time overlap using HH:MM string comparison
-                const aStart = this.startsAt, aEnd = this.endsAt;
-                const bStart = b.starts_at,   bEnd = b.ends_at;
-                const overlaps = aStart < bEnd && aEnd > bStart;
-                if (!overlaps) continue;
-
-                // Room conflict
-                if (this.roomId && b.room_id && String(b.room_id) === String(this.roomId)) {
-                    found.push(
-                        b.kind === 'open_lab'
-                            ? 'Room conflict with an open lab'
-                            : 'Room conflict with another section'
-                    );
-                }
-                // Instructor conflict
-                if (instructorId && b.instructor_id && b.instructor_id === instructorId) {
-                    found.push('Instructor conflict with another section');
-                }
+            if (this.endsAt <= this.startsAt) {
+                this.conflicts = ['End time must be after start time.'];
+                return;
             }
 
-            // Deduplicate messages
-            this.conflicts = [...new Set(found)];
+            const sequence = ++this.requestSequence;
+            this.timer = setTimeout(async () => {
+                try {
+                    const response = await fetch(previewUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: JSON.stringify({
+                            section_id: sectionId,
+                            block_id: blockId,
+                            days: this.days,
+                            starts_at: this.startsAt,
+                            ends_at: this.endsAt,
+                            room_id: this.roomId || null,
+                        }),
+                    });
+                    const result = await response.json();
+                    if (sequence !== this.requestSequence) return;
+
+                    this.conflicts = result.valid
+                        ? []
+                        : [...new Set(Object.values(result.errors ?? {}).flat())];
+                } catch (_error) {
+                    if (sequence === this.requestSequence) {
+                        this.conflicts = ['Validation preview is temporarily unavailable.'];
+                    }
+                }
+            }, 250);
         },
     };
 }

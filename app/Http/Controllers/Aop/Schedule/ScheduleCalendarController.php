@@ -8,6 +8,7 @@ use App\Models\OfficeHourBlock;
 use App\Models\OpenLab;
 use App\Models\Room;
 use App\Models\ScheduledEvent;
+use App\Models\Section;
 use App\Models\Term;
 use App\Services\MeetingBlockMutationService;
 use Illuminate\Http\Request;
@@ -49,6 +50,34 @@ class ScheduleCalendarController extends Controller
     public function events(Term $term)
     {
         return response()->json($this->buildEvents($this->scheduledEventsForTerm($term)));
+    }
+
+    public function preview(Request $request, Term $term, MeetingBlockMutationService $mutationService)
+    {
+        $data = $request->validate([
+            'section_id' => 'required|integer|exists:sections,id',
+            'block_id' => 'sometimes|nullable|integer|exists:meeting_blocks,id',
+            'days' => 'required|array|min:1',
+            'days.*' => 'string|in:Mon,Tue,Wed,Thu,Fri,Sat,Sun|distinct',
+            'starts_at' => 'required|date_format:H:i',
+            'ends_at' => 'required|date_format:H:i',
+            'room_id' => 'sometimes|nullable|integer|exists:rooms,id',
+        ]);
+
+        $section = Section::query()->findOrFail($data['section_id']);
+        $block = isset($data['block_id']) ? MeetingBlock::query()->findOrFail($data['block_id']) : null;
+
+        try {
+            $normalized = $mutationService->preview($term, $section, $data, $block);
+
+            return response()->json(['valid' => true, 'normalized' => $normalized, 'errors' => []]);
+        } catch (ValidationException $exception) {
+            return response()->json([
+                'valid' => false,
+                'normalized' => null,
+                'errors' => $exception->errors(),
+            ]);
+        }
     }
 
     public function update(Request $request, Term $term, MeetingBlockMutationService $mutationService)

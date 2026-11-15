@@ -117,6 +117,50 @@ class ScheduleSafetyWorkflowTest extends TestCase
         $this->assertStringContainsString('Room conflict', (string) $response->json('message'));
     }
 
+    public function test_validation_preview_and_persisted_create_use_the_same_conflict_result(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $term = $this->createActiveTerm();
+        $room = Room::create(['name' => 'SCI-202', 'is_active' => true]);
+        $occupiedSection = $this->createSection($term);
+        MeetingBlock::create([
+            'section_id' => $occupiedSection->id,
+            'type' => 'LECTURE',
+            'days_json' => ['Mon'],
+            'starts_at' => '09:00',
+            'ends_at' => '10:00',
+            'room_id' => $room->id,
+        ]);
+        $targetSection = $this->createSection($term);
+        $payload = [
+            'days' => ['Mon'],
+            'starts_at' => '09:30',
+            'ends_at' => '10:30',
+            'room_id' => $room->id,
+        ];
+
+        $preview = $this->actingAs($admin)
+            ->postJson(route('aop.schedule.calendar.preview', $term), [
+                'section_id' => $targetSection->id,
+                ...$payload,
+            ])
+            ->assertOk()
+            ->assertJsonPath('valid', false);
+
+        $create = $this->actingAs($admin)
+            ->post(route('aop.schedule.meetingBlocks.store', [$term, $targetSection]), [
+                'type' => 'LECTURE',
+                ...$payload,
+            ])
+            ->assertSessionHasErrors('conflicts');
+
+        $this->assertSame(
+            $preview->json('errors.conflicts.0'),
+            $create->getSession()->get('errors')->get('conflicts')[0],
+        );
+        $this->assertSame(1, MeetingBlock::query()->count());
+    }
+
     public function test_calendar_update_rejects_instructor_office_hour_conflict(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);

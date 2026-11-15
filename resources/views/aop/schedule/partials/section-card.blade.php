@@ -98,7 +98,7 @@
     @foreach($sectionCard['meeting_cards'] as $meetingCard)
       @php $meetingBlock = $meetingCard['model']; @endphp
       <details class="block-edit-row"
-        x-data="conflictChecker({{ $section->id }}, {{ $section->instructor_id ?? 'null' }})"
+        x-data='conflictChecker({{ $section->id }}, {{ $meetingBlock->id }}, @js(route('aop.schedule.calendar.preview', $term)), @js(csrf_token()))'
         {{ ($oldMeetingBlockId ?? null) === $meetingBlock->id ? 'open' : '' }}>
         <summary class="disclosure-summary">
           Edit {{ $meetingBlock->type->value }}
@@ -184,7 +184,7 @@
 
     {{-- Add meeting block row --}}
     <details class="block-edit-row"
-      x-data="conflictChecker({{ $section->id }}, {{ $section->instructor_id ?? 'null' }})"
+      x-data='conflictChecker({{ $section->id }}, null, @js(route('aop.schedule.calendar.preview', $term)), @js(csrf_token()))'
       {{ $sectionCard['has_missing_meetings'] ? 'open' : '' }}>
       <summary class="disclosure-summary">+ Add meeting block</summary>
       <div class="disclosure-body">
