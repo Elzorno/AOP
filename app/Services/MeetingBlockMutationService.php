@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\MeetingBlock;
 use App\Models\ScheduleChangeLog;
+use App\Models\ScheduledEvent;
 use App\Models\Section;
 use App\Models\Term;
 use Illuminate\Support\Facades\DB;
@@ -48,6 +49,7 @@ class MeetingBlockMutationService
     public function update(Term $term, MeetingBlock $meetingBlock, array $attributes, ?int $actorId = null): MeetingBlock
     {
         return DB::transaction(function () use ($term, $meetingBlock, $attributes, $actorId) {
+            $this->assertExpectedRevision($meetingBlock, $attributes['expected_revision'] ?? null);
             $before = $this->snapshot($meetingBlock);
             $updated = $this->performUpdate($term, $meetingBlock, $attributes);
             $this->log($term, $updated->section, $updated, 'updated', $before, $this->snapshot($updated), $actorId);
@@ -188,6 +190,23 @@ class MeetingBlockMutationService
         }
 
         return $fallback ? (int) $fallback : null;
+    }
+
+    private function assertExpectedRevision(MeetingBlock $meetingBlock, mixed $expectedRevision): void
+    {
+        if ($expectedRevision === null) {
+            return;
+        }
+
+        $event = ScheduledEvent::query()
+            ->where('source_type', MeetingBlock::class)
+            ->where('source_id', $meetingBlock->id)
+            ->first();
+        if (! $event || (int) $event->revision !== (int) $expectedRevision) {
+            throw ValidationException::withMessages([
+                'revision' => 'This event changed after the calendar loaded. Refresh the calendar and try again.',
+            ]);
+        }
     }
 
     private function validateSchedule(

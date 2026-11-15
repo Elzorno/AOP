@@ -8,6 +8,7 @@ use App\Models\MeetingBlock;
 use App\Models\Offering;
 use App\Models\OfficeHourBlock;
 use App\Models\Room;
+use App\Models\ScheduledEvent;
 use App\Models\Section;
 use App\Models\Term;
 use App\Models\User;
@@ -40,6 +41,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
             'blockId' => $block->id,
             'starts_at' => '10:00',
             'ends_at' => '11:00',
+            'revision' => $this->revision($block),
         ]);
 
         $response->assertOk()
@@ -68,6 +70,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
             'blockId' => $block->id,
             'starts_at' => '10:00',
             'ends_at' => '10:00',
+            'revision' => $this->revision($block),
         ]);
 
         $response->assertStatus(422)
@@ -105,6 +108,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
             'blockId' => $target->id,
             'starts_at' => '09:30',
             'ends_at' => '10:30',
+            'revision' => $this->revision($target),
         ]);
 
         $response->assertStatus(422)
@@ -148,6 +152,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
             'blockId' => $target->id,
             'starts_at' => '11:30',
             'ends_at' => '12:30',
+            'revision' => $this->revision($target),
         ]);
 
         $response->assertStatus(422)
@@ -176,6 +181,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
             'blockId' => $block->id,
             'starts_at' => '10:00',
             'ends_at' => '11:15',
+            'revision' => $this->revision($block),
         ]);
 
         $response->assertOk()
@@ -191,6 +197,36 @@ class ScheduleSafetyWorkflowTest extends TestCase
             'user_id' => $admin->id,
             'action' => 'updated',
         ]);
+    }
+
+    public function test_calendar_rejects_a_stale_event_revision_without_overwriting_newer_work(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $term = $this->createActiveTerm();
+        $section = $this->createSection($term);
+        $room = Room::create(['name' => 'SCI-402', 'is_active' => true]);
+        $block = MeetingBlock::create([
+            'section_id' => $section->id,
+            'type' => 'LECTURE',
+            'days_json' => ['Fri'],
+            'starts_at' => '09:00',
+            'ends_at' => '10:00',
+            'room_id' => $room->id,
+        ]);
+        $staleRevision = $this->revision($block);
+        $block->update(['starts_at' => '10:00', 'ends_at' => '11:00']);
+
+        $this->actingAs($admin)
+            ->postJson(route('aop.schedule.calendar.update', $term), [
+                'blockId' => $block->id,
+                'starts_at' => '12:00',
+                'ends_at' => '13:00',
+                'revision' => $staleRevision,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.revision.0', 'This event changed after the calendar loaded. Refresh the calendar and try again.');
+
+        $this->assertSame('10:00', substr((string) $block->fresh()->starts_at, 0, 5));
     }
 
     public function test_sections_index_missing_meeting_blocks_filter_works(): void
@@ -342,5 +378,13 @@ class ScheduleSafetyWorkflowTest extends TestCase
             'modality' => 'IN_PERSON',
             'instructor_id' => null,
         ], $overrides));
+    }
+
+    private function revision(MeetingBlock $block): int
+    {
+        return (int) ScheduledEvent::query()
+            ->where('source_type', MeetingBlock::class)
+            ->where('source_id', $block->id)
+            ->value('revision');
     }
 }

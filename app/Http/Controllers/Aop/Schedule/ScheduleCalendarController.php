@@ -58,6 +58,7 @@ class ScheduleCalendarController extends Controller
             'starts_at' => 'required|date_format:H:i',
             'ends_at' => 'required|date_format:H:i',
             'roomId' => 'sometimes|nullable|integer|exists:rooms,id',
+            'revision' => 'required|integer|min:1',
         ]);
 
         $block = MeetingBlock::findOrFail($data['blockId']);
@@ -66,6 +67,7 @@ class ScheduleCalendarController extends Controller
             $attributes = [
                 'starts_at' => $data['starts_at'],
                 'ends_at' => $data['ends_at'],
+                'expected_revision' => $data['revision'],
             ];
 
             if (array_key_exists('roomId', $data)) {
@@ -73,6 +75,10 @@ class ScheduleCalendarController extends Controller
             }
 
             $updated = $mutationService->update($term, $block, $attributes);
+            $event = ScheduledEvent::query()
+                ->where('source_type', MeetingBlock::class)
+                ->where('source_id', $updated->id)
+                ->firstOrFail();
 
             return response()->json([
                 'status' => 'success',
@@ -82,6 +88,7 @@ class ScheduleCalendarController extends Controller
                     'starts_at' => substr((string) $updated->starts_at, 0, 5),
                     'ends_at' => substr((string) $updated->ends_at, 0, 5),
                     'room_id' => $updated->room_id,
+                    'revision' => $event->revision,
                 ],
             ]);
         } catch (ValidationException $e) {
@@ -162,6 +169,7 @@ class ScheduleCalendarController extends Controller
                         'eventKind' => $scheduledEvent->event_type,
                         'blockId' => $isClass ? $source?->id : null,
                         'scheduledEventId' => $scheduledEvent->id,
+                        'revision' => $scheduledEvent->revision,
                         'room' => $scheduledEvent->room?->name,
                         'staff' => $staffName,
                     ],

@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\MeetingBlock;
-use App\Models\OpenLab;
 use App\Models\OfficeHourBlock;
+use App\Models\OpenLab;
 use App\Models\ScheduledEvent;
 use App\Models\Term;
 
@@ -130,9 +130,19 @@ class ScheduleEventSyncService
 
     private function upsert(object $source, array $attributes): ScheduledEvent
     {
-        return ScheduledEvent::query()->updateOrCreate([
+        $identity = [
             'source_type' => $source::class,
             'source_id' => $source->getKey(),
-        ], $attributes);
+        ];
+        $event = ScheduledEvent::query()->where($identity)->first();
+        if (! $event) {
+            return ScheduledEvent::query()->create([...$identity, ...$attributes, 'revision' => 1]);
+        }
+
+        $event->fill($attributes);
+        $event->revision = ((int) $event->revision) + 1;
+        $event->save();
+
+        return $event;
     }
 }

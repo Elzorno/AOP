@@ -63,7 +63,12 @@
               'X-CSRF-TOKEN':  '{{ csrf_token() }}',
               'Accept':        'application/json',
             },
-            body: JSON.stringify({ blockId, starts_at: startStr, ends_at: endStr }),
+            body: JSON.stringify({
+              blockId,
+              starts_at: startStr,
+              ends_at: endStr,
+              revision: info.event.extendedProps.revision,
+            }),
           });
 
           const data = await res.json();
@@ -73,6 +78,10 @@
             showStatus(data.message || 'Update failed — change reverted.', 'error');
             return;
           }
+
+          calendar.getEvents()
+            .filter(event => event.extendedProps.scheduledEventId === info.event.extendedProps.scheduledEventId)
+            .forEach(event => event.setExtendedProp('revision', data.block.revision));
 
           showStatus('Time updated: ' + startStr + ' – ' + endStr, 'success');
           setTimeout(hideStatus, 4000);

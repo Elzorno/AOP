@@ -6,6 +6,7 @@ use App\Models\CatalogCourse;
 use App\Models\MeetingBlock;
 use App\Models\Offering;
 use App\Models\Room;
+use App\Models\ScheduledEvent;
 use App\Models\Section;
 use App\Models\Term;
 use App\Models\User;
@@ -45,6 +46,7 @@ class ExplicitCalendarTermBoundaryTest extends TestCase
                 'blockId' => $block->id,
                 'starts_at' => '13:00',
                 'ends_at' => '14:00',
+                'revision' => $this->revision($block),
             ])
             ->assertStatus(422)
             ->assertJsonPath('errors.blockId.0', 'Meeting block does not belong to the requested term.');
@@ -101,5 +103,13 @@ class ExplicitCalendarTermBoundaryTest extends TestCase
             'ends_at' => '10:00',
             'room_id' => $room->id,
         ]);
+    }
+
+    private function revision(MeetingBlock $block): int
+    {
+        return (int) ScheduledEvent::query()
+            ->where('source_type', MeetingBlock::class)
+            ->where('source_id', $block->id)
+            ->value('revision');
     }
 }
