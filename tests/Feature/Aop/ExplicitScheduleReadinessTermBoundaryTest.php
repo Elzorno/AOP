@@ -29,6 +29,17 @@ class ExplicitScheduleReadinessTermBoundaryTest extends TestCase
             ->assertViewHas('sectionsMissingInstructor', function ($sections) use ($activeSection, $selectedSection) {
                 return $sections->contains('id', $selectedSection->id)
                     && ! $sections->contains('id', $activeSection->id);
+            })
+            ->assertViewHas('policyFindings', function (array $findings) use ($selectedSection) {
+                $missingInstructor = collect($findings)->firstWhere(
+                    'rule_id',
+                    'readiness.section_missing_instructor',
+                );
+
+                return $missingInstructor
+                    && $missingInstructor['policy_version'] === 'compatibility-v1'
+                    && $missingInstructor['category'] === 'structural_validity'
+                    && in_array('section:'.$selectedSection->id, $missingInstructor['affected_resources'], true);
             });
     }
 

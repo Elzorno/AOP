@@ -92,7 +92,13 @@ class OpenLabSchedulingTest extends TestCase
             ->assertOk()
             ->assertViewHas('roomConflicts', fn ($conflicts) => count($conflicts) === 1
                 && $conflicts[0]['a']->id === $first->id
-                && $conflicts[0]['b']->id === $second->id);
+                && $conflicts[0]['b']->id === $second->id)
+            ->assertViewHas('policyFindings', fn (array $findings) => collect($findings)->contains(
+                fn (array $finding) => $finding['rule_id'] === 'conflict.room_overlap'
+                    && $finding['category'] === 'resource_conflict'
+                    && $finding['severity'] === 'error'
+                    && in_array('room:'.$firstRoom->id, $finding['affected_resources'], true)
+            ));
         $card = app(SectionCardBuilderService::class)->build($first->section, $term);
         $this->assertSame(1, $card['room_conflict_count']);
         $this->actingAs($admin)->get(route('aop.schedule.sections.edit', [$term, $first->section]))

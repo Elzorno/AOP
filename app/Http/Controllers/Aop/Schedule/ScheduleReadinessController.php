@@ -14,6 +14,7 @@ use App\Services\LabTechWorkloadService;
 use App\Services\ScheduleConflictService;
 use App\Services\ScheduleDistributionService;
 use App\Services\ScheduleEventReadAdapter;
+use App\Services\ScheduleReadinessFindingService;
 use Carbon\Carbon;
 
 class ScheduleReadinessController extends Controller
@@ -37,7 +38,7 @@ class ScheduleReadinessController extends Controller
     private const LAB_MINUTES_PER_CREDIT_15W = 2250;
     private const BASE_WEEKS = 15;
 
-    public function index(Term $term, ScheduleDistributionService $distribution, LabTechWorkloadService $labTechWorkloads, ScheduleEventReadAdapter $eventReads)
+    public function index(Term $term, ScheduleDistributionService $distribution, LabTechWorkloadService $labTechWorkloads, ScheduleEventReadAdapter $eventReads, ScheduleReadinessFindingService $readinessFindings)
     {
         $sections = Section::query()
             ->with(['offering.catalogCourse', 'instructor', 'meetingBlocks.room'])
@@ -112,6 +113,16 @@ class ScheduleReadinessController extends Controller
             return $s->enrolled_count <= floor($s->section_capacity * 0.70);
         })->values();
 
+        $policyFindings = $readinessFindings->build($term, [
+            'missing_instructor' => $sectionsMissingInstructor,
+            'missing_meetings' => $sectionsMissingMeetingBlocks,
+            'missing_rooms' => $meetingBlocksMissingRoom,
+            'room_conflicts' => $roomConflicts,
+            'instructor_conflicts' => $instructorConflicts,
+            'lab_tech_conflicts' => $labTechConflicts,
+            'distribution' => $distributionStats,
+        ]);
+
         return view('aop.schedule.readiness.index', [
             'term' => $term,
             'sectionsMissingInstructor' => $sectionsMissingInstructor,
@@ -129,6 +140,7 @@ class ScheduleReadinessController extends Controller
             'distributionStats' => $distributionStats,
             'sectionsOverCapacity' => $sectionsOverCapacity,
             'sectionsLowEnrollment' => $sectionsLowEnrollment,
+            'policyFindings' => $policyFindings,
         ]);
     }
 
