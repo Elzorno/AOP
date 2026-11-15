@@ -3,9 +3,12 @@
 namespace Tests\Feature\Aop;
 
 use App\Models\CatalogCourse;
+use App\Models\Instructor;
 use App\Models\MeetingBlock;
 use App\Models\Offering;
+use App\Models\OfficeHourBlock;
 use App\Models\Room;
+use App\Models\ScheduleChangeLog;
 use App\Models\Section;
 use App\Models\Term;
 use App\Models\User;
@@ -154,6 +157,104 @@ class ExplicitSectionTermBoundaryTest extends TestCase
 
         $this->assertFalse($firstSection->refresh()->instructor_is_staff);
         $this->assertFalse($secondSection->refresh()->instructor_is_staff);
+    }
+
+    public function test_instructor_reassignment_rejects_existing_office_hour_conflicts_atomically(): void
+    {
+        $term = $this->term('CONFLICT', true);
+        $section = $this->section($term, 'CIS-208');
+        MeetingBlock::query()->create([
+            'section_id' => $section->id,
+            'type' => 'LECTURE',
+            'days_json' => ['Tue'],
+            'starts_at' => '10:00',
+            'ends_at' => '11:00',
+        ]);
+        $instructor = Instructor::query()->create(['name' => 'Busy Instructor', 'is_active' => true]);
+        OfficeHourBlock::query()->create([
+            'term_id' => $term->id,
+            'instructor_id' => $instructor->id,
+            'days_json' => ['Tue'],
+            'starts_at' => '10:30',
+            'ends_at' => '11:30',
+        ]);
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->put(route('aop.schedule.sections.update', [$term, $section]), [
+                'section_code' => 'CHANGED',
+                'instructor_id' => $instructor->id,
+                'modality' => 'ONLINE',
+            ])
+            ->assertSessionHasErrors('instructor_id');
+
+        $section->refresh();
+        $this->assertSame('01', $section->section_code);
+        $this->assertNull($section->instructor_id);
+        $this->assertDatabaseCount('schedule_change_logs', 0);
+    }
+
+    public function test_bulk_assignment_rejects_conflicts_between_selected_sections_without_partial_updates(): void
+    {
+        $term = $this->term('BULK', true);
+        $first = $this->section($term, 'CIS-209');
+        $second = $this->section($term, 'CIS-210');
+        foreach ([$first, $second] as $section) {
+            MeetingBlock::query()->create([
+                'section_id' => $section->id,
+                'type' => 'LECTURE',
+                'days_json' => ['Wed'],
+                'starts_at' => '09:00',
+                'ends_at' => '10:00',
+            ]);
+        }
+        $instructor = Instructor::query()->create(['name' => 'Bulk Instructor', 'is_active' => true]);
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->post(route('aop.schedule.sections.bulkAssign', $term), [
+                'section_ids' => [$first->id, $second->id],
+                'instructor_id' => $instructor->id,
+            ])
+            ->assertSessionHasErrors('instructor_id');
+
+        $this->assertNull($first->refresh()->instructor_id);
+        $this->assertNull($second->refresh()->instructor_id);
+        $this->assertDatabaseCount('schedule_change_logs', 0);
+    }
+
+    public function test_bulk_assignment_updates_projections_and_audits_every_section(): void
+    {
+        $term = $this->term('BULK-OK', true);
+        $first = $this->section($term, 'CIS-211');
+        $second = $this->section($term, 'CIS-212');
+        foreach ([[$first, '09:00', '10:00'], [$second, '10:10', '11:10']] as [$section, $start, $end]) {
+            MeetingBlock::query()->create([
+                'section_id' => $section->id,
+                'type' => 'LECTURE',
+                'days_json' => ['Thu'],
+                'starts_at' => $start,
+                'ends_at' => $end,
+            ]);
+        }
+        $instructor = Instructor::query()->create(['name' => 'Available Instructor', 'is_active' => true]);
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->post(route('aop.schedule.sections.bulkAssign', $term), [
+                'section_ids' => [$first->id, $second->id],
+                'instructor_id' => $instructor->id,
+            ])
+            ->assertRedirect(route('aop.schedule.sections.index', $term));
+
+        $this->assertSame($instructor->id, $first->refresh()->instructor_id);
+        $this->assertSame($instructor->id, $second->refresh()->instructor_id);
+        $this->assertDatabaseCount('scheduled_event_staff_assignments', 2);
+        $this->assertSame(2, ScheduleChangeLog::query()
+            ->where('term_id', $term->id)
+            ->where('user_id', $admin->id)
+            ->where('action', 'section_updated')
+            ->count());
     }
 
     private function term(string $code, bool $active): Term

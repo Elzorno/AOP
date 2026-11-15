@@ -14,6 +14,7 @@ use App\Models\Section;
 use App\Models\Term;
 use App\Services\ScheduleConflictService;
 use App\Services\ScheduleSuggestionService;
+use App\Services\SectionInstructorAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -200,7 +201,7 @@ class SectionController extends Controller
         ]);
     }
 
-    public function update(Request $request, Term $term, Section $section)
+    public function update(Request $request, Term $term, Section $section, SectionInstructorAssignmentService $assignments)
     {
         abort_if($section->offering->term_id !== $term->id, 404, 'Section not in this term.');
 
@@ -220,7 +221,7 @@ class SectionController extends Controller
             'enrolled_count' => ['nullable', 'integer', 'min:0', 'max:9999'],
         ]);
 
-        $section->update($this->normalizeInstructorAssignment($data));
+        $section = $assignments->updateSection($term, $section, $data);
 
         if ($request->boolean('from_schedule_home')) {
             return redirect()->route('aop.schedule.home', ['term' => $term, 'focus' => $section->id])->with('status', 'Section updated.');
@@ -278,7 +279,7 @@ class SectionController extends Controller
             ->with('status', "{$label} removed.");
     }
 
-    public function bulkAssign(Request $request, Term $term)
+    public function bulkAssign(Request $request, Term $term, SectionInstructorAssignmentService $assignments)
     {
         $data = $request->validate([
             'section_ids' => ['required', 'array', 'min:1'],
@@ -286,25 +287,21 @@ class SectionController extends Controller
             'instructor_id' => $this->instructorAssignmentRules(),
         ]);
 
-        $assignment = $this->normalizeInstructorAssignment($data);
-        $sections = Section::query()
-            ->whereIn('id', $data['section_ids'])
-            ->whereHas('offering', fn ($q) => $q->where('term_id', $term->id))
-            ->get();
-
         $requestedSectionIds = collect($data['section_ids'])->map(fn ($id) => (int) $id)->unique();
-        abort_if($sections->count() !== $requestedSectionIds->count(), 404, 'One or more sections do not belong to this term.');
+        $termSectionCount = Section::query()
+            ->whereIn('id', $requestedSectionIds)
+            ->whereHas('offering', fn ($query) => $query->where('term_id', $term->id))
+            ->count();
+        abort_if($termSectionCount !== $requestedSectionIds->count(), 404, 'One or more sections do not belong to this term.');
 
-        $sections->each(fn (Section $section) => $section->update([
-            'instructor_id' => $assignment['instructor_id'],
-            'instructor_is_staff' => $assignment['instructor_is_staff'],
-        ]));
+        $sections = $assignments->assignMany($term, $data['section_ids'], $data['instructor_id'] ?? null);
         $updated = $sections->count();
 
-        $name = $assignment['instructor_is_staff']
+        $first = $sections->first();
+        $name = $first?->instructor_is_staff
             ? 'STAFF'
-            : ($assignment['instructor_id']
-                ? Instructor::find($assignment['instructor_id'])?->name ?? 'selected instructor'
+            : ($first?->instructor_id
+                ? $first->instructor?->name ?? 'selected instructor'
                 : 'Unassigned');
 
         return redirect()->route('aop.schedule.sections.index', $term)
