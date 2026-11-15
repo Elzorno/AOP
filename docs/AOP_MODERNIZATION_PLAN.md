@@ -1,8 +1,8 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: phases 1–3 and the phase-4 meeting-block and open-lab mutation slices are deployed.
+Prepared 14 November 2026. Status: phases 1–3 and the phase-4 meeting-block, open-lab and office-hours mutation slices are deployed.
 
-Current production release: `c231c9c` through `/var/www/aop-current`. The isolated suite passes 110 tests / 412 assertions. Meeting-block and open-lab create, update and delete entry points share transactional hard validation, event projection and audit logging. Release `f63b59c` remains available for immediate application rollback; its code is compatible with the additive nullable audit relationship. Verified pre-release database checkpoint: `/root/aop-backups/20261115T163714Z-pre-c231c9c`.
+Current production release: `2a9cf98` through `/var/www/aop-current`. The isolated suite passes 111 tests / 425 assertions. Meeting-block, open-lab and office-hours create, update and delete entry points share transactional hard validation, event projection and audit logging. Release `c231c9c` remains available for immediate application rollback. Verified pre-release database checkpoint: `/root/aop-backups/20261115T164044Z-pre-2a9cf98`.
 
 ## Outcome and constraints
 
@@ -216,5 +216,6 @@ Release `dc60a9d` was the initial security and phase-3 identity checkpoint: null
 - Completed explicit term routing for the supported administrative scheduling, grid, readiness, report, export and retired-action paths. Instructor self-service remains intentionally scoped to the authenticated instructor and active term.
 - Deployed transactional meeting-block mutations in `f63b59c`, including the form, unified-event and calendar entry points.
 - Deployed transactional open-lab mutations in `c231c9c`, including form and unified-event entry points, hard room/lab-tech/workload validation, event projection and actor/term audit records.
+- Deployed transactional office-hours mutations in `2a9cf98`, covering administrator and instructor self-service entry points with lock, ownership, conflict, projection and audit guarantees.
 - Widened `schedule_change_logs.section_id` to nullable so non-section schedule operations can use the same audit mechanism without placeholder section records.
-- Verified 110 tests / 412 assertions, migration status, SQLite integrity and foreign keys, route boot, service resolution, HTTPS login, secure cookies and security headers. Release `f63b59c` is the immediate application rollback target.
+- Verified 111 tests / 425 assertions, migration status, SQLite integrity and foreign keys, route boot, service resolution, HTTPS login, secure cookies and security headers. Release `c231c9c` is the immediate application rollback target.
