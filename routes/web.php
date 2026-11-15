@@ -71,6 +71,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/terms/{sourceTerm}/clone', [TermController::class, 'cloneStore'])->name('terms.clone.store');
         Route::get('/terms/{term}/edit', [TermController::class, 'edit'])->name('terms.edit');
         Route::put('/terms/{term}', [TermController::class, 'update'])->name('terms.update');
+        Route::post('/terms/{term}/schedule-exceptions', [TermController::class, 'storeScheduleException'])->name('terms.scheduleExceptions.store');
+        Route::delete('/terms/{term}/schedule-exceptions/{scheduleException}', [TermController::class, 'destroyScheduleException'])->name('terms.scheduleExceptions.destroy');
         Route::post('/terms/active', [TermController::class, 'setActive'])->name('terms.setActive');
         Route::post('/terms/{term}/draft', [TermController::class, 'makeDraft'])->name('terms.draft');
         Route::post('/terms/{term}/publish', [TermController::class, 'publish'])->name('terms.publish');

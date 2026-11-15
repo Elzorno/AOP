@@ -54,6 +54,9 @@
         </div>
       </div>
 
+      <label>Schedule Timezone</label>
+      <input name="schedule_timezone" required value="{{ old('schedule_timezone', $sourceTerm->schedule_timezone ?? 'UTC') }}" />
+
       <div style="height:12px;"></div>
       <label style="display:flex; gap:10px; align-items:flex-start; color:inherit;">
         <input type="checkbox" name="copy_instructor_assignments" value="1" {{ old('copy_instructor_assignments') ? 'checked' : '' }} style="width:auto; margin-top:2px;" />

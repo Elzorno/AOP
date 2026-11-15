@@ -83,9 +83,60 @@ class ScheduleOccurrenceTest extends TestCase
         $this->assertSame(['2026-01-09', '2026-01-12', '2026-01-14'], $dates);
         $this->assertSame('America/New_York', $term->fresh()->schedule_timezone);
 
-        $this->actingAs(User::factory()->create(['is_admin' => true]))
+        $admin = User::factory()->create(['is_admin' => true]);
+        $this->actingAs($admin)
             ->get(route('aop.schedule.readiness.index', $term))
             ->assertOk()
             ->assertViewHas('instructionalMinutes', fn (array $rows) => $rows[0]['scheduled_minutes'] === 180);
+
+        $this->actingAs($admin)
+            ->post(route('aop.terms.scheduleExceptions.store', $term), [
+                'exception_type' => TermScheduleException::TYPE_HOLIDAY,
+                'occurs_on' => '2026-01-06',
+                'notes' => 'Administrative closure',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+        $createdException = TermScheduleException::query()
+            ->where('notes', 'Administrative closure')
+            ->firstOrFail();
+
+        $otherTerm = Term::query()->create([
+            'code' => 'OTHER',
+            'name' => 'Other term',
+            'weeks_in_term' => 2,
+            'slot_minutes' => 30,
+            'buffer_minutes' => 10,
+        ]);
+        $otherEvent = ScheduledEvent::query()->create([
+            'term_id' => $otherTerm->id,
+            'event_type' => ScheduledEvent::TYPE_OPEN_LAB,
+            'source_type' => 'TestOtherSource',
+            'source_id' => 999,
+            'display_name' => 'Other event',
+            'days_json' => ['Tue'],
+            'starts_at' => '10:00',
+            'ends_at' => '11:00',
+        ]);
+        $this->actingAs($admin)
+            ->post(route('aop.terms.scheduleExceptions.store', $term), [
+                'exception_type' => TermScheduleException::TYPE_CANCELLATION,
+                'occurs_on' => '2026-01-08',
+                'scheduled_event_id' => $otherEvent->id,
+            ])
+            ->assertSessionHasErrors('scheduled_event_id');
+        $this->assertDatabaseMissing('term_schedule_exceptions', [
+            'term_id' => $term->id,
+            'scheduled_event_id' => $otherEvent->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->delete(route('aop.terms.scheduleExceptions.destroy', [$term, $createdException]))
+            ->assertRedirect();
+        $this->assertDatabaseMissing('term_schedule_exceptions', ['id' => $createdException->id]);
+        $this->actingAs($admin)->get(route('aop.terms.edit', $term))
+            ->assertOk()
+            ->assertSee('Schedule Timezone')
+            ->assertSee('Schedule Exceptions');
     }
 }

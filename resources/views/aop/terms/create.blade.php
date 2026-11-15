@@ -43,6 +43,9 @@
         </div>
       </div>
 
+      <label>Schedule Timezone</label>
+      <input name="schedule_timezone" required value="{{ old('schedule_timezone', 'UTC') }}" />
+
       <div style="height:12px;"></div>
       <button class="btn" type="submit">Create Term</button>
     </form>
