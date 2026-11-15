@@ -1,8 +1,8 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: phases 1–3 and the phase-4 meeting-block, open-lab, office-hours, instructor-assignment and cloning mutation slices are deployed.
+Prepared 14 November 2026. Status: phases 1–3 and the phase-4 mutation consolidation and SQLite serialization slices are deployed; stale-edit revisions and shared validation preview remain.
 
-Current production release: `cddb0bd` through `/var/www/aop-current`. The isolated suite passes 116 tests / 459 assertions. Meeting-block, open-lab, office-hours, section instructor-assignment and term-cloning entry points share transactional hard validation, event projection and audit logging. Release `f229c1e` remains available for immediate application rollback. Verified pre-release database checkpoint: `/root/aop-backups/20261115T164654Z-pre-cddb0bd`.
+Current production release: `3143e7c` through `/var/www/aop-current`. The isolated suite passes 117 tests / 464 assertions. Scheduling mutation services acquire an SQLite `IMMEDIATE` transaction before conflict reads, use a five-second busy timeout and retry lock acquisition up to three times. Release `cddb0bd` remains available for immediate application rollback. Verified pre-release database checkpoint: `/root/aop-backups/20261115T165036Z-pre-3143e7c`.
 
 ## Outcome and constraints
 
@@ -219,5 +219,6 @@ Release `dc60a9d` was the initial security and phase-3 identity checkpoint: null
 - Deployed transactional office-hours mutations in `2a9cf98`, covering administrator and instructor self-service entry points with lock, ownership, conflict, projection and audit guarantees.
 - Deployed atomic section instructor reassignment and bulk assignment in `f229c1e`. New assignments are checked against class and office-hour conflicts, including overlaps within the submitted bulk set, before any section changes.
 - Consolidated the explicit and draft term clones in `cddb0bd`. Meeting blocks, optional office hours and open labs now use the shared mutation services inside one outer transaction; capacities are preserved, source locks/publications/history remain excluded, and a failed invariant check rolls back the complete target term.
+- Deployed SQLite write serialization in `3143e7c`. A PHP 8.3-compatible connection begins `IMMEDIATE` transactions, retains nested savepoints, waits up to five seconds on a busy database, and retries scheduling transactions three times. A two-process file-backed test proves concurrent conflict reads serialize before either write proceeds.
 - Widened `schedule_change_logs.section_id` to nullable so non-section schedule operations can use the same audit mechanism without placeholder section records.
-- Verified 116 tests / 459 assertions, migration status, SQLite integrity and foreign keys, route boot, service resolution, HTTPS login, secure cookies and security headers. Release `f229c1e` is the immediate application rollback target.
+- Verified 117 tests / 464 assertions, migration status, SQLite integrity and foreign keys, transaction mode/commit behavior, route boot, service resolution, HTTPS login, secure cookies and security headers. Release `cddb0bd` is the immediate application rollback target.
