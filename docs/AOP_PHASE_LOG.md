@@ -304,3 +304,7 @@ This file tracks what each phase changed so the project remains understandable w
 - Removed global-active-term inference from both compatibility controllers.
 - Kept historical artifact downloads bound to their publication records and retained a selected-term redirect for the legacy publication GET.
 - Verified non-active-term export isolation and lock clearing; the full suite passes 108 tests / 385 assertions.
+
+## Explicit retired-action release `26387ce` — deployed 2026-11-15
+- Atomically deployed the final administrator term-route slice without a schema migration; release `5fb4ea0` remains available for rollback.
+- Rebuilt production caches, reloaded PHP-FPM and nginx, and verified cached routes, production compatibility-export headers, SQLite integrity, HTTPS login and service health.
