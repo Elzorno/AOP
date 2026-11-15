@@ -8,7 +8,7 @@ use App\Models\InstructorPreference;
 use App\Models\InstructorTermLock;
 use App\Models\OfficeHourBlock;
 use App\Models\Term;
-use App\Services\ScheduleConflictService;
+use App\Services\OfficeHourMutationService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -80,12 +80,12 @@ class OfficeHoursController extends Controller
         }
     }
 
-    public function storeForPortal(Request $request, Instructor $instructor, ScheduleConflictService $conflicts)
+    public function storeForPortal(Request $request, Instructor $instructor, OfficeHourMutationService $mutations)
     {
-        return $this->store($request, $this->activeTermOrFail(), $instructor, $conflicts);
+        return $this->store($request, $this->activeTermOrFail(), $instructor, $mutations);
     }
 
-    public function store(Request $request, Term $term, Instructor $instructor, ScheduleConflictService $conflicts)
+    public function store(Request $request, Term $term, Instructor $instructor, OfficeHourMutationService $mutations)
     {
         $this->ensureActiveInstructor($instructor);
         $this->ensureOwnerOrAdmin($instructor);
@@ -99,42 +99,7 @@ class OfficeHoursController extends Controller
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        if ($data['ends_at'] <= $data['starts_at']) {
-            return back()->withErrors(['ends_at' => 'End time must be after start time.'])->withInput();
-        }
-
-        $days = array_values(array_unique($data['days']));
-
-        $conf = $conflicts->instructorConflictsForOfficeHourBlock(
-            $term,
-            $instructor->id,
-            $days,
-            $data['starts_at'],
-            $data['ends_at']
-        );
-
-        $messages = [];
-
-        if ($conf['office_hour_blocks']->count() > 0) {
-            $messages[] = 'Conflicts with existing office hours: '.$conf['office_hour_blocks']->map(fn ($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))->implode('; ');
-        }
-
-        if ($conf['meeting_blocks']->count() > 0) {
-            $messages[] = 'Conflicts with class meeting blocks: '.$conf['meeting_blocks']->map(fn ($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
-        }
-
-        if (! empty($messages)) {
-            return back()->withErrors(['conflicts' => implode(' | ', $messages)])->withInput();
-        }
-
-        OfficeHourBlock::create([
-            'term_id' => $term->id,
-            'instructor_id' => $instructor->id,
-            'days_json' => $days,
-            'starts_at' => $data['starts_at'],
-            'ends_at' => $data['ends_at'],
-            'notes' => $data['notes'] ?? null,
-        ]);
+        $mutations->create($term, $instructor, $data);
 
         if ($request->has('from_instructor_portal')) {
             return redirect()->route('dashboard')->with('status', 'Office hours block added.');
@@ -143,7 +108,7 @@ class OfficeHoursController extends Controller
         return redirect()->route('aop.schedule.officeHours.show', [$term, $instructor])->with('status', 'Office hours block added.');
     }
 
-    public function update(Request $request, Term $term, Instructor $instructor, OfficeHourBlock $officeHourBlock, ScheduleConflictService $conflicts)
+    public function update(Request $request, Term $term, Instructor $instructor, OfficeHourBlock $officeHourBlock, OfficeHourMutationService $mutations)
     {
         $this->ensureActiveInstructor($instructor);
         $this->ensureOwnerOrAdmin($instructor);
@@ -159,51 +124,17 @@ class OfficeHoursController extends Controller
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        if ($data['ends_at'] <= $data['starts_at']) {
-            return back()->withErrors(['ends_at' => 'End time must be after start time.'])->withInput();
-        }
-
-        $days = array_values(array_unique($data['days']));
-
-        $conf = $conflicts->instructorConflictsForOfficeHourBlock(
-            $term,
-            $instructor->id,
-            $days,
-            $data['starts_at'],
-            $data['ends_at'],
-            $officeHourBlock->id
-        );
-
-        $messages = [];
-
-        if ($conf['office_hour_blocks']->count() > 0) {
-            $messages[] = 'Conflicts with existing office hours: '.$conf['office_hour_blocks']->map(fn ($ob) => ScheduleConflictService::formatOfficeHourLabel($ob))->implode('; ');
-        }
-
-        if ($conf['meeting_blocks']->count() > 0) {
-            $messages[] = 'Conflicts with class meeting blocks: '.$conf['meeting_blocks']->map(fn ($mb) => ScheduleConflictService::formatMeetingBlockLabel($mb))->implode('; ');
-        }
-
-        if (! empty($messages)) {
-            return back()->withErrors(['conflicts' => implode(' | ', $messages)])->withInput();
-        }
-
-        $officeHourBlock->update([
-            'days_json' => $days,
-            'starts_at' => $data['starts_at'],
-            'ends_at' => $data['ends_at'],
-            'notes' => $data['notes'] ?? null,
-        ]);
+        $mutations->update($term, $instructor, $officeHourBlock, $data);
 
         return redirect()->route('aop.schedule.officeHours.show', [$term, $instructor])->with('status', 'Office hours block updated.');
     }
 
-    public function destroyForPortal(Request $request, Instructor $instructor, OfficeHourBlock $officeHourBlock)
+    public function destroyForPortal(Request $request, Instructor $instructor, OfficeHourBlock $officeHourBlock, OfficeHourMutationService $mutations)
     {
-        return $this->destroy($request, $this->activeTermOrFail(), $instructor, $officeHourBlock);
+        return $this->destroy($request, $this->activeTermOrFail(), $instructor, $officeHourBlock, $mutations);
     }
 
-    public function destroy(Request $request, Term $term, Instructor $instructor, OfficeHourBlock $officeHourBlock)
+    public function destroy(Request $request, Term $term, Instructor $instructor, OfficeHourBlock $officeHourBlock, OfficeHourMutationService $mutations)
     {
         $this->ensureActiveInstructor($instructor);
         $this->ensureOwnerOrAdmin($instructor);
@@ -211,7 +142,7 @@ class OfficeHoursController extends Controller
 
         abort_if($officeHourBlock->term_id !== $term->id || $officeHourBlock->instructor_id !== $instructor->id, 400, 'Office hour block not in requested term/instructor.');
 
-        $officeHourBlock->delete();
+        $mutations->delete($term, $instructor, $officeHourBlock);
 
         if ($request->has('from_instructor_portal')) {
             return redirect()->route('dashboard')->with('status', 'Office hours block deleted.');

@@ -38,6 +38,12 @@ class ExplicitOfficeHoursTermBoundaryTest extends TestCase
             'term_id' => $selected->id,
             'instructor_id' => $instructor->id,
         ]);
+        $this->assertDatabaseHas('schedule_change_logs', [
+            'term_id' => $selected->id,
+            'section_id' => null,
+            'user_id' => $admin->id,
+            'action' => 'created_office_hour',
+        ]);
 
         $this->actingAs($admin)
             ->put(route('aop.schedule.officeHours.preferences.upsert', [$selected, $instructor]), [
@@ -84,6 +90,56 @@ class ExplicitOfficeHoursTermBoundaryTest extends TestCase
             ->delete(route('aop.schedule.officeHours.blocks.destroy', [$second, $instructor, $block]))
             ->assertStatus(400);
         $this->assertDatabaseHas('office_hour_blocks', ['id' => $block->id]);
+    }
+
+    public function test_update_and_delete_keep_projection_and_audit_in_the_same_workflow(): void
+    {
+        $term = $this->term('CURRENT', true);
+        $instructor = $this->instructor();
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->post(route('aop.schedule.officeHours.blocks.store', [$term, $instructor]), $this->blockPayload())
+            ->assertRedirect(route('aop.schedule.officeHours.show', [$term, $instructor]));
+
+        $block = OfficeHourBlock::query()->firstOrFail();
+        $this->assertDatabaseHas('scheduled_events', [
+            'term_id' => $term->id,
+            'source_type' => OfficeHourBlock::class,
+            'source_id' => $block->id,
+            'starts_at' => '11:00',
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('aop.schedule.officeHours.blocks.update', [$term, $instructor, $block]), $this->blockPayload('13:00', '14:00'))
+            ->assertRedirect(route('aop.schedule.officeHours.show', [$term, $instructor]));
+
+        $this->assertDatabaseHas('scheduled_events', [
+            'source_type' => OfficeHourBlock::class,
+            'source_id' => $block->id,
+            'starts_at' => '13:00',
+            'ends_at' => '14:00',
+        ]);
+        $this->assertDatabaseHas('schedule_change_logs', [
+            'term_id' => $term->id,
+            'user_id' => $admin->id,
+            'action' => 'updated_office_hour',
+        ]);
+
+        $this->actingAs($admin)
+            ->delete(route('aop.schedule.officeHours.blocks.destroy', [$term, $instructor, $block]))
+            ->assertRedirect(route('aop.schedule.officeHours.show', [$term, $instructor]));
+
+        $this->assertDatabaseMissing('office_hour_blocks', ['id' => $block->id]);
+        $this->assertDatabaseMissing('scheduled_events', [
+            'source_type' => OfficeHourBlock::class,
+            'source_id' => $block->id,
+        ]);
+        $this->assertDatabaseHas('schedule_change_logs', [
+            'term_id' => $term->id,
+            'user_id' => $admin->id,
+            'action' => 'deleted_office_hour',
+        ]);
     }
 
     public function test_preference_clear_only_affects_the_route_term(): void
