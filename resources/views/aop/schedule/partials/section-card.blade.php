@@ -313,7 +313,7 @@
   <div class="section-toolbar">
     <a class="btn secondary sm" href="{{ route('aop.schedule.sections.edit', [$term, $section]) }}">Full editor</a>
     @if($section->instructor_id)
-      <a class="btn secondary sm" href="{{ route('aop.schedule.officeHours.show', $section->instructor_id) }}">Office hours</a>
+      <a class="btn secondary sm" href="{{ route('aop.schedule.officeHours.show', [$term, $section->instructor_id]) }}">Office hours</a>
     @endif
     @if(!$scheduleLocked)
       <form method="POST" action="{{ route('aop.schedule.sections.destroy', [$term, $section]) }}"

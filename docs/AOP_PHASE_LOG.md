@@ -248,3 +248,9 @@ This file tracks what each phase changed so the project remains understandable w
 ## Explicit calendar release `7a40a49` — deployed 2026-11-15
 - Atomically deployed the calendar route slice without a schema migration; release `8809a40` remains available for rollback.
 - Rebuilt production caches, reloaded PHP-FPM and nginx, and verified cached routes, real production calendar rendering, SQLite integrity, HTTPS login and service health.
+
+## Explicit office-hours term boundary — development checkpoint 2026-11-15
+- Moved administrator office-hour pages, block mutations, locks and scheduling preferences under `/aop/terms/{term}/schedule/office-hours`.
+- Reads and writes use the requested term; block mutations reject mismatched term or instructor ownership, and update now enforces the existing owner-or-administrator rule.
+- Preserved instructor-portal compatibility against the active term and added a selected-term redirect for the legacy administrator GET.
+- Verified non-active-term operations, preference isolation and cross-term rejection; the full suite passes 96 tests / 346 assertions.

@@ -45,7 +45,7 @@
 
       <div class="toolbar-line">
         <a class="btn" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.officeHours.index') }}">Choose Another Instructor</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.officeHours.index', $term) }}">Choose Another Instructor</a>
         <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Schedule Studio</a>
       </div>
     </section>
@@ -60,12 +60,12 @@
             </div>
             <div class="actions">
               @if ($lock->office_hours_locked)
-                <form method="POST" action="{{ route('aop.schedule.officeHours.unlock', $instructor) }}">
+                <form method="POST" action="{{ route('aop.schedule.officeHours.unlock', [$term, $instructor]) }}">
                   @csrf
                   <button class="btn secondary" type="submit">Unlock Office Hours</button>
                 </form>
               @else
-                <form method="POST" action="{{ route('aop.schedule.officeHours.lock', $instructor) }}">
+                <form method="POST" action="{{ route('aop.schedule.officeHours.lock', [$term, $instructor]) }}">
                   @csrf
                   <button class="btn" type="submit">Lock Office Hours</button>
                 </form>
@@ -118,7 +118,7 @@
                       @if ($lock->office_hours_locked)
                         <div class="status-note">Unlock office hours before editing this block.</div>
                       @else
-                        <form method="POST" action="{{ route('aop.schedule.officeHours.blocks.update', [$instructor, $block]) }}">
+                        <form method="POST" action="{{ route('aop.schedule.officeHours.blocks.update', [$term, $instructor, $block]) }}">
                           @csrf
                           @method('PUT')
                           <input type="hidden" name="office_hour_block_id" value="{{ $block->id }}">
@@ -152,7 +152,7 @@
                           </div>
                         </form>
 
-                        <form method="POST" action="{{ route('aop.schedule.officeHours.blocks.destroy', [$instructor, $block]) }}" onsubmit="return confirm('Delete this office-hours block?');" class="mt-4">
+                        <form method="POST" action="{{ route('aop.schedule.officeHours.blocks.destroy', [$term, $instructor, $block]) }}" onsubmit="return confirm('Delete this office-hours block?');" class="mt-4">
                           @csrf
                           @method('DELETE')
                           <button class="btn secondary" type="submit">Delete Block</button>
@@ -177,7 +177,7 @@
           @if ($lock->office_hours_locked)
             <div class="status-note">Office hours are locked for this instructor. Unlock them first if you need to add another block.</div>
           @else
-            <form method="POST" action="{{ route('aop.schedule.officeHours.blocks.store', $instructor) }}">
+            <form method="POST" action="{{ route('aop.schedule.officeHours.blocks.store', [$term, $instructor]) }}">
               @csrf
               <input type="hidden" name="office_hour_mode" value="create">
 
@@ -270,7 +270,7 @@
             </div>
           </div>
 
-          <form method="POST" action="{{ route('aop.schedule.officeHours.preferences.upsert', $instructor) }}">
+          <form method="POST" action="{{ route('aop.schedule.officeHours.preferences.upsert', [$term, $instructor]) }}">
             @csrf
             @method('PUT')
 
@@ -323,7 +323,7 @@
             <div class="section-actions" style="margin-top:16px;">
               <button class="btn" type="submit">Save Preferences</button>
               @if ($preferences)
-                <a href="{{ route('aop.schedule.officeHours.preferences.destroy', $instructor) }}"
+                <a href="{{ route('aop.schedule.officeHours.preferences.destroy', [$term, $instructor]) }}"
                    onclick="event.preventDefault(); if(confirm('Clear all preferences for this term?')) document.getElementById('clear-prefs-form').submit();"
                    class="btn secondary">Clear</a>
               @endif
@@ -331,7 +331,7 @@
           </form>
 
           @if ($preferences)
-            <form id="clear-prefs-form" method="POST" action="{{ route('aop.schedule.officeHours.preferences.destroy', $instructor) }}" style="display:none;">
+            <form id="clear-prefs-form" method="POST" action="{{ route('aop.schedule.officeHours.preferences.destroy', [$term, $instructor]) }}" style="display:none;">
               @csrf
               @method('DELETE')
             </form>

@@ -4,7 +4,7 @@
   <div class="page-shell">
     <section class="page-header">
       <span class="page-eyebrow">Office Hours</span>
-      <h1 class="page-title">Office hours for the active term</h1>
+      <h1 class="page-title">Office hours for {{ $term->code }}</h1>
       <p class="page-subtitle">Choose an instructor to review or update weekly availability.</p>
 
       <div class="toolbar-line">
@@ -38,11 +38,11 @@
           </div>
         </div>
 
-        <form method="GET" action="{{ route('aop.schedule.officeHours.index') }}">
+        <form method="GET" action="{{ route('aop.schedule.officeHours.index', $term) }}">
           <label for="office_hours_instructor">Instructor</label>
           <select
             id="office_hours_instructor"
-            onchange="if(this.value){ window.location = '{{ url('/aop/schedule/office-hours') }}/' + this.value; }"
+            onchange="if(this.value){ window.location = '{{ route('aop.schedule.officeHours.show', [$term, '__INSTRUCTOR__']) }}'.replace('__INSTRUCTOR__', this.value); }"
           >
             <option value="">Choose an instructor</option>
             @foreach ($instructors as $instructor)

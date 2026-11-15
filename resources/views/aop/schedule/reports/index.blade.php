@@ -77,7 +77,7 @@
         <div class="actions" style="margin-top:10px; flex-wrap:wrap;">
           <a class="btn" href="{{ route('aop.schedule.grids.index') }}">Schedule Grids</a>
           <a class="btn" href="{{ route('aop.schedule.sections.index', $term) }}">Sections</a>
-          <a class="btn" href="{{ route('aop.schedule.officeHours.index') }}">Office Hours</a>
+          <a class="btn" href="{{ route('aop.schedule.officeHours.index', $term) }}">Office Hours</a>
           <a class="btn" href="{{ route('aop.schedule.openLabs.index', $term) }}">Open Labs</a>
           <a class="btn" href="{{ route('aop.labtechs.index') }}">Lab Techs</a>
         </div>

@@ -94,7 +94,7 @@
 
             <div class="section-actions" style="margin-top:16px;">
               <button class="btn" type="submit">Save Preferences</button>
-              <a class="btn secondary" href="{{ route('aop.schedule.officeHours.show', $instructor) }}">Full preferences &amp; office hours</a>
+              <a class="btn secondary" href="{{ route('aop.schedule.officeHours.show', [$activeTerm, $instructor]) }}">Full preferences &amp; office hours</a>
             </div>
           </form>
         </div>

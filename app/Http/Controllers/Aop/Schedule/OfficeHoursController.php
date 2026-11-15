@@ -34,19 +34,16 @@ class OfficeHoursController extends Controller
         abort_if(! $instructor->is_active, 404, 'Instructor not found.');
     }
 
-    public function index()
+    public function index(Term $term)
     {
-        $term = Term::where('is_active', true)->first();
-
         return view('aop.schedule.office-hours.index', [
             'term' => $term,
             'instructors' => Instructor::where('is_active', true)->orderBy('name')->get(),
         ]);
     }
 
-    public function show(Instructor $instructor)
+    public function show(Term $term, Instructor $instructor)
     {
-        $term = $this->activeTermOrFail();
         $this->ensureActiveInstructor($instructor);
 
         $lock = $this->lockFor($term, $instructor);
@@ -73,7 +70,7 @@ class OfficeHoursController extends Controller
     private function ensureUnlocked(Term $term, Instructor $instructor): void
     {
         $lock = $this->lockFor($term, $instructor);
-        abort_if($lock->office_hours_locked, 403, 'Office hours are locked for this instructor in the active term.');
+        abort_if($lock->office_hours_locked, 403, 'Office hours are locked for this instructor in the requested term.');
     }
 
     private function ensureOwnerOrAdmin(Instructor $instructor): void
@@ -83,9 +80,13 @@ class OfficeHoursController extends Controller
         }
     }
 
-    public function store(Request $request, Instructor $instructor, ScheduleConflictService $conflicts)
+    public function storeForPortal(Request $request, Instructor $instructor, ScheduleConflictService $conflicts)
     {
-        $term = $this->activeTermOrFail();
+        return $this->store($request, $this->activeTermOrFail(), $instructor, $conflicts);
+    }
+
+    public function store(Request $request, Term $term, Instructor $instructor, ScheduleConflictService $conflicts)
+    {
         $this->ensureActiveInstructor($instructor);
         $this->ensureOwnerOrAdmin($instructor);
         $this->ensureUnlocked($term, $instructor);
@@ -139,16 +140,16 @@ class OfficeHoursController extends Controller
             return redirect()->route('dashboard')->with('status', 'Office hours block added.');
         }
 
-        return redirect()->route('aop.schedule.officeHours.show', $instructor)->with('status', 'Office hours block added.');
+        return redirect()->route('aop.schedule.officeHours.show', [$term, $instructor])->with('status', 'Office hours block added.');
     }
 
-    public function update(Request $request, Instructor $instructor, OfficeHourBlock $officeHourBlock, ScheduleConflictService $conflicts)
+    public function update(Request $request, Term $term, Instructor $instructor, OfficeHourBlock $officeHourBlock, ScheduleConflictService $conflicts)
     {
-        $term = $this->activeTermOrFail();
         $this->ensureActiveInstructor($instructor);
+        $this->ensureOwnerOrAdmin($instructor);
         $this->ensureUnlocked($term, $instructor);
 
-        abort_if($officeHourBlock->term_id !== $term->id || $officeHourBlock->instructor_id !== $instructor->id, 400, 'Office hour block not in active term/instructor.');
+        abort_if($officeHourBlock->term_id !== $term->id || $officeHourBlock->instructor_id !== $instructor->id, 400, 'Office hour block not in requested term/instructor.');
 
         $data = $request->validate([
             'days' => ['required', 'array', 'min:1'],
@@ -194,17 +195,21 @@ class OfficeHoursController extends Controller
             'notes' => $data['notes'] ?? null,
         ]);
 
-        return redirect()->route('aop.schedule.officeHours.show', $instructor)->with('status', 'Office hours block updated.');
+        return redirect()->route('aop.schedule.officeHours.show', [$term, $instructor])->with('status', 'Office hours block updated.');
     }
 
-    public function destroy(Request $request, Instructor $instructor, OfficeHourBlock $officeHourBlock)
+    public function destroyForPortal(Request $request, Instructor $instructor, OfficeHourBlock $officeHourBlock)
     {
-        $term = $this->activeTermOrFail();
+        return $this->destroy($request, $this->activeTermOrFail(), $instructor, $officeHourBlock);
+    }
+
+    public function destroy(Request $request, Term $term, Instructor $instructor, OfficeHourBlock $officeHourBlock)
+    {
         $this->ensureActiveInstructor($instructor);
         $this->ensureOwnerOrAdmin($instructor);
         $this->ensureUnlocked($term, $instructor);
 
-        abort_if($officeHourBlock->term_id !== $term->id || $officeHourBlock->instructor_id !== $instructor->id, 400, 'Office hour block not in active term/instructor.');
+        abort_if($officeHourBlock->term_id !== $term->id || $officeHourBlock->instructor_id !== $instructor->id, 400, 'Office hour block not in requested term/instructor.');
 
         $officeHourBlock->delete();
 
@@ -212,12 +217,11 @@ class OfficeHoursController extends Controller
             return redirect()->route('dashboard')->with('status', 'Office hours block deleted.');
         }
 
-        return redirect()->route('aop.schedule.officeHours.show', $instructor)->with('status', 'Office hours block deleted.');
+        return redirect()->route('aop.schedule.officeHours.show', [$term, $instructor])->with('status', 'Office hours block deleted.');
     }
 
-    public function lock(Request $request, Instructor $instructor)
+    public function lock(Request $request, Term $term, Instructor $instructor)
     {
-        $term = $this->activeTermOrFail();
         $this->ensureActiveInstructor($instructor);
 
         $lock = $this->lockFor($term, $instructor);
@@ -227,12 +231,11 @@ class OfficeHoursController extends Controller
             'office_hours_locked_by_user_id' => auth()->id(),
         ]);
 
-        return redirect()->route('aop.schedule.officeHours.show', $instructor)->with('status', 'Office hours locked for this instructor (active term).');
+        return redirect()->route('aop.schedule.officeHours.show', [$term, $instructor])->with('status', 'Office hours locked for this instructor.');
     }
 
-    public function unlock(Request $request, Instructor $instructor)
+    public function unlock(Request $request, Term $term, Instructor $instructor)
     {
-        $term = $this->activeTermOrFail();
         $this->ensureActiveInstructor($instructor);
 
         $lock = $this->lockFor($term, $instructor);
@@ -242,6 +245,6 @@ class OfficeHoursController extends Controller
             'office_hours_locked_by_user_id' => null,
         ]);
 
-        return redirect()->route('aop.schedule.officeHours.show', $instructor)->with('status', 'Office hours unlocked for this instructor (active term).');
+        return redirect()->route('aop.schedule.officeHours.show', [$term, $instructor])->with('status', 'Office hours unlocked for this instructor.');
     }
 }

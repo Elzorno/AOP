@@ -15,7 +15,8 @@ class InstructorPreferenceController extends Controller
     private function activeTermOrFail(): Term
     {
         $term = Term::where('is_active', true)->first();
-        abort_if(!$term, 400, 'No active term is set.');
+        abort_if(! $term, 400, 'No active term is set.');
+
         return $term;
     }
 
@@ -28,28 +29,39 @@ class InstructorPreferenceController extends Controller
     {
         $term = $this->activeTermOrFail();
 
+        return $this->save($request, $term, $instructor);
+    }
+
+    public function upsertForTerm(Request $request, Term $term, Instructor $instructor)
+    {
+        return $this->save($request, $term, $instructor);
+    }
+
+    private function save(Request $request, Term $term, Instructor $instructor)
+    {
+
         $data = $request->validate([
-            'max_courses'    => ['nullable', 'integer', 'min:0', 'max:20'],
+            'max_courses' => ['nullable', 'integer', 'min:0', 'max:20'],
             'preferred_days' => ['nullable', 'array'],
             'preferred_days.*' => ['string', 'in:'.implode(',', self::ALLOWED_DAYS)],
-            'unavail_day'    => ['nullable', 'array'],
-            'unavail_day.*'  => ['string', 'in:'.implode(',', self::ALLOWED_DAYS)],
-            'unavail_start'  => ['nullable', 'array'],
-            'unavail_start.*'=> ['date_format:H:i'],
-            'unavail_end'    => ['nullable', 'array'],
-            'unavail_end.*'  => ['date_format:H:i'],
-            'notes'          => ['nullable', 'string', 'max:1000'],
+            'unavail_day' => ['nullable', 'array'],
+            'unavail_day.*' => ['string', 'in:'.implode(',', self::ALLOWED_DAYS)],
+            'unavail_start' => ['nullable', 'array'],
+            'unavail_start.*' => ['date_format:H:i'],
+            'unavail_end' => ['nullable', 'array'],
+            'unavail_end.*' => ['date_format:H:i'],
+            'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
         // Build unavailable_times array from parallel arrays
         $unavailableTimes = [];
-        $unavailDays   = $data['unavail_day']   ?? [];
+        $unavailDays = $data['unavail_day'] ?? [];
         $unavailStarts = $data['unavail_start'] ?? [];
-        $unavailEnds   = $data['unavail_end']   ?? [];
+        $unavailEnds = $data['unavail_end'] ?? [];
 
         foreach ($unavailDays as $i => $day) {
             $start = $unavailStarts[$i] ?? null;
-            $end   = $unavailEnds[$i]   ?? null;
+            $end = $unavailEnds[$i] ?? null;
             if ($day && $start && $end && $end > $start) {
                 $unavailableTimes[] = ['day' => $day, 'starts_at' => $start, 'ends_at' => $end];
             }
@@ -58,28 +70,26 @@ class InstructorPreferenceController extends Controller
         InstructorPreference::updateOrCreate(
             ['term_id' => $term->id, 'instructor_id' => $instructor->id],
             [
-                'max_courses'       => $data['max_courses'] ?? 3,
-                'preferred_days'    => array_values(array_unique($data['preferred_days'] ?? [])),
+                'max_courses' => $data['max_courses'] ?? 3,
+                'preferred_days' => array_values(array_unique($data['preferred_days'] ?? [])),
                 'unavailable_times' => $unavailableTimes,
-                'notes'             => $data['notes'] ?? null,
+                'notes' => $data['notes'] ?? null,
             ]
         );
 
         return redirect()
-            ->route('aop.schedule.officeHours.show', $instructor)
+            ->route('aop.schedule.officeHours.show', [$term, $instructor])
             ->with('status', 'Scheduling preferences saved.');
     }
 
-    public function destroy(Instructor $instructor)
+    public function destroyForTerm(Term $term, Instructor $instructor)
     {
-        $term = $this->activeTermOrFail();
-
         InstructorPreference::where('term_id', $term->id)
             ->where('instructor_id', $instructor->id)
             ->delete();
 
         return redirect()
-            ->route('aop.schedule.officeHours.show', $instructor)
+            ->route('aop.schedule.officeHours.show', [$term, $instructor])
             ->with('status', 'Scheduling preferences cleared.');
     }
 }

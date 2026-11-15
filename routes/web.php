@@ -56,8 +56,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Instructor specific
     Route::post('/instructor-preferences', [App\Http\Controllers\Aop\InstructorPreferenceController::class, 'store'])->name('aop.instructor_preferences.store');
-    Route::post('/instructor-office-hours/{instructor}/blocks', [OfficeHoursController::class, 'store'])->name('instructor.officeHours.store');
-    Route::delete('/instructor-office-hours/{instructor}/blocks/{officeHourBlock}', [OfficeHoursController::class, 'destroy'])->name('instructor.officeHours.destroy');
+    Route::post('/instructor-office-hours/{instructor}/blocks', [OfficeHoursController::class, 'storeForPortal'])->name('instructor.officeHours.store');
+    Route::delete('/instructor-office-hours/{instructor}/blocks/{officeHourBlock}', [OfficeHoursController::class, 'destroyForPortal'])->name('instructor.officeHours.destroy');
 
     Route::prefix('/aop')->name('aop.')->middleware(['admin'])->group(function () {
         Route::get('/accounts', [UserInstructorLinkController::class, 'index'])->name('accounts.index');
@@ -158,15 +158,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         })->name('schedule.sections.legacy');
 
         // Office Hours
-        Route::get('/schedule/office-hours', [OfficeHoursController::class, 'index'])->name('schedule.officeHours.index');
-        Route::get('/schedule/office-hours/{instructor}', [OfficeHoursController::class, 'show'])->name('schedule.officeHours.show');
-        Route::post('/schedule/office-hours/{instructor}/blocks', [OfficeHoursController::class, 'store'])->name('schedule.officeHours.blocks.store');
-        Route::put('/schedule/office-hours/{instructor}/blocks/{officeHourBlock}', [OfficeHoursController::class, 'update'])->name('schedule.officeHours.blocks.update');
-        Route::delete('/schedule/office-hours/{instructor}/blocks/{officeHourBlock}', [OfficeHoursController::class, 'destroy'])->name('schedule.officeHours.blocks.destroy');
-        Route::post('/schedule/office-hours/{instructor}/lock', [OfficeHoursController::class, 'lock'])->name('schedule.officeHours.lock');
-        Route::post('/schedule/office-hours/{instructor}/unlock', [OfficeHoursController::class, 'unlock'])->name('schedule.officeHours.unlock');
-        Route::put('/schedule/office-hours/{instructor}/preferences', [InstructorPreferenceController::class, 'upsert'])->name('schedule.officeHours.preferences.upsert');
-        Route::delete('/schedule/office-hours/{instructor}/preferences', [InstructorPreferenceController::class, 'destroy'])->name('schedule.officeHours.preferences.destroy');
+        Route::prefix('/terms/{term}/schedule/office-hours')->group(function () {
+            Route::get('/', [OfficeHoursController::class, 'index'])->name('schedule.officeHours.index');
+            Route::get('/{instructor}', [OfficeHoursController::class, 'show'])->name('schedule.officeHours.show');
+            Route::post('/{instructor}/blocks', [OfficeHoursController::class, 'store'])->name('schedule.officeHours.blocks.store');
+            Route::put('/{instructor}/blocks/{officeHourBlock}', [OfficeHoursController::class, 'update'])->name('schedule.officeHours.blocks.update');
+            Route::delete('/{instructor}/blocks/{officeHourBlock}', [OfficeHoursController::class, 'destroy'])->name('schedule.officeHours.blocks.destroy');
+            Route::post('/{instructor}/lock', [OfficeHoursController::class, 'lock'])->name('schedule.officeHours.lock');
+            Route::post('/{instructor}/unlock', [OfficeHoursController::class, 'unlock'])->name('schedule.officeHours.unlock');
+            Route::put('/{instructor}/preferences', [InstructorPreferenceController::class, 'upsertForTerm'])->name('schedule.officeHours.preferences.upsert');
+            Route::delete('/{instructor}/preferences', [InstructorPreferenceController::class, 'destroyForTerm'])->name('schedule.officeHours.preferences.destroy');
+        });
+
+        Route::get('/schedule/office-hours', function (Request $request) {
+            $term = $request->user()->selectedTerm
+                ?? Term::query()->where('is_active', true)->firstOrFail();
+
+            return redirect()->route('aop.schedule.officeHours.index', $term);
+        })->name('schedule.officeHours.legacy');
 
         // Open Labs
         Route::prefix('/terms/{term}/schedule/open-labs')->group(function () {

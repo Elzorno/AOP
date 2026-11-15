@@ -43,7 +43,7 @@
   >
     <x-slot:actions>
       <a class="btn secondary" href="{{ route('aop.schedule.grids.index') }}">Back to Grids</a>
-      <a class="btn" href="{{ route('aop.schedule.officeHours.show', $instructor) }}">Office Hours</a>
+      <a class="btn" href="{{ route('aop.schedule.officeHours.show', [$term, $instructor]) }}">Office Hours</a>
       <a class="btn" href="{{ route('aop.schedule.sections.index', $term) }}">Sections</a>
       <a class="btn" href="{{ route('aop.schedule.grids.instructor', $instructor) }}?print=1" target="_blank">Print</a>
       <a class="btn" href="{{ route('aop.schedule.grids.instructor.pdf', $instructor) }}">Export PDF</a>
