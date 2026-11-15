@@ -254,3 +254,7 @@ This file tracks what each phase changed so the project remains understandable w
 - Reads and writes use the requested term; block mutations reject mismatched term or instructor ownership, and update now enforces the existing owner-or-administrator rule.
 - Preserved instructor-portal compatibility against the active term and added a selected-term redirect for the legacy administrator GET.
 - Verified non-active-term operations, preference isolation and cross-term rejection; the full suite passes 96 tests / 346 assertions.
+
+## Explicit office-hours release `1249eb5` — deployed 2026-11-15
+- Atomically deployed the office-hours route slice without a schema migration; release `7a40a49` remains available for rollback.
+- Rebuilt production caches, reloaded PHP-FPM and nginx, and verified cached routes, real production office-hours rendering, SQLite integrity, HTTPS login and service health.
