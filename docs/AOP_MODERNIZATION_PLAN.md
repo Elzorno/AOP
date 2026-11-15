@@ -1,8 +1,8 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: phases 1–3 and the first phase-4 meeting-block mutation slice are deployed.
+Prepared 14 November 2026. Status: phases 1–3 and the phase-4 meeting-block and open-lab mutation slices are deployed.
 
-Current production release: `f63b59c` through `/var/www/aop-current`. The isolated suite passes 109 tests / 393 assertions. Meeting-block create, update, calendar update and delete share transactional hard validation, event projection and audit logging. Release `26387ce` remains available for immediate rollback. Verified pre-migration checkpoint: `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`.
+Current production release: `c231c9c` through `/var/www/aop-current`. The isolated suite passes 110 tests / 412 assertions. Meeting-block and open-lab create, update and delete entry points share transactional hard validation, event projection and audit logging. Release `f63b59c` remains available for immediate application rollback; its code is compatible with the additive nullable audit relationship. Verified pre-release database checkpoint: `/root/aop-backups/20261115T163714Z-pre-c231c9c`.
 
 ## Outcome and constraints
 
@@ -195,7 +195,7 @@ Primary files: Schedule Studio, section cards, calendar, grids, instructor dashb
 
 The modernization is complete when the security remediation release is verified; all scheduling writes are term-scoped and authorized; the event model has a single authoritative owner; all views evaluate the same versioned rules; current registrar/print/instructor workflows pass regression checks; releases and recoveries are reproducible; and documentation reflects implemented behavior. Preserve meaningful tests and add coverage for new boundaries; do not create tests merely to mirror implementation details.
 
-Next executable step: phase 1, using the preserved deployed state in an isolated checkout. No refactor, dependency update, migration or host hardening has been applied by this planning task.
+Next executable step: continue phase 4 by consolidating term-scoped office-hours mutations, followed by instructor reassignment, bulk assignment and cloning paths.
 
 ## Implementation checkpoint — 14 November 2026
 
@@ -207,6 +207,14 @@ Isolated workspace: `/srv/aop-workspaces/modernization`, branch `modernization/2
 - Updated the compatible Laravel 12 stack, including Symfony HTTP Foundation 7.4.23. Composer audit reports zero advisories.
 - Updated audited browser dependencies, bundled FullCalendar through Vite instead of CDN scripts, and reduced npm audit to zero advisories.
 - Added spreadsheet-formula neutralization to current CSV generation and download-time sanitization for historical CSV/ZIP artifacts. Stored snapshots remain byte-for-byte unchanged. The six existing stored CSV artifacts were inventoried and contain no formula-leading cells.
-- Added configurable Cloudflare Tunnel proxy trust and HTTPS enforcement. The observed connector address is `192.168.1.167`; deployment still needs production environment changes and an external cookie/header verification before this item is accepted.
+- Added configurable Cloudflare Tunnel proxy trust and HTTPS enforcement for `syllabi.elzorno.com`. The observed connector address is `192.168.1.167`; external responses now verify the HTTPS redirect, secure session cookies and transport/security headers.
 
-Release `dc60a9d` is deployed through `/var/www/aop-current`. It includes the security baseline and the phase-3 identity slice: nullable unique account links, conservative unambiguous backfill, admin link management, and removal of email-based ownership. The current production inventory resulted in zero links, so no access was granted implicitly. The suite passes 71 tests / 258 assertions; the production migration, database integrity and tunnel smoke checks pass. Explicit term routing and later phases remain pending.
+Release `dc60a9d` was the initial security and phase-3 identity checkpoint: nullable unique account links, conservative unambiguous backfill, admin link management, and removal of email-based ownership. The production inventory resulted in zero links, so no access was granted implicitly.
+
+## Deployment checkpoint — 15 November 2026
+
+- Completed explicit term routing for the supported administrative scheduling, grid, readiness, report, export and retired-action paths. Instructor self-service remains intentionally scoped to the authenticated instructor and active term.
+- Deployed transactional meeting-block mutations in `f63b59c`, including the form, unified-event and calendar entry points.
+- Deployed transactional open-lab mutations in `c231c9c`, including form and unified-event entry points, hard room/lab-tech/workload validation, event projection and actor/term audit records.
+- Widened `schedule_change_logs.section_id` to nullable so non-section schedule operations can use the same audit mechanism without placeholder section records.
+- Verified 110 tests / 412 assertions, migration status, SQLite integrity and foreign keys, route boot, service resolution, HTTPS login, secure cookies and security headers. Release `f63b59c` is the immediate application rollback target.
