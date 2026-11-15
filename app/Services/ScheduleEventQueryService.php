@@ -41,8 +41,7 @@ class ScheduleEventQueryService
         $query = ScheduledEvent::query()
             ->where('term_id', $term->id)
             ->whereHas('staffAssignments', fn ($assignments) => $assignments
-                ->where('staff_type', $staffType)
-                ->where('staff_id', $staffId));
+                ->where($staffType === 'instructor' ? 'instructor_id' : 'lab_tech_id', $staffId));
 
         if ($ignoreEventId) {
             $query->where('id', '!=', $ignoreEventId);

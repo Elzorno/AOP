@@ -14,7 +14,9 @@ use App\Models\ScheduledEvent;
 use App\Models\Section;
 use App\Models\Term;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class OpenLabSchedulingTest extends TestCase
@@ -196,11 +198,35 @@ class OpenLabSchedulingTest extends TestCase
             'scheduled_event_id' => $event->id,
             'staff_type' => 'lab_tech',
             'staff_id' => $labTech->id,
+            'lab_tech_id' => $labTech->id,
+            'instructor_id' => null,
             'role' => 'lab_tech',
         ]);
 
         $openLab->delete();
         $this->assertDatabaseMissing('scheduled_events', ['id' => $event->id]);
+    }
+
+    public function test_staff_assignment_requires_exactly_one_valid_typed_target(): void
+    {
+        $term = $this->createActiveTerm();
+        $room = Room::create(['name' => 'ATC-232B', 'is_active' => true]);
+        $labTech = LabTech::create(['name' => 'Constraint Tech', 'weekly_hour_limit' => 10, 'is_active' => true]);
+        $openLab = OpenLab::create([
+            'term_id' => $term->id,
+            'name' => 'Constrained Lab',
+            'room_id' => $room->id,
+            'lab_tech_id' => $labTech->id,
+            'days_json' => ['Tue'],
+            'starts_at' => '13:00',
+            'ends_at' => '14:00',
+        ]);
+        $event = ScheduledEvent::query()->where('source_type', OpenLab::class)->where('source_id', $openLab->id)->firstOrFail();
+
+        $this->expectException(QueryException::class);
+        DB::table('scheduled_event_staff_assignments')->where('scheduled_event_id', $event->id)->update([
+            'instructor_id' => $labTech->id,
+        ]);
     }
 
     public function test_section_staff_changes_refresh_the_projected_event_assignment(): void

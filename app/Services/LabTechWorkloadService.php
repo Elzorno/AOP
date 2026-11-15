@@ -19,11 +19,11 @@ class LabTechWorkloadService
 
         $eventsByTech = ScheduledEvent::query()
             ->where('term_id', $term->id)
-            ->whereHas('staffAssignments', fn ($assignments) => $assignments->where('staff_type', 'lab_tech'))
-            ->with(['staffAssignments' => fn ($assignments) => $assignments->where('staff_type', 'lab_tech')])
+            ->whereHas('staffAssignments', fn ($assignments) => $assignments->whereNotNull('lab_tech_id'))
+            ->with(['staffAssignments' => fn ($assignments) => $assignments->whereNotNull('lab_tech_id')])
             ->get()
             ->flatMap(fn (ScheduledEvent $event) => $event->staffAssignments->map(fn ($assignment) => [
-                'staff_id' => $assignment->staff_id,
+                'staff_id' => $assignment->lab_tech_id,
                 'event' => $event,
             ]))
             ->groupBy('staff_id');
@@ -59,8 +59,7 @@ class LabTechWorkloadService
         $query = ScheduledEvent::query()
             ->where('term_id', $term->id)
             ->whereHas('staffAssignments', fn ($assignments) => $assignments
-                ->where('staff_type', 'lab_tech')
-                ->where('staff_id', $labTech->id));
+                ->where('lab_tech_id', $labTech->id));
 
         if ($ignoreOpenLabId) {
             $query->where(function ($events) use ($ignoreOpenLabId) {

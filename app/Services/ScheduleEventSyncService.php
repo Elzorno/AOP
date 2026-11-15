@@ -8,6 +8,7 @@ use App\Models\OpenLab;
 use App\Models\ScheduledEvent;
 use App\Models\Term;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ScheduleEventSyncService
 {
@@ -32,11 +33,7 @@ class ScheduleEventSyncService
 
         $event->staffAssignments()->delete();
         if ($section->instructor_id) {
-            $event->staffAssignments()->create([
-                'staff_type' => 'instructor',
-                'staff_id' => $section->instructor_id,
-                'role' => 'instructor',
-            ]);
+            $event->staffAssignments()->create($this->staffAttributes('instructor', $section->instructor_id, 'instructor'));
         }
 
         return $event;
@@ -57,11 +54,7 @@ class ScheduleEventSyncService
         ]);
 
         $event->staffAssignments()->delete();
-        $event->staffAssignments()->create([
-            'staff_type' => 'lab_tech',
-            'staff_id' => $openLab->lab_tech_id,
-            'role' => 'lab_tech',
-        ]);
+        $event->staffAssignments()->create($this->staffAttributes('lab_tech', $openLab->lab_tech_id, 'lab_tech'));
 
         return $event;
     }
@@ -82,11 +75,7 @@ class ScheduleEventSyncService
         ]);
 
         $event->staffAssignments()->delete();
-        $event->staffAssignments()->create([
-            'staff_type' => 'instructor',
-            'staff_id' => $officeHourBlock->instructor_id,
-            'role' => 'office_hours',
-        ]);
+        $event->staffAssignments()->create($this->staffAttributes('instructor', $officeHourBlock->instructor_id, 'office_hours'));
 
         return $event;
     }
@@ -251,6 +240,17 @@ class ScheduleEventSyncService
     private function comparable(mixed $value): mixed
     {
         return is_array($value) ? array_values($value) : ($value === null ? null : (string) $value);
+    }
+
+    private function staffAttributes(string $type, int $id, string $role): array
+    {
+        $attributes = ['staff_type' => $type, 'staff_id' => $id, 'role' => $role];
+        if (Schema::hasColumn('scheduled_event_staff_assignments', 'instructor_id')) {
+            $attributes['instructor_id'] = $type === 'instructor' ? $id : null;
+            $attributes['lab_tech_id'] = $type === 'lab_tech' ? $id : null;
+        }
+
+        return $attributes;
     }
 
     private function upsert(object $source, array $attributes): ScheduledEvent
