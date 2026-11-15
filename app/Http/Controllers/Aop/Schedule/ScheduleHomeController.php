@@ -16,11 +16,14 @@ use App\Models\Section;
 use App\Models\Term;
 use App\Services\ScheduleConflictService;
 use App\Services\ScheduleDistributionService;
+use App\Services\ScheduleEventReadAdapter;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class ScheduleHomeController extends Controller
 {
+    public function __construct(private readonly ScheduleEventReadAdapter $eventReads) {}
+
     public function index(Request $request, Term $term, ScheduleDistributionService $distributionService)
     {
         $summary = $this->buildTermSummary($term);
@@ -82,21 +85,27 @@ class ScheduleHomeController extends Controller
                 (int) $offering->id,
             ))
             ->values();
+        $offerings->each(fn (Offering $offering) => $offering->sections->each(
+            fn (Section $section) => $this->eventReads->meetingBlocks($section->meetingBlocks)
+        ));
 
         $meetingBlocks = MeetingBlock::query()
             ->with(['section.offering.catalogCourse', 'section.instructor', 'room'])
             ->whereHas('section.offering', fn ($q) => $q->where('term_id', $term->id))
             ->get();
+        $this->eventReads->meetingBlocks($meetingBlocks);
 
         $officeBlocks = OfficeHourBlock::query()
             ->with('instructor')
             ->where('term_id', $term->id)
             ->get();
+        $this->eventReads->officeHours($officeBlocks);
 
         $openLabs = OpenLab::query()
             ->with(['room', 'labTech'])
             ->where('term_id', $term->id)
             ->get();
+        $this->eventReads->openLabs($openLabs);
 
         $conflictMaps = $this->buildConflictMaps($term, $meetingBlocks, $officeBlocks, $openLabs);
 
@@ -492,20 +501,24 @@ class ScheduleHomeController extends Controller
             ->with(['meetingBlocks', 'instructor'])
             ->whereHas('offering', fn ($q) => $q->where('term_id', $term->id))
             ->get();
+        $sections->each(fn (Section $section) => $this->eventReads->meetingBlocks($section->meetingBlocks));
 
         $meetingBlocks = MeetingBlock::query()
             ->with(['section.instructor'])
             ->whereHas('section.offering', fn ($q) => $q->where('term_id', $term->id))
             ->get();
+        $this->eventReads->meetingBlocks($meetingBlocks);
 
         $openLabs = OpenLab::query()
             ->with(['room', 'labTech'])
             ->where('term_id', $term->id)
             ->get();
+        $this->eventReads->openLabs($openLabs);
 
         $officeBlocks = OfficeHourBlock::query()
             ->where('term_id', $term->id)
             ->get();
+        $this->eventReads->officeHours($officeBlocks);
 
         $labTechOverLimitCount = app(\App\Services\LabTechWorkloadService::class)
             ->summariesForTerm($term)

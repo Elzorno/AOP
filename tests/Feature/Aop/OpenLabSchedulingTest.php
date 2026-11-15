@@ -26,6 +26,46 @@ class OpenLabSchedulingTest extends TestCase
 
     private static int $courseCounter = 900;
 
+    public function test_readiness_conflicts_use_authoritative_event_fields(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $term = $this->createActiveTerm();
+        $firstRoom = Room::create(['name' => 'ATC-226A', 'is_active' => true]);
+        $secondRoom = Room::create(['name' => 'ATC-226B', 'is_active' => true]);
+        $first = MeetingBlock::create([
+            'section_id' => $this->createSection($term)->id,
+            'type' => 'LECTURE',
+            'days_json' => ['Mon'],
+            'starts_at' => '09:00',
+            'ends_at' => '10:00',
+            'room_id' => $firstRoom->id,
+        ]);
+        $second = MeetingBlock::create([
+            'section_id' => $this->createSection($term)->id,
+            'type' => 'LECTURE',
+            'days_json' => ['Tue'],
+            'starts_at' => '13:00',
+            'ends_at' => '14:00',
+            'room_id' => $secondRoom->id,
+        ]);
+        ScheduledEvent::query()
+            ->where('source_type', MeetingBlock::class)
+            ->where('source_id', $second->id)
+            ->update([
+                'days_json' => json_encode(['Mon']),
+                'starts_at' => '09:30',
+                'ends_at' => '10:30',
+                'room_id' => $firstRoom->id,
+            ]);
+
+        $this->actingAs($admin)
+            ->get(route('aop.schedule.readiness.index', $term))
+            ->assertOk()
+            ->assertViewHas('roomConflicts', fn ($conflicts) => count($conflicts) === 1
+                && $conflicts[0]['a']->id === $first->id
+                && $conflicts[0]['b']->id === $second->id);
+    }
+
     public function test_schedule_suggestions_use_authoritative_event_time_and_room(): void
     {
         $term = $this->createActiveTerm();

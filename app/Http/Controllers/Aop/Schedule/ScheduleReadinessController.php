@@ -13,6 +13,7 @@ use App\Models\Term;
 use App\Services\LabTechWorkloadService;
 use App\Services\ScheduleConflictService;
 use App\Services\ScheduleDistributionService;
+use App\Services\ScheduleEventReadAdapter;
 use Carbon\Carbon;
 
 class ScheduleReadinessController extends Controller
@@ -36,13 +37,14 @@ class ScheduleReadinessController extends Controller
     private const LAB_MINUTES_PER_CREDIT_15W = 2250;
     private const BASE_WEEKS = 15;
 
-    public function index(Term $term, ScheduleDistributionService $distribution, LabTechWorkloadService $labTechWorkloads)
+    public function index(Term $term, ScheduleDistributionService $distribution, LabTechWorkloadService $labTechWorkloads, ScheduleEventReadAdapter $eventReads)
     {
         $sections = Section::query()
             ->with(['offering.catalogCourse', 'instructor', 'meetingBlocks.room'])
             ->whereHas('offering', fn($q) => $q->where('term_id', $term->id))
             ->orderBy('id', 'desc')
             ->get();
+        $sections->each(fn (Section $section) => $eventReads->meetingBlocks($section->meetingBlocks));
 
         $sectionsMissingInstructor = $sections->filter(fn (Section $section) => !$section->hasInstructorAssignment())->values();
         $sectionsMissingMeetingBlocks = $sections
@@ -54,6 +56,7 @@ class ScheduleReadinessController extends Controller
             ->whereHas('section.offering', fn($q) => $q->where('term_id', $term->id))
             ->orderBy('starts_at')
             ->get();
+        $eventReads->meetingBlocks($meetingBlocks);
 
         $meetingBlocksMissingRoom = $meetingBlocks->filter(fn($mb) => !$mb->room_id)->values();
 
@@ -62,12 +65,14 @@ class ScheduleReadinessController extends Controller
             ->where('term_id', $term->id)
             ->orderBy('starts_at')
             ->get();
+        $eventReads->officeHours($officeBlocks);
 
         $openLabs = OpenLab::query()
             ->with(['room', 'labTech'])
             ->where('term_id', $term->id)
             ->orderBy('starts_at')
             ->get();
+        $eventReads->openLabs($openLabs);
 
         $roomConflicts = $this->computeRoomConflicts($term, $meetingBlocks, $openLabs);
         $instructorConflicts = $this->computeInstructorConflicts($term, $meetingBlocks, $officeBlocks);
