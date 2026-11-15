@@ -9,7 +9,7 @@
       <div class="toolbar-line">
         <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Schedule Studio</a>
         @if(!$scheduleLocked)
-          <a class="btn" href="{{ route('aop.schedule.events.create') }}">New Scheduled Event</a>
+          <a class="btn" href="{{ route('aop.schedule.events.create', $term) }}">New Scheduled Event</a>
         @endif
       </div>
     </section>

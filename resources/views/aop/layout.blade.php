@@ -48,7 +48,7 @@
   /* Schedule sub-nav: visible when inside any schedule.* route */
   $scheduleSubNav = [
     ['route' => 'aop.schedule.home',            'label' => 'Studio',    'match' => 'aop.schedule.home'],
-    ['route' => 'aop.schedule.events.index',    'label' => 'Events',    'match' => 'aop.schedule.events.*'],
+    ['route' => 'aop.schedule.events.legacy',   'label' => 'Events',    'match' => 'aop.schedule.events.*'],
     ['route' => 'aop.schedule.openLabs.legacy', 'label' => 'Open Labs', 'match' => 'aop.schedule.openLabs.*'],
     ['route' => 'aop.schedule.readiness.index', 'label' => 'Readiness', 'match' => 'aop.schedule.readiness.*'],
     ['route' => 'aop.schedule.calendar.index',  'label' => 'Calendar',  'match' => 'aop.schedule.calendar.*'],

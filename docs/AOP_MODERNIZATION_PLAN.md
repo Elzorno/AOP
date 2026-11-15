@@ -1,8 +1,8 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: phases 1–2 and the identity, offering, section, meeting-block and open-lab portions of phase 3 are deployed; remaining schedule resources still need explicit term routes.
+Prepared 14 November 2026. Status: phases 1–2 and the identity, offering, section, meeting-block and open-lab portions of phase 3 are deployed; the scheduled-event route slice is verified for deployment, while remaining schedule resources still need explicit term routes.
 
-Current production release: `d556c0f` through `/var/www/aop-current`. The isolated suite passes 86 tests / 303 assertions. Open-lab list/create/edit/store/update/delete use explicit term routes; cross-term mutations return 404 and compatibility navigation follows the user's selected term. Release `811483a` remains available for immediate rollback. Verified pre-migration checkpoint: `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`.
+Current production release: `d556c0f` through `/var/www/aop-current`. The isolated suite passes 89 tests / 314 assertions. Scheduled-event list/create/store use explicit term routes in the verified development slice; event sources cannot be created from a section in another term. Release `811483a` remains available for immediate rollback. Verified pre-migration checkpoint: `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`.
 
 ## Outcome and constraints
 

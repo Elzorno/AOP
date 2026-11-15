@@ -22,10 +22,8 @@ class ScheduledEventController extends Controller
 {
     private const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    public function index()
+    public function index(Term $term)
     {
-        $term = $this->activeTermOrFail();
-
         return view('aop.schedule.events.index', [
             'term' => $term,
             'scheduleLocked' => false,
@@ -33,10 +31,8 @@ class ScheduledEventController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Term $term)
     {
-        $term = $this->activeTermOrFail();
-
         return view('aop.schedule.events.create', [
             'term' => $term,
             'scheduleLocked' => false,
@@ -48,10 +44,8 @@ class ScheduledEventController extends Controller
         ]);
     }
 
-    public function store(Request $request, ScheduleConflictService $conflicts, LabTechWorkloadService $workloads)
+    public function store(Request $request, Term $term, ScheduleConflictService $conflicts, LabTechWorkloadService $workloads)
     {
-        $term = $this->activeTermOrFail();
-
         $data = $request->validate([
             'event_type' => ['required', Rule::in([ScheduledEvent::TYPE_CLASS, ScheduledEvent::TYPE_OPEN_LAB])],
             'section_id' => ['nullable', 'integer', Rule::exists('sections', 'id')],
@@ -75,7 +69,7 @@ class ScheduledEventController extends Controller
             ? $this->createClass($term, $data, $days, $conflicts)
             : $this->createOpenLab($term, $data, $days, $conflicts, $workloads);
 
-        return redirect()->route('aop.schedule.events.index')->with('status', $event->event_type === ScheduledEvent::TYPE_CLASS ? 'Class event added.' : 'Open lab event added.');
+        return redirect()->route('aop.schedule.events.index', $term)->with('status', $event->event_type === ScheduledEvent::TYPE_CLASS ? 'Class event added.' : 'Open lab event added.');
     }
 
     private function createClass(Term $term, array $data, array $days, ScheduleConflictService $conflicts): ScheduledEvent
@@ -86,11 +80,11 @@ class ScheduledEventController extends Controller
 
         $section = Section::query()->with(['offering', 'instructor'])->findOrFail($data['section_id']);
         if ((int) $section->offering->term_id !== (int) $term->id) {
-            throw ValidationException::withMessages(['section_id' => 'The selected section is not in the active term.']);
+            throw ValidationException::withMessages(['section_id' => 'The selected section is not in this term.']);
         }
 
         $roomId = $section->modality === SectionModality::ONLINE ? null : ($data['room_id'] ?? null);
-        if ($section->modality !== SectionModality::ONLINE && !$roomId) {
+        if ($section->modality !== SectionModality::ONLINE && ! $roomId) {
             throw ValidationException::withMessages(['room_id' => 'Room is required for an in-person or hybrid class.']);
         }
 
@@ -157,13 +151,5 @@ class ScheduledEventController extends Controller
         ]);
 
         return ScheduledEvent::query()->where('source_type', OpenLab::class)->where('source_id', $source->id)->firstOrFail();
-    }
-
-    private function activeTermOrFail(): Term
-    {
-        $term = Term::query()->where('is_active', true)->first();
-        abort_if(!$term, 400, 'No active term is set. Go to Terms and set an active term.');
-
-        return $term;
     }
 }

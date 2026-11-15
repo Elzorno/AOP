@@ -229,3 +229,8 @@ This file tracks what each phase changed so the project remains understandable w
 ## Explicit open-lab release `d556c0f` — deployed 2026-11-15
 - Atomically deployed the open-lab route slice without a schema migration; release `811483a` remains available for rollback.
 - Rebuilt production caches, reloaded PHP-FPM, and verified the cached explicit routes, real production open-lab rendering, SQLite integrity, HTTPS login and service health.
+
+## Explicit scheduled-event term boundary — development checkpoint 2026-11-15
+- Moved scheduled-event list/create/store under `/aop/terms/{term}/schedule/events` and updated navigation/forms.
+- Class-event creation rejects a section from another term before creating a meeting block; open-lab event sources use the route term.
+- Verified non-active-term pages and writes plus selected-term compatibility redirects; the full suite passes 89 tests / 314 assertions.

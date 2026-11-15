@@ -3,11 +3,11 @@
 
   <div class="row" style="margin-bottom:14px;">
     <div><h1>New Scheduled Event</h1><p class="muted">Add a class meeting or staffed open lab through one scheduling flow.</p></div>
-    <a class="btn secondary" href="{{ route('aop.schedule.events.index') }}">Back</a>
+    <a class="btn secondary" href="{{ route('aop.schedule.events.index', $term) }}">Back</a>
   </div>
 
   <div class="card">
-    <form method="POST" action="{{ route('aop.schedule.events.store') }}" data-scheduled-event-form>
+    <form method="POST" action="{{ route('aop.schedule.events.store', $term) }}" data-scheduled-event-form>
       @csrf
       <label>Event Type</label>
       <select name="event_type" required data-event-type>

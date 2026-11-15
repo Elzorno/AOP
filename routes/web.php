@@ -107,9 +107,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Schedule (active term)
         Route::get('/schedule', [ScheduleHomeController::class, 'index'])->name('schedule.home');
-        Route::get('/schedule/events', [ScheduledEventController::class, 'index'])->name('schedule.events.index');
-        Route::get('/schedule/events/create', [ScheduledEventController::class, 'create'])->name('schedule.events.create');
-        Route::post('/schedule/events', [ScheduledEventController::class, 'store'])->name('schedule.events.store');
+        Route::prefix('/terms/{term}/schedule/events')->group(function () {
+            Route::get('/', [ScheduledEventController::class, 'index'])->name('schedule.events.index');
+            Route::get('/create', [ScheduledEventController::class, 'create'])->name('schedule.events.create');
+            Route::post('/', [ScheduledEventController::class, 'store'])->name('schedule.events.store');
+        });
+
+        Route::get('/schedule/events', function (Request $request) {
+            $term = $request->user()->selectedTerm
+                ?? Term::query()->where('is_active', true)->firstOrFail();
+
+            return redirect()->route('aop.schedule.events.index', $term);
+        })->name('schedule.events.legacy');
 
         // Offerings are the first fully explicit term-scoped scheduling resource.
         Route::prefix('/terms/{term}/schedule/offerings')->name('schedule.offerings.')->group(function () {

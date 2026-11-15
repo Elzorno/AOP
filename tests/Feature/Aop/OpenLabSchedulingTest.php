@@ -273,7 +273,7 @@ class OpenLabSchedulingTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->actingAs($admin)->post(route('aop.schedule.events.store'), [
+        $this->actingAs($admin)->post(route('aop.schedule.events.store', $term), [
             'event_type' => 'class',
             'section_id' => $section->id,
             'category' => 'LECTURE',
@@ -281,9 +281,9 @@ class OpenLabSchedulingTest extends TestCase
             'days' => ['Mon'],
             'starts_at' => '09:00',
             'ends_at' => '10:00',
-        ])->assertRedirect(route('aop.schedule.events.index'));
+        ])->assertRedirect(route('aop.schedule.events.index', $term));
 
-        $this->actingAs($admin)->post(route('aop.schedule.events.store'), [
+        $this->actingAs($admin)->post(route('aop.schedule.events.store', $term), [
             'event_type' => 'open_lab',
             'name' => 'Unified Open Lab',
             'room_id' => $room->id,
@@ -291,10 +291,10 @@ class OpenLabSchedulingTest extends TestCase
             'days' => ['Tue'],
             'starts_at' => '09:00',
             'ends_at' => '10:00',
-        ])->assertRedirect(route('aop.schedule.events.index'));
+        ])->assertRedirect(route('aop.schedule.events.index', $term));
 
         $this->assertDatabaseCount('scheduled_events', 2);
-        $this->actingAs($admin)->get(route('aop.schedule.events.index'))
+        $this->actingAs($admin)->get(route('aop.schedule.events.index', $term))
             ->assertOk()
             ->assertSeeText('Unified Open Lab');
     }
