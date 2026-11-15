@@ -38,7 +38,7 @@ class ScheduleTermLockController extends Controller
         }
 
         return redirect()
-            ->route('aop.schedule.reports.index')
+            ->route('aop.schedule.reports.index', $term)
             ->with('status', 'Schedule locking has been retired. Download the current registrar CSV whenever it is needed.');
     }
 }

@@ -231,12 +231,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
             return redirect()->route('aop.schedule.calendar.index', $term);
         })->name('schedule.calendar.legacy');
 
-        // Schedule Reports (active term)
-        Route::get('/schedule/reports', [ScheduleReportsController::class, 'index'])->name('schedule.reports.index');
-        Route::get('/schedule/reports/export/registrar', [ScheduleReportsController::class, 'exportRegistrar'])->name('schedule.reports.exportRegistrar');
-        Route::get('/schedule/reports/export/term', [ScheduleReportsController::class, 'exportTerm'])->name('schedule.reports.exportTerm');
-        Route::get('/schedule/reports/export/instructors/{instructor}', [ScheduleReportsController::class, 'exportInstructor'])->name('schedule.reports.exportInstructor');
-        Route::get('/schedule/reports/export/rooms/{room}', [ScheduleReportsController::class, 'exportRoom'])->name('schedule.reports.exportRoom');
+        // Schedule Reports
+        Route::prefix('/terms/{term}/schedule/reports')->group(function () {
+            Route::get('/', [ScheduleReportsController::class, 'index'])->name('schedule.reports.index');
+            Route::get('/export/registrar', [ScheduleReportsController::class, 'exportRegistrar'])->name('schedule.reports.exportRegistrar');
+            Route::get('/export/term', [ScheduleReportsController::class, 'exportTerm'])->name('schedule.reports.exportTerm');
+            Route::get('/export/instructors/{instructor}', [ScheduleReportsController::class, 'exportInstructor'])->name('schedule.reports.exportInstructor');
+            Route::get('/export/rooms/{room}', [ScheduleReportsController::class, 'exportRoom'])->name('schedule.reports.exportRoom');
+        });
+
+        Route::get('/schedule/reports', function (Request $request) {
+            $term = $request->user()->selectedTerm
+                ?? Term::query()->where('is_active', true)->firstOrFail();
+
+            return redirect()->route('aop.schedule.reports.index', $term);
+        })->name('schedule.reports.legacy');
 
         // Legacy schedule snapshots remain downloadable; new exports use the registrar CSV report.
         Route::get('/schedule/publish', [SchedulePublishController::class, 'index'])->name('schedule.publish.index');

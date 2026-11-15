@@ -90,7 +90,7 @@ class RegistrarScheduleCsvTest extends TestCase
             'enrolled_count' => 0,
         ]);
 
-        $response = $this->actingAs($admin)->get(route('aop.schedule.reports.exportRegistrar'));
+        $response = $this->actingAs($admin)->get(route('aop.schedule.reports.exportRegistrar', $term));
 
         $response->assertOk()->assertDownload('aop_2027sp_registrar_schedule.csv');
         $rows = $this->parseCsv($response->streamedContent());
@@ -148,7 +148,7 @@ class RegistrarScheduleCsvTest extends TestCase
             'notes' => '  +SUM(1,1)',
         ]);
 
-        $response = $this->actingAs($admin)->get(route('aop.schedule.reports.exportRegistrar'));
+        $response = $this->actingAs($admin)->get(route('aop.schedule.reports.exportRegistrar', $term));
         $rows = $this->parseCsv($response->streamedContent());
 
         $this->assertSame("'=HYPERLINK(\"https://example.test\",\"Open\")", $rows[0]['Title']);

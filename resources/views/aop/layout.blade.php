@@ -53,7 +53,7 @@
     ['route' => 'aop.schedule.readiness.index', 'label' => 'Readiness', 'match' => 'aop.schedule.readiness.*'],
     ['route' => 'aop.schedule.calendar.legacy', 'label' => 'Calendar',  'match' => 'aop.schedule.calendar.*'],
     ['route' => 'aop.schedule.grids.legacy',    'label' => 'Grids',     'match' => 'aop.schedule.grids.*'],
-    ['route' => 'aop.schedule.reports.index',   'label' => 'Registrar Export', 'match' => 'aop.schedule.reports.*'],
+    ['route' => 'aop.schedule.reports.legacy',  'label' => 'Registrar Export', 'match' => 'aop.schedule.reports.*'],
   ];
   $inSchedule = request()->routeIs('aop.schedule.*');
 @endphp

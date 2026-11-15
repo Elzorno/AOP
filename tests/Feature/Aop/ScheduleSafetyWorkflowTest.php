@@ -263,7 +263,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
             'contact_hours_per_week' => 3,
         ]);
 
-        $response = $this->actingAs($admin)->get(route('aop.schedule.reports.exportRegistrar'));
+        $response = $this->actingAs($admin)->get(route('aop.schedule.reports.exportRegistrar', $term));
 
         $response->assertOk()->assertDownload('aop_2026sp_registrar_schedule.csv');
         $this->assertStringContainsString('ONLINE-PUBLISH-01', $response->streamedContent());
@@ -294,7 +294,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('aop.schedule.lock'))
-            ->assertRedirect(route('aop.schedule.reports.index'));
+            ->assertRedirect(route('aop.schedule.reports.index', $term));
 
         $this->assertFalse((bool) $term->fresh()->schedule_locked);
     }

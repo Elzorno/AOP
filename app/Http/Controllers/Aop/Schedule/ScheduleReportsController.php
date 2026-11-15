@@ -19,31 +19,10 @@ class ScheduleReportsController extends Controller
 {
     private const DAYS_ORDER = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
-    private function activeTermOrFail(): Term
+    public function index(Term $term)
     {
-        $term = Term::where('is_active', true)->first();
-        abort_if(!$term, 400, 'No active term is set. Go to Terms and set an active term.');
-        return $term;
-    }
-
-    public function index()
-    {
-        $term = Term::where('is_active', true)->first();
-
         $instructors = Instructor::where('is_active', true)->orderBy('name')->get();
         $rooms = Room::where('is_active', true)->orderBy('name')->get();
-
-        if (!$term) {
-            return view('aop.schedule.reports.index', [
-                'term' => null,
-                'instructors' => $instructors,
-                'rooms' => $rooms,
-                'stats' => null,
-                'unassigned' => null,
-                'effectiveEndDate' => null,
-                'endDateIsCalculated' => false,
-            ]);
-        }
 
         $sections = Section::query()
             ->with(['offering.catalogCourse', 'instructor'])
@@ -105,10 +84,8 @@ class ScheduleReportsController extends Controller
         ]);
     }
 
-    public function exportRegistrar(): StreamedResponse
+    public function exportRegistrar(Term $term): StreamedResponse
     {
-        $term = $this->activeTermOrFail();
-
         $sections = Section::query()
             ->with(['offering.catalogCourse', 'instructor', 'meetingBlocks.room'])
             ->whereHas('offering', fn ($q) => $q->where('term_id', $term->id))
@@ -148,14 +125,13 @@ class ScheduleReportsController extends Controller
         });
     }
 
-    public function exportTerm(): StreamedResponse
+    public function exportTerm(Term $term): StreamedResponse
     {
-        return $this->exportRegistrar();
+        return $this->exportRegistrar($term);
     }
 
-    public function exportInstructor(Instructor $instructor): StreamedResponse
+    public function exportInstructor(Term $term, Instructor $instructor): StreamedResponse
     {
-        $term = $this->activeTermOrFail();
         abort_if(!$instructor->is_active, 404, 'Instructor not found.');
 
         $meetingBlocks = MeetingBlock::query()
@@ -215,9 +191,8 @@ class ScheduleReportsController extends Controller
         });
     }
 
-    public function exportRoom(Room $room): StreamedResponse
+    public function exportRoom(Term $term, Room $room): StreamedResponse
     {
-        $term = $this->activeTermOrFail();
         abort_if(!$room->is_active, 404, 'Room not found.');
 
         $meetingBlocks = MeetingBlock::query()

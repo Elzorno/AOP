@@ -41,7 +41,7 @@
       </p>
 
       <div style="margin-top:12px;">
-        <a class="btn" href="{{ route('aop.schedule.reports.exportRegistrar') }}">Download Registrar CSV</a>
+        <a class="btn" href="{{ route('aop.schedule.reports.exportRegistrar', $term) }}">Download Registrar CSV</a>
       </div>
 
       <div class="status-note" style="margin-top:12px;">
@@ -67,7 +67,7 @@
         </div>
 
         <div style="margin-top:12px;">
-          <a class="btn secondary" href="{{ route('aop.schedule.reports.exportRegistrar') }}">Download Registrar CSV</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.reports.exportRegistrar', $term) }}">Download Registrar CSV</a>
         </div>
       </div>
 
@@ -102,7 +102,7 @@
             <button class="btn" type="button" onclick="
               const id=document.getElementById('instructorSelect').value;
               if(!id){ alert('Select an instructor.'); return; }
-              window.location='{{ url('/aop/schedule/reports/export/instructors') }}/'+id;
+              window.location='{{ route('aop.schedule.reports.exportInstructor', [$term, '__INSTRUCTOR__']) }}'.replace('__INSTRUCTOR__', id);
             ">Download CSV</button>
           </div>
         </div>
@@ -125,7 +125,7 @@
             <button class="btn" type="button" onclick="
               const id=document.getElementById('roomSelect').value;
               if(!id){ alert('Select a room.'); return; }
-              window.location='{{ url('/aop/schedule/reports/export/rooms') }}/'+id;
+              window.location='{{ route('aop.schedule.reports.exportRoom', [$term, '__ROOM__']) }}'.replace('__ROOM__', id);
             ">Download CSV</button>
           </div>
         </div>

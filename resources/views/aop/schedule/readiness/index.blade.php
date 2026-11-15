@@ -55,7 +55,7 @@
         <a class="btn secondary" href="{{ route('aop.schedule.sections.index', $term) }}">Section Directory</a>
         <a class="btn secondary" href="{{ route('aop.schedule.officeHours.index', $term) }}">Office Hours</a>
         <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index', $term) }}">Open Labs</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.reports.index') }}">Registrar CSV</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.reports.index', $term) }}">Registrar CSV</a>
       </div>
     </section>
 

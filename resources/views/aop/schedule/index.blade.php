@@ -88,12 +88,12 @@
               Review {{ $blockingIssues + $officeHourIssues }} issue{{ ($blockingIssues + $officeHourIssues) === 1 ? '' : 's' }}
             </a>
           @endif
-          <a class="btn success" href="{{ route('aop.schedule.reports.exportRegistrar') }}">Download Registrar CSV</a>
+          <a class="btn success" href="{{ route('aop.schedule.reports.exportRegistrar', $term) }}">Download Registrar CSV</a>
           <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
           <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index', $term) }}">Open Labs</a>
           <a class="btn secondary" href="{{ route('aop.schedule.calendar.index', $term) }}">Calendar</a>
           <a class="btn secondary" href="{{ route('aop.schedule.grids.index', $term) }}">Grids</a>
-          <a class="btn secondary" href="{{ route('aop.schedule.reports.index') }}">Registrar Export</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.reports.index', $term) }}">Registrar Export</a>
         @else
           <a class="btn" href="{{ route('aop.terms.index') }}">Manage Terms</a>
         @endif
@@ -139,7 +139,7 @@
           <span class="stage-step-note">Conflicts, minutes &amp; hours</span>
         </a>
         <a
-          href="{{ route('aop.schedule.reports.index') }}"
+          href="{{ route('aop.schedule.reports.index', $term) }}"
           class="stage-step {{ $exportReady ? 'stage-step-done' : '' }}"
         >
           <span class="stage-step-icon">

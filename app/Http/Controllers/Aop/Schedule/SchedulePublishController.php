@@ -34,13 +34,13 @@ class SchedulePublishController extends Controller
     public function index()
     {
         return redirect()
-            ->route('aop.schedule.reports.index')
+            ->route('aop.schedule.reports.index', $this->activeTermOrFail())
             ->with('status', 'Schedule snapshots have been replaced by the registrar CSV export.');
     }
 
     public function store(ScheduleReportsController $reports): StreamedResponse
     {
-        return $reports->exportRegistrar();
+        return $reports->exportRegistrar($this->activeTermOrFail());
     }
 
     private function buildPublishReadinessSummary(Term $term): array

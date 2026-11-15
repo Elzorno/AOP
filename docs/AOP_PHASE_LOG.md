@@ -278,3 +278,9 @@ This file tracks what each phase changed so the project remains understandable w
 ## Explicit schedule-grid release `1929c48` — deployed 2026-11-15
 - Atomically deployed the grid route slice without a schema migration; release `e639dc2` remains available for rollback.
 - Rebuilt production caches, reloaded PHP-FPM and nginx, and verified cached routes, real production grid rendering, SQLite integrity, HTTPS login and service health.
+
+## Explicit reports and exports term boundary — development checkpoint 2026-11-15
+- Moved reports and registrar, instructor, room and compatibility term exports under `/aop/terms/{term}/schedule/reports`.
+- Report queries and streamed CSV generation use the requested term; schedule navigation preserves it.
+- Kept the legacy reports GET as a selected-term redirect and adapted retired publish/lock compatibility calls.
+- Verified non-active-term report rendering and CSV content; the full suite passes 103 tests / 370 assertions.

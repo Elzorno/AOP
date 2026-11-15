@@ -136,7 +136,7 @@ class OpenLabSchedulingTest extends TestCase
             'ends_at' => '16:00',
         ]);
 
-        $response = $this->actingAs($admin)->get(route('aop.schedule.reports.exportRoom', $room));
+        $response = $this->actingAs($admin)->get(route('aop.schedule.reports.exportRoom', [$term, $room]));
         $response->assertOk();
         $csv = $response->streamedContent();
 

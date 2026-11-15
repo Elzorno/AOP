@@ -54,7 +54,7 @@ class StaffInstructorSchedulingTest extends TestCase
             ->assertOk()
             ->assertSeeText('STAFF');
 
-        $response = $this->actingAs($admin)->get(route('aop.schedule.reports.exportRegistrar'));
+        $response = $this->actingAs($admin)->get(route('aop.schedule.reports.exportRegistrar', $term));
         $response->assertOk()->assertDownload('aop_2026fa_registrar_schedule.csv');
 
         $csv = $response->streamedContent();
