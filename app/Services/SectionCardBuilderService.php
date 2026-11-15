@@ -10,19 +10,24 @@ use App\Models\Term;
 
 class SectionCardBuilderService
 {
+    public function __construct(private readonly ScheduleEventReadAdapter $eventReads) {}
+
     public function build(Section $section, Term $term): array
     {
         $section->load(['meetingBlocks.room', 'instructor', 'offering.catalogCourse']);
+        $this->eventReads->meetingBlocks($section->meetingBlocks);
 
         $allMeetingBlocks = MeetingBlock::query()
             ->with(['section.offering', 'section.instructor', 'room'])
             ->whereHas('section.offering', fn ($q) => $q->where('term_id', $term->id))
             ->get();
+        $this->eventReads->meetingBlocks($allMeetingBlocks);
 
         $officeBlocks = OfficeHourBlock::query()
             ->with('instructor')
             ->where('term_id', $term->id)
             ->get();
+        $this->eventReads->officeHours($officeBlocks);
 
         $conflictMaps = $this->buildConflictMaps($term, $allMeetingBlocks, $officeBlocks);
 

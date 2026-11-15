@@ -16,6 +16,7 @@ use App\Models\Term;
 use App\Models\User;
 use App\Services\ScheduleSuggestionService;
 use App\Services\ScheduleDistributionService;
+use App\Services\SectionCardBuilderService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -86,6 +87,8 @@ class OpenLabSchedulingTest extends TestCase
             ->assertViewHas('roomConflicts', fn ($conflicts) => count($conflicts) === 1
                 && $conflicts[0]['a']->id === $first->id
                 && $conflicts[0]['b']->id === $second->id);
+        $card = app(SectionCardBuilderService::class)->build($first->section, $term);
+        $this->assertSame(1, $card['room_conflict_count']);
     }
 
     public function test_schedule_suggestions_use_authoritative_event_time_and_room(): void
