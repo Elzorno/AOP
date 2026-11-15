@@ -8,11 +8,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Term extends Model
 {
     protected $fillable = [
-        'code','name','starts_on','ends_on','is_active','status',
-        'weeks_in_term','slot_minutes','buffer_minutes',
+        'code', 'name', 'starts_on', 'ends_on', 'is_active', 'status',
+        'weeks_in_term', 'slot_minutes', 'buffer_minutes',
         'enforce_schedule_blocks',
         'allowed_hours_json',
-        'schedule_locked','schedule_locked_at','schedule_locked_by_user_id',
+        'schedule_locked', 'schedule_locked_at', 'schedule_locked_by_user_id',
     ];
 
     protected $casts = [
@@ -25,49 +25,23 @@ class Term extends Model
         'enforce_schedule_blocks' => 'boolean',
     ];
 
-    public function offerings(): HasMany { return $this->hasMany(Offering::class); }
-    public function officeHourBlocks(): HasMany { return $this->hasMany(OfficeHourBlock::class); }
-    public function openLabs(): HasMany { return $this->hasMany(OpenLab::class); }
-    public function scheduledEvents(): HasMany { return $this->hasMany(ScheduledEvent::class); }
-
-    public function cloneToDraft(): self
+    public function offerings(): HasMany
     {
-        $draft = $this->replicate(['schedule_locked', 'schedule_locked_at', 'schedule_locked_by_user_id']);
-        $draft->status = 'draft';
-        $draft->name = $this->name . ' (Draft ' . now()->format('Y-m-d H:i') . ')';
-        $draft->code = $this->code . '-draft-' . now()->timestamp;
-        $draft->push();
+        return $this->hasMany(Offering::class);
+    }
 
-        foreach ($this->offerings as $offering) {
-            $newOffering = $offering->replicate(['term_id']);
-            $newOffering->term_id = $draft->id;
-            $newOffering->push();
+    public function officeHourBlocks(): HasMany
+    {
+        return $this->hasMany(OfficeHourBlock::class);
+    }
 
-            foreach ($offering->sections as $section) {
-                $newSection = $section->replicate(['offering_id']);
-                $newSection->offering_id = $newOffering->id;
-                $newSection->push();
+    public function openLabs(): HasMany
+    {
+        return $this->hasMany(OpenLab::class);
+    }
 
-                foreach ($section->meetingBlocks as $block) {
-                    $newBlock = $block->replicate(['section_id']);
-                    $newBlock->section_id = $newSection->id;
-                    $newBlock->push();
-                }
-            }
-        }
-
-        foreach ($this->officeHourBlocks as $block) {
-            $newBlock = $block->replicate(['term_id']);
-            $newBlock->term_id = $draft->id;
-            $newBlock->push();
-        }
-
-        foreach ($this->openLabs as $openLab) {
-            $newOpenLab = $openLab->replicate(['term_id']);
-            $newOpenLab->term_id = $draft->id;
-            $newOpenLab->push();
-        }
-
-        return $draft;
+    public function scheduledEvents(): HasMany
+    {
+        return $this->hasMany(ScheduledEvent::class);
     }
 }

@@ -76,7 +76,7 @@ class TermController extends Controller
             ! empty($data['copy_instructor_assignments']) ? 'Instructor assignments copied.' : 'Instructor assignments left blank.',
             $counts['office_hours'] > 0 ? $counts['office_hours'].' office hour blocks copied.' : 'Office hours not copied.',
             $counts['open_labs'] > 0 ? $counts['open_labs'].' open lab blocks copied.' : 'Open labs not copied.',
-            'Locks, publications, office hours, and change history were not copied.',
+            'Locks, publications, and source change history were not copied; copied schedule records received new audit entries.',
         ];
 
         return redirect()->route('aop.terms.index')->with('status', implode(' ', $parts));
@@ -128,9 +128,9 @@ class TermController extends Controller
             ->with('status', $term->code.' selected. Offering writes are now explicitly scoped to this term.');
     }
 
-    public function makeDraft(Term $term)
+    public function makeDraft(Term $term, TermScheduleCloneService $cloneService)
     {
-        $draft = $term->cloneToDraft();
+        $draft = $cloneService->cloneToDraft($term);
 
         return redirect()->route('aop.terms.index')->with('status', 'Draft '.$draft->code.' created from '.$term->code.'.');
     }
