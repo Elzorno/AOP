@@ -32,6 +32,12 @@ class ExplicitOpenLabTermBoundaryTest extends TestCase
         $this->actingAs($admin)
             ->get(route('aop.schedule.openLabs.edit', [$selected, $openLab]))
             ->assertOk();
+        $this->assertDatabaseHas('schedule_change_logs', [
+            'term_id' => $selected->id,
+            'section_id' => null,
+            'user_id' => $admin->id,
+            'action' => 'created_open_lab',
+        ]);
     }
 
     public function test_cross_term_update_and_delete_are_rejected_without_mutation(): void
@@ -54,6 +60,55 @@ class ExplicitOpenLabTermBoundaryTest extends TestCase
             ->delete(route('aop.schedule.openLabs.destroy', [$second, $openLab]))
             ->assertNotFound();
         $this->assertDatabaseHas('open_labs', ['id' => $openLab->id]);
+    }
+
+    public function test_update_and_delete_keep_projection_and_audit_in_the_same_workflow(): void
+    {
+        $term = $this->term('CURRENT', true);
+        [$room, $labTech] = $this->resources();
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->post(route('aop.schedule.openLabs.store', $term), $this->payload($room, $labTech))
+            ->assertRedirect(route('aop.schedule.openLabs.index', $term));
+
+        $openLab = OpenLab::query()->firstOrFail();
+        $this->assertDatabaseHas('scheduled_events', [
+            'term_id' => $term->id,
+            'source_type' => OpenLab::class,
+            'source_id' => $openLab->id,
+            'display_name' => 'Open Lab',
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('aop.schedule.openLabs.update', [$term, $openLab]), $this->payload($room, $labTech, 'Updated Lab'))
+            ->assertRedirect(route('aop.schedule.openLabs.index', $term));
+
+        $this->assertDatabaseHas('scheduled_events', [
+            'source_type' => OpenLab::class,
+            'source_id' => $openLab->id,
+            'display_name' => 'Updated Lab',
+        ]);
+        $this->assertDatabaseHas('schedule_change_logs', [
+            'term_id' => $term->id,
+            'user_id' => $admin->id,
+            'action' => 'updated_open_lab',
+        ]);
+
+        $this->actingAs($admin)
+            ->delete(route('aop.schedule.openLabs.destroy', [$term, $openLab]))
+            ->assertRedirect(route('aop.schedule.openLabs.index', $term));
+
+        $this->assertDatabaseMissing('open_labs', ['id' => $openLab->id]);
+        $this->assertDatabaseMissing('scheduled_events', [
+            'source_type' => OpenLab::class,
+            'source_id' => $openLab->id,
+        ]);
+        $this->assertDatabaseHas('schedule_change_logs', [
+            'term_id' => $term->id,
+            'user_id' => $admin->id,
+            'action' => 'deleted_open_lab',
+        ]);
     }
 
     public function test_legacy_get_redirects_to_the_users_selected_term(): void

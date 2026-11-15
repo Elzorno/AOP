@@ -56,6 +56,8 @@ class OpenLabSchedulingTest extends TestCase
 
         $response->assertSessionHasErrors('conflicts');
         $this->assertDatabaseCount('open_labs', 0);
+        $this->assertDatabaseCount('scheduled_events', 1);
+        $this->assertDatabaseCount('schedule_change_logs', 0);
     }
 
     public function test_open_lab_creation_rejects_labtech_hour_overage(): void
@@ -81,6 +83,8 @@ class OpenLabSchedulingTest extends TestCase
 
         $response->assertSessionHasErrors('lab_tech_id');
         $this->assertDatabaseCount('open_labs', 0);
+        $this->assertDatabaseCount('scheduled_events', 0);
+        $this->assertDatabaseCount('schedule_change_logs', 0);
     }
 
     public function test_room_grid_includes_open_labs(): void
@@ -294,6 +298,18 @@ class OpenLabSchedulingTest extends TestCase
         ])->assertRedirect(route('aop.schedule.events.index', $term));
 
         $this->assertDatabaseCount('scheduled_events', 2);
+        $this->assertDatabaseHas('schedule_change_logs', [
+            'term_id' => $term->id,
+            'section_id' => $section->id,
+            'user_id' => $admin->id,
+            'action' => 'created',
+        ]);
+        $this->assertDatabaseHas('schedule_change_logs', [
+            'term_id' => $term->id,
+            'section_id' => null,
+            'user_id' => $admin->id,
+            'action' => 'created_open_lab',
+        ]);
         $this->actingAs($admin)->get(route('aop.schedule.events.index', $term))
             ->assertOk()
             ->assertSeeText('Unified Open Lab');
