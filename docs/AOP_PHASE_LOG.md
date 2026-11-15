@@ -244,3 +244,7 @@ This file tracks what each phase changed so the project remains understandable w
 - Calendar reads use the requested term, while mutations verify the meeting block belongs to that term before updating it.
 - Updated schedule links and navigation; the compatibility GET redirects to the user's selected term.
 - Verified non-active-term rendering and feeds plus cross-term mutation rejection; the full suite passes 92 tests / 323 assertions.
+
+## Explicit calendar release `7a40a49` — deployed 2026-11-15
+- Atomically deployed the calendar route slice without a schema migration; release `8809a40` remains available for rollback.
+- Rebuilt production caches, reloaded PHP-FPM and nginx, and verified cached routes, real production calendar rendering, SQLite integrity, HTTPS login and service health.

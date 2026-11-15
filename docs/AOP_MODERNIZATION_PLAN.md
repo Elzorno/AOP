@@ -1,8 +1,8 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: phases 1–2 and the identity, offering, section, meeting-block, open-lab and scheduled-event portions of phase 3 are deployed; the calendar term boundary is verified and ready to deploy.
+Prepared 14 November 2026. Status: phases 1–2 and the identity, offering, section, meeting-block, open-lab, scheduled-event and calendar portions of phase 3 are deployed; remaining schedule resources still need explicit term routes.
 
-Current production release: `8809a40` through `/var/www/aop-current`. The isolated suite passes 92 tests / 323 assertions. Calendar display, event feeds and drag/drop updates use explicit term routes; cross-term mutations are rejected. Release `d556c0f` remains available for immediate rollback. Verified pre-migration checkpoint: `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`.
+Current production release: `7a40a49` through `/var/www/aop-current`. The isolated suite passes 92 tests / 323 assertions. Calendar display, event feeds and drag/drop updates use explicit term routes; cross-term mutations are rejected. Release `8809a40` remains available for immediate rollback. Verified pre-migration checkpoint: `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`.
 
 ## Outcome and constraints
 
