@@ -16,6 +16,7 @@ class MeetingBlockMutationService
     public function __construct(
         private readonly ScheduleConflictService $conflicts,
         private readonly ScheduleRuleWarningService $ruleWarnings,
+        private readonly ScheduleEventSyncService $scheduleEvents,
     ) {}
 
     public function preview(Term $term, Section $section, MeetingBlockCommand $command, ?MeetingBlock $meetingBlock = null): array
@@ -74,12 +75,13 @@ class MeetingBlockMutationService
             $attributes = $command->attributes();
             $schedule = $this->preview($term, $section, $command)['normalized'];
 
-            $block = MeetingBlock::query()->create([
+            $block = MeetingBlock::withoutEvents(fn () => MeetingBlock::query()->create([
                 'section_id' => $section->id,
                 'type' => $attributes['type'],
                 ...$schedule,
                 'notes' => $attributes['notes'] ?? null,
-            ]);
+            ]));
+            $this->scheduleEvents->syncMeetingBlock($block);
 
             $this->log($term, $section, $block, 'created', null, $this->snapshot($block), $actorId);
 
@@ -112,7 +114,8 @@ class MeetingBlockMutationService
 
         DB::transaction(function () use ($term, $section, $meetingBlock, $actorId) {
             $before = $this->snapshot($meetingBlock);
-            $meetingBlock->delete();
+            $this->scheduleEvents->removeForSource($meetingBlock);
+            MeetingBlock::withoutEvents(fn () => $meetingBlock->delete());
             $this->log($term, $section, null, 'deleted', $before, null, $actorId);
         }, 3);
     }
@@ -130,7 +133,9 @@ class MeetingBlockMutationService
             $payload['notes'] = $attributes['notes'];
         }
 
-        $meetingBlock->update($payload);
+        $meetingBlock->fill($payload);
+        $this->scheduleEvents->syncMeetingBlock($meetingBlock);
+        MeetingBlock::withoutEvents(fn () => $meetingBlock->save());
 
         return $meetingBlock->fresh(['section.offering.catalogCourse', 'section.instructor', 'room']);
     }

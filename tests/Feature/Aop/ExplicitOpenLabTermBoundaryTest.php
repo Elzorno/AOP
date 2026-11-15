@@ -8,6 +8,7 @@ use App\Models\Room;
 use App\Models\Term;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ExplicitOpenLabTermBoundaryTest extends TestCase
@@ -109,6 +110,35 @@ class ExplicitOpenLabTermBoundaryTest extends TestCase
             'user_id' => $admin->id,
             'action' => 'deleted_open_lab',
         ]);
+    }
+
+    public function test_supported_updates_write_the_event_before_the_legacy_mirror(): void
+    {
+        $term = $this->term('CURRENT', true);
+        [$room, $labTech] = $this->resources();
+        $openLab = OpenLab::query()->create([
+            'term_id' => $term->id,
+            ...$this->payload($room, $labTech),
+            'days_json' => ['Mon'],
+        ]);
+        $eventId = $openLab->scheduled_event_id;
+
+        DB::statement('CREATE TABLE event_write_markers (event_id INTEGER PRIMARY KEY)');
+        DB::statement("CREATE TRIGGER mark_event_write AFTER UPDATE ON scheduled_events
+            WHEN NEW.id = {$eventId}
+            BEGIN INSERT OR REPLACE INTO event_write_markers (event_id) VALUES (NEW.id); END");
+        DB::statement("CREATE TRIGGER require_event_write BEFORE UPDATE ON open_labs
+            WHEN NEW.id = {$openLab->id} AND NOT EXISTS (
+                SELECT 1 FROM event_write_markers WHERE event_id = {$eventId}
+            )
+            BEGIN SELECT RAISE(ABORT, 'scheduled event must be written first'); END");
+
+        $this->actingAs(User::factory()->create(['is_admin' => true]))
+            ->put(route('aop.schedule.openLabs.update', [$term, $openLab]), $this->payload($room, $labTech, 'Event First'))
+            ->assertRedirect(route('aop.schedule.openLabs.index', $term));
+
+        $this->assertDatabaseHas('scheduled_events', ['id' => $eventId, 'display_name' => 'Event First']);
+        $this->assertDatabaseHas('open_labs', ['id' => $openLab->id, 'name' => 'Event First']);
     }
 
     public function test_legacy_get_redirects_to_the_users_selected_term(): void

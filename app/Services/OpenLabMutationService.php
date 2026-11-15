@@ -16,6 +16,7 @@ class OpenLabMutationService
     public function __construct(
         private readonly ScheduleConflictService $conflicts,
         private readonly LabTechWorkloadService $workloads,
+        private readonly ScheduleEventSyncService $scheduleEvents,
     ) {}
 
     public function create(Term $term, OpenLabCommand $command, ?int $actorId = null): OpenLab
@@ -23,7 +24,10 @@ class OpenLabMutationService
         return DB::transaction(function () use ($term, $command, $actorId) {
             $attributes = $command->attributes();
             $payload = $this->validatedPayload($term, $attributes);
-            $openLab = OpenLab::query()->create(['term_id' => $term->id, ...$payload]);
+            $openLab = OpenLab::withoutEvents(
+                fn () => OpenLab::query()->create(['term_id' => $term->id, ...$payload])
+            );
+            $this->scheduleEvents->syncOpenLab($openLab);
             $this->log($term, 'created_open_lab', null, $this->snapshot($openLab), $actorId);
 
             return $openLab->fresh(['room', 'labTech']);
@@ -40,7 +44,9 @@ class OpenLabMutationService
             $attributes = $command->attributes();
             $before = $this->snapshot($openLab);
             $payload = $this->validatedPayload($term, $attributes, $openLab->id);
-            $openLab->update($payload);
+            $openLab->fill($payload);
+            $this->scheduleEvents->syncOpenLab($openLab);
+            OpenLab::withoutEvents(fn () => $openLab->save());
             $this->log($term, 'updated_open_lab', $before, $this->snapshot($openLab), $actorId);
 
             return $openLab->fresh(['room', 'labTech']);
@@ -55,7 +61,8 @@ class OpenLabMutationService
 
         DB::transaction(function () use ($term, $openLab, $actorId) {
             $before = $this->snapshot($openLab);
-            $openLab->delete();
+            $this->scheduleEvents->removeForSource($openLab);
+            OpenLab::withoutEvents(fn () => $openLab->delete());
             $this->log($term, 'deleted_open_lab', $before, null, $actorId);
         }, 3);
     }

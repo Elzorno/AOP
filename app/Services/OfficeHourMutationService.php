@@ -13,7 +13,10 @@ use Illuminate\Validation\ValidationException;
 
 class OfficeHourMutationService
 {
-    public function __construct(private readonly ScheduleConflictService $conflicts) {}
+    public function __construct(
+        private readonly ScheduleConflictService $conflicts,
+        private readonly ScheduleEventSyncService $scheduleEvents,
+    ) {}
 
     public function create(Term $term, Instructor $instructor, OfficeHourCommand $command, ?int $actorId = null): OfficeHourBlock
     {
@@ -21,11 +24,12 @@ class OfficeHourMutationService
             $attributes = $command->attributes();
             $this->assertMutable($term, $instructor);
             $payload = $this->validatedPayload($term, $instructor, $attributes);
-            $block = OfficeHourBlock::query()->create([
+            $block = OfficeHourBlock::withoutEvents(fn () => OfficeHourBlock::query()->create([
                 'term_id' => $term->id,
                 'instructor_id' => $instructor->id,
                 ...$payload,
-            ]);
+            ]));
+            $this->scheduleEvents->syncOfficeHourBlock($block);
             $this->log($term, 'created_office_hour', null, $this->snapshot($block), $actorId);
 
             return $block->fresh('instructor');
@@ -40,7 +44,10 @@ class OfficeHourMutationService
             $attributes = $command->attributes();
             $this->assertMutable($term, $instructor);
             $before = $this->snapshot($block);
-            $block->update($this->validatedPayload($term, $instructor, $attributes, $block->id));
+            $payload = $this->validatedPayload($term, $instructor, $attributes, $block->id);
+            $block->fill($payload);
+            $this->scheduleEvents->syncOfficeHourBlock($block);
+            OfficeHourBlock::withoutEvents(fn () => $block->save());
             $this->log($term, 'updated_office_hour', $before, $this->snapshot($block), $actorId);
 
             return $block->fresh('instructor');
@@ -54,7 +61,8 @@ class OfficeHourMutationService
         DB::transaction(function () use ($term, $instructor, $block, $actorId) {
             $this->assertMutable($term, $instructor);
             $before = $this->snapshot($block);
-            $block->delete();
+            $this->scheduleEvents->removeForSource($block);
+            OfficeHourBlock::withoutEvents(fn () => $block->delete());
             $this->log($term, 'deleted_office_hour', $before, null, $actorId);
         }, 3);
     }
