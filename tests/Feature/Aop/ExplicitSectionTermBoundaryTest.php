@@ -56,6 +56,12 @@ class ExplicitSectionTermBoundaryTest extends TestCase
             'offering_id' => $offering->id,
             'section_code' => '01',
         ]);
+        $this->assertDatabaseHas('schedule_change_logs', [
+            'term_id' => $selected->id,
+            'section_id' => Section::query()->where('offering_id', $offering->id)->value('id'),
+            'user_id' => $admin->id,
+            'action' => 'section_created',
+        ]);
         $this->assertSame(0, Section::query()->whereHas('offering', fn ($query) => $query->where('term_id', $active->id))->count());
     }
 
@@ -138,6 +144,37 @@ class ExplicitSectionTermBoundaryTest extends TestCase
             'user_id' => $admin->id,
             'action' => 'deleted',
         ]);
+    }
+
+    public function test_section_delete_removes_projections_but_preserves_null_linked_audit_history(): void
+    {
+        $term = $this->term('DELETE', true);
+        $section = $this->section($term, 'CIS-213');
+        $block = MeetingBlock::query()->create([
+            'section_id' => $section->id,
+            'type' => 'LECTURE',
+            'days_json' => ['Fri'],
+            'starts_at' => '12:00',
+            'ends_at' => '13:00',
+        ]);
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->delete(route('aop.schedule.sections.destroy', [$term, $section]))
+            ->assertRedirect(route('aop.schedule.sections.index', $term));
+
+        $this->assertDatabaseMissing('sections', ['id' => $section->id]);
+        $this->assertDatabaseMissing('meeting_blocks', ['id' => $block->id]);
+        $this->assertDatabaseMissing('scheduled_events', [
+            'source_type' => MeetingBlock::class,
+            'source_id' => $block->id,
+        ]);
+        $this->assertSame(1, ScheduleChangeLog::query()->where('action', 'deleted')->whereNull('section_id')->count());
+        $this->assertSame(1, ScheduleChangeLog::query()->where('action', 'section_deleted')->whereNull('section_id')->count());
+        $this->assertSame($section->id, ScheduleChangeLog::query()
+            ->where('action', 'section_deleted')
+            ->firstOrFail()
+            ->payload_before['section_id']);
     }
 
     public function test_bulk_assignment_rejects_a_mixed_term_request_without_partial_updates(): void

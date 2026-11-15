@@ -141,7 +141,7 @@ class SectionController extends Controller
         ]);
     }
 
-    public function store(Request $request, Term $term)
+    public function store(Request $request, Term $term, SectionInstructorAssignmentService $sections)
     {
         $data = $request->validate([
             'offering_id' => ['required', 'integer', 'exists:offerings,id'],
@@ -164,7 +164,7 @@ class SectionController extends Controller
             ->first();
         abort_if(! $offering, 404, 'Offering not in this term.');
 
-        $section = Section::create($this->normalizeInstructorAssignment($data));
+        $section = $sections->createSection($term, $offering, $data);
 
         if ($request->boolean('from_schedule_home')) {
             return redirect()->route('aop.schedule.home', ['term' => $term, 'focus' => $section->id])->with('status', 'Section created.');
@@ -230,45 +230,14 @@ class SectionController extends Controller
         return redirect()->route('aop.schedule.sections.edit', [$term, $section])->with('status', 'Section updated.');
     }
 
-    public function destroy(Request $request, Term $term, Section $section)
+    public function destroy(Request $request, Term $term, Section $section, SectionInstructorAssignmentService $sections)
     {
         abort_if($section->offering->term_id !== $term->id, 404, 'Section does not belong to this term.');
 
         $offeringId = $section->offering_id;
         $label = ($section->offering->catalogCourse->code ?? 'Section').' '.$section->section_code;
 
-        // Cascade: delete meeting blocks first (with audit log entries)
-        foreach ($section->meetingBlocks as $block) {
-            $before = [
-                'days_json' => $block->days_json,
-                'starts_at' => $block->starts_at,
-                'ends_at' => $block->ends_at,
-                'room_id' => $block->room_id,
-                'type' => $block->type?->value,
-            ];
-            $block->delete();
-            ScheduleChangeLog::create([
-                'term_id' => $term->id,
-                'section_id' => $section->id,
-                'meeting_block_id' => null,
-                'user_id' => auth()->id(),
-                'action' => 'deleted',
-                'payload_before' => $before,
-                'payload_after' => null,
-            ]);
-        }
-
-        ScheduleChangeLog::create([
-            'term_id' => $term->id,
-            'section_id' => $section->id,
-            'meeting_block_id' => null,
-            'user_id' => auth()->id(),
-            'action' => 'section_deleted',
-            'payload_before' => ['section_code' => $section->section_code, 'instructor_id' => $section->instructor_id],
-            'payload_after' => null,
-        ]);
-
-        $section->delete();
+        $sections->deleteSection($term, $section);
 
         if ($request->boolean('from_schedule_home')) {
             return redirect()->route('aop.schedule.home', ['term' => $term, 'focus_offering' => $offeringId])
@@ -384,17 +353,5 @@ class SectionController extends Controller
                 }
             },
         ];
-    }
-
-    private function normalizeInstructorAssignment(array $data): array
-    {
-        $isStaff = ($data['instructor_id'] ?? null) === Section::STAFF_ASSIGNMENT;
-
-        $data['instructor_id'] = $isStaff || empty($data['instructor_id'])
-            ? null
-            : (int) $data['instructor_id'];
-        $data['instructor_is_staff'] = $isStaff;
-
-        return $data;
     }
 }

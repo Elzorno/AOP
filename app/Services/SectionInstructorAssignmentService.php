@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Instructor;
+use App\Models\Offering;
 use App\Models\ScheduleChangeLog;
 use App\Models\Section;
 use App\Models\Term;
@@ -12,7 +13,29 @@ use Illuminate\Validation\ValidationException;
 
 class SectionInstructorAssignmentService
 {
-    public function __construct(private readonly ScheduleConflictService $conflicts) {}
+    public function __construct(
+        private readonly ScheduleConflictService $conflicts,
+        private readonly MeetingBlockMutationService $meetingBlocks,
+    ) {}
+
+    public function createSection(Term $term, Offering $offering, array $attributes, ?int $actorId = null): Section
+    {
+        if ((int) $offering->term_id !== (int) $term->id) {
+            throw ValidationException::withMessages(['offering_id' => 'Offering does not belong to the requested term.']);
+        }
+
+        return DB::transaction(function () use ($term, $offering, $attributes, $actorId) {
+            $assignment = $this->assignmentFrom($attributes);
+            $section = Section::query()->create([
+                ...$attributes,
+                'offering_id' => $offering->id,
+                ...$assignment,
+            ]);
+            $this->log($term, $section, 'section_created', null, $this->snapshot($section), $actorId);
+
+            return $section->fresh(['offering.catalogCourse', 'instructor']);
+        }, 3);
+    }
 
     public function updateSection(Term $term, Section $section, array $attributes, ?int $actorId = null): Section
     {
@@ -23,7 +46,7 @@ class SectionInstructorAssignmentService
             $assignment = $this->assignmentFrom($attributes);
             $this->validateReassignment($term, collect([$section]), $assignment);
             $section->update([...$attributes, ...$assignment]);
-            $this->log($term, $section, $before, $this->snapshot($section), $actorId);
+            $this->log($term, $section, 'section_updated', $before, $this->snapshot($section), $actorId);
 
             return $section->fresh(['offering.catalogCourse', 'instructor', 'meetingBlocks.room']);
         }, 3);
@@ -51,10 +74,25 @@ class SectionInstructorAssignmentService
             foreach ($sections as $section) {
                 $before = $this->snapshot($section);
                 $section->update($assignment);
-                $this->log($term, $section, $before, $this->snapshot($section), $actorId);
+                $this->log($term, $section, 'section_updated', $before, $this->snapshot($section), $actorId);
             }
 
             return $sections->fresh(['instructor']);
+        }, 3);
+    }
+
+    public function deleteSection(Term $term, Section $section, ?int $actorId = null): void
+    {
+        $this->assertSectionInTerm($term, $section);
+
+        DB::transaction(function () use ($term, $section, $actorId) {
+            $before = $this->snapshot($section);
+            $section->loadMissing('meetingBlocks');
+            foreach ($section->meetingBlocks as $block) {
+                $this->meetingBlocks->delete($term, $section, $block, $actorId);
+            }
+            $this->log($term, $section, 'section_deleted', $before, null, $actorId);
+            $section->delete();
         }, 3);
     }
 
@@ -143,20 +181,20 @@ class SectionInstructorAssignmentService
 
     private function snapshot(Section $section): array
     {
-        return $section->only([
+        return ['section_id' => $section->id, ...$section->only([
             'section_code', 'instructor_id', 'instructor_is_staff', 'modality', 'notes',
             'section_capacity', 'enrolled_count',
-        ]);
+        ])];
     }
 
-    private function log(Term $term, Section $section, array $before, array $after, ?int $actorId): void
+    private function log(Term $term, Section $section, string $action, ?array $before, ?array $after, ?int $actorId): void
     {
         ScheduleChangeLog::query()->create([
             'term_id' => $term->id,
             'section_id' => $section->id,
             'meeting_block_id' => null,
             'user_id' => $actorId ?? auth()->id(),
-            'action' => 'section_updated',
+            'action' => $action,
             'payload_before' => $before,
             'payload_after' => $after,
         ]);
