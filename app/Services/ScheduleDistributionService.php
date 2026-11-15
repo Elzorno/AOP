@@ -24,11 +24,16 @@ class ScheduleDistributionService
     private const PEAK_START = '09:30';
     private const PEAK_END   = '15:00';
 
-    public function __construct(private readonly ScheduleEventReadAdapter $eventReads) {}
+    public function __construct(
+        private readonly ScheduleEventReadAdapter $eventReads,
+        private readonly SchedulePolicyRegistry $policies,
+    ) {}
 
     /** @return array{friday_pct: float, peak_hour_pct: float, mwf_pct: float, tr_pct: float, gep_online_pct: float, program_online_pct: float, totals: array} */
     public function compute(Term $term): array
     {
+        $policy = $this->policies->forTerm($term);
+        $targets = $policy->distributionTargets();
         $blocks = MeetingBlock::query()
             ->whereHas('section.offering', fn ($q) => $q->where('term_id', $term->id))
             ->get();
@@ -39,7 +44,7 @@ class ScheduleDistributionService
             ->count();
 
         if ($blocks->isEmpty() || $totalSections === 0) {
-            return $this->emptyResult();
+            return $this->emptyResult($policy->version, $targets);
         }
 
         // Minutes contributed per block = duration × number of days it meets
@@ -96,6 +101,7 @@ class ScheduleDistributionService
         [$progOnlinePct, $progTotal, $progOnline] = $this->onlinePctForFlag($term, 'is_program_required');
 
         return [
+            'policy_version'   => $policy->version,
             'friday_pct'       => $fridayPct,
             'peak_hour_pct'    => $peakPct,
             'mwf_pct'          => $mwfPct,
@@ -114,21 +120,14 @@ class ScheduleDistributionService
                 'program_total'         => $progTotal,
                 'program_online'        => $progOnline,
             ],
-            'targets' => [
-                'friday_min_pct'       => 12.0,
-                'peak_max_pct'         => 60.0,
-                'mwf_max_pct'          => 60.0,
-                'tr_max_pct'           => 60.0,
-                'gep_online_max_pct'   => 40.0,
-                'program_online_max_pct' => 25.0,
-            ],
+            'targets' => $targets,
             'flags' => [
-                'friday_low'       => $fridayPct < 12.0 && $totalSections > 0,
-                'peak_high'        => $peakPct > 60.0,
-                'mwf_high'         => $mwfPct > 60.0,
-                'tr_high'          => $trPct > 60.0,
-                'gep_online_high'  => $gepOnlinePct > 40.0,
-                'prog_online_high' => $progOnlinePct > 25.0,
+                'friday_low'       => $fridayPct < $targets['friday_min_pct'] && $totalSections > 0,
+                'peak_high'        => $peakPct > $targets['peak_max_pct'],
+                'mwf_high'         => $mwfPct > $targets['mwf_max_pct'],
+                'tr_high'          => $trPct > $targets['tr_max_pct'],
+                'gep_online_high'  => $gepOnlinePct > $targets['gep_online_max_pct'],
+                'prog_online_high' => $progOnlinePct > $targets['program_online_max_pct'],
             ],
         ];
     }
@@ -147,6 +146,7 @@ class ScheduleDistributionService
 
         // Compute base stats, then inject the hypothetical block contribution
         $base = $this->compute($term);
+        $targets = $base['targets'];
 
         $peakStartMin = ScheduleBlockLibrary::toMinutes(self::PEAK_START);
         $peakEndMin   = ScheduleBlockLibrary::toMinutes(self::PEAK_END);
@@ -203,10 +203,10 @@ class ScheduleDistributionService
                 'tr_minutes'            => $newTr,
             ]),
             'flags' => [
-                'friday_low'       => $fridayPct < 12.0,
-                'peak_high'        => $peakPct > 60.0,
-                'mwf_high'         => $mwfPct > 60.0,
-                'tr_high'          => $trPct > 60.0,
+                'friday_low'       => $fridayPct < $targets['friday_min_pct'],
+                'peak_high'        => $peakPct > $targets['peak_max_pct'],
+                'mwf_high'         => $mwfPct > $targets['mwf_max_pct'],
+                'tr_high'          => $trPct > $targets['tr_max_pct'],
                 'gep_online_high'  => $base['flags']['gep_online_high'],
                 'prog_online_high' => $base['flags']['prog_online_high'],
             ],
@@ -236,9 +236,10 @@ class ScheduleDistributionService
         return [$pct, $total, $online];
     }
 
-    private function emptyResult(): array
+    private function emptyResult(string $policyVersion, array $targets): array
     {
         return [
+            'policy_version'     => $policyVersion,
             'friday_pct'         => 0.0,
             'peak_hour_pct'      => 0.0,
             'mwf_pct'            => 0.0,
@@ -257,14 +258,7 @@ class ScheduleDistributionService
                 'program_total'        => 0,
                 'program_online'       => 0,
             ],
-            'targets' => [
-                'friday_min_pct'         => 12.0,
-                'peak_max_pct'           => 60.0,
-                'mwf_max_pct'            => 60.0,
-                'tr_max_pct'             => 60.0,
-                'gep_online_max_pct'     => 40.0,
-                'program_online_max_pct' => 25.0,
-            ],
+            'targets' => $targets,
             'flags' => [
                 'friday_low'       => false,
                 'peak_high'        => false,

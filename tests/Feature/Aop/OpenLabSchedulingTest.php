@@ -46,6 +46,9 @@ class OpenLabSchedulingTest extends TestCase
 
         $result = app(ScheduleDistributionService::class)->compute($term);
 
+        $this->assertSame('compatibility-v1', $term->refresh()->schedule_policy_version);
+        $this->assertSame('compatibility-v1', $result['policy_version']);
+        $this->assertSame(12.0, $result['targets']['friday_min_pct']);
         $this->assertSame(1, $result['totals']['sections_with_friday']);
         $this->assertSame(100.0, $result['friday_pct']);
     }

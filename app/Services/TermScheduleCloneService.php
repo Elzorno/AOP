@@ -13,6 +13,7 @@ use App\Models\OpenLab;
 use App\Models\SchedulePublication;
 use App\Models\Section;
 use App\Models\Term;
+use App\Policies\SchedulePolicy;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -36,6 +37,8 @@ class TermScheduleCloneService
             'weeks_in_term' => $sourceTerm->weeks_in_term,
             'slot_minutes' => $sourceTerm->slot_minutes,
             'buffer_minutes' => $sourceTerm->buffer_minutes,
+            'schedule_policy_version' => $sourceTerm->schedule_policy_version
+                ?? SchedulePolicy::COMPATIBILITY_V1,
         ], true, true);
 
         return $result['term'];
@@ -52,6 +55,9 @@ class TermScheduleCloneService
                 'weeks_in_term' => $targetTermData['weeks_in_term'],
                 'slot_minutes' => $targetTermData['slot_minutes'],
                 'buffer_minutes' => $targetTermData['buffer_minutes'],
+                'schedule_policy_version' => $targetTermData['schedule_policy_version']
+                    ?? $sourceTerm->schedule_policy_version
+                    ?? SchedulePolicy::COMPATIBILITY_V1,
                 'allowed_hours_json' => $sourceTerm->allowed_hours_json,
                 'enforce_schedule_blocks' => $sourceTerm->enforce_schedule_blocks,
                 'is_active' => false,

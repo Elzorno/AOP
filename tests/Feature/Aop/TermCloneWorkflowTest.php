@@ -69,6 +69,7 @@ class TermCloneWorkflowTest extends TestCase
         $targetSection = Section::query()
             ->whereHas('offering', fn ($query) => $query->where('term_id', $target->id))
             ->firstOrFail();
+        $this->assertSame($source->refresh()->schedule_policy_version, $target->schedule_policy_version);
         $this->assertSame($instructor->id, $targetSection->instructor_id);
         $this->assertSame(24, $targetSection->section_capacity);
         $this->assertSame(18, $targetSection->enrolled_count);
