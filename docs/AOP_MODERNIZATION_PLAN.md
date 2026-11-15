@@ -1,8 +1,8 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: phases 1–3 and the major phase-4 schedule mutation, SQLite serialization, stale-edit and shared-preview slices are deployed. Direct section lifecycle writes and typed command cleanup remain before the phase-4 gate is complete.
+Prepared 14 November 2026. Status: phases 1–3 and the major phase-4 schedule mutation, SQLite serialization, stale-edit and shared-preview slices are deployed. Typed command objects and the final write-path inventory remain before the phase-4 gate is complete.
 
-Current production release: `82dc3d0` through `/var/www/aop-current`. The isolated suite passes 119 tests / 473 assertions. Meeting-block create/update and the debounced browser preview use the same server evaluator. Release `a4ae9bd` remains available for immediate application rollback. Verified pre-release database checkpoint: `/root/aop-backups/20261115T165735Z-pre-82dc3d0`.
+Current production release: `c3b824e` through `/var/www/aop-current`. The isolated suite passes 120 tests / 482 assertions. Section create, update, assignment, bulk assignment and delete now share reserved transactions, event projection and durable audit history. Release `82dc3d0` remains available for immediate application rollback. Verified pre-release database checkpoint: `/root/aop-backups/20261115T170051Z-pre-c3b824e`.
 
 ## Outcome and constraints
 
@@ -222,5 +222,6 @@ Release `dc60a9d` was the initial security and phase-3 identity checkpoint: null
 - Deployed SQLite write serialization in `3143e7c`. A PHP 8.3-compatible connection begins `IMMEDIATE` transactions, retains nested savepoints, waits up to five seconds on a busy database, and retries scheduling transactions three times. A two-process file-backed test proves concurrent conflict reads serialize before either write proceeds.
 - Added monotonic scheduled-event revisions in `a4ae9bd`. Calendar payloads include the current revision, successful drag/resize updates distribute the new revision to every weekday instance, and stale writes return a readable error without overwriting newer work.
 - Deployed a shared meeting-block validation preview in `82dc3d0`. Create, update and preview normalize and evaluate the same payload; section-card forms debounce against the server endpoint instead of maintaining an independent conflict approximation. The production Vite asset was rebuilt and its public response verified.
+- Consolidated section create/delete in `c3b824e`, completing the interactive section lifecycle transaction path. Cascaded meeting deletions and projection removal are atomic, and the section audit foreign key now uses `SET NULL` so deletion history survives with the original section ID retained in its payload.
 - Widened `schedule_change_logs.section_id` to nullable so non-section schedule operations can use the same audit mechanism without placeholder section records.
-- Verified 119 tests / 473 assertions, migration status and revision backfill, SQLite integrity and foreign keys, transaction mode/commit behavior, route and asset responses, HTTPS login, secure cookies and security headers. Release `a4ae9bd` is the immediate application rollback target.
+- Verified 120 tests / 482 assertions, migration status, SQLite integrity and foreign keys including the audit `SET NULL` action, transaction behavior, route and asset responses, HTTPS login, secure cookies and security headers. Release `82dc3d0` is the immediate application rollback target.
