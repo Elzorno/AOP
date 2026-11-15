@@ -44,4 +44,9 @@ class ScheduledEvent extends Model
     {
         return $this->hasMany(ScheduledEventStaffAssignment::class);
     }
+
+    public function scheduleExceptions(): HasMany
+    {
+        return $this->hasMany(TermScheduleException::class);
+    }
 }

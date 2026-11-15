@@ -9,7 +9,7 @@ class Term extends Model
 {
     protected $fillable = [
         'code', 'name', 'starts_on', 'ends_on', 'is_active', 'status',
-        'weeks_in_term', 'slot_minutes', 'buffer_minutes', 'schedule_policy_version',
+        'weeks_in_term', 'slot_minutes', 'buffer_minutes', 'schedule_policy_version', 'schedule_timezone',
         'enforce_schedule_blocks',
         'allowed_hours_json',
         'schedule_locked', 'schedule_locked_at', 'schedule_locked_by_user_id',
@@ -43,5 +43,10 @@ class Term extends Model
     public function scheduledEvents(): HasMany
     {
         return $this->hasMany(ScheduledEvent::class);
+    }
+
+    public function scheduleExceptions(): HasMany
+    {
+        return $this->hasMany(TermScheduleException::class);
     }
 }

@@ -15,10 +15,13 @@ use App\Services\ScheduleConflictService;
 use App\Services\ScheduleDistributionService;
 use App\Services\ScheduleEventReadAdapter;
 use App\Services\ScheduleReadinessFindingService;
+use App\Services\ScheduleOccurrenceService;
 use Carbon\Carbon;
 
 class ScheduleReadinessController extends Controller
 {
+    public function __construct(private readonly ScheduleOccurrenceService $occurrences) {}
+
     /**
      * Instructional minutes rule (ODHE / SSU):
      *
@@ -41,7 +44,7 @@ class ScheduleReadinessController extends Controller
     public function index(Term $term, ScheduleDistributionService $distribution, LabTechWorkloadService $labTechWorkloads, ScheduleEventReadAdapter $eventReads, ScheduleReadinessFindingService $readinessFindings)
     {
         $sections = Section::query()
-            ->with(['offering.catalogCourse', 'instructor', 'meetingBlocks.room'])
+            ->with(['offering.catalogCourse', 'instructor', 'meetingBlocks.room', 'meetingBlocks.scheduledEvent'])
             ->whereHas('offering', fn($q) => $q->where('term_id', $term->id))
             ->orderBy('id', 'desc')
             ->get();
@@ -174,15 +177,19 @@ class ScheduleReadinessController extends Controller
 
             $requiredMinutes = (int)round($requiredBase15 * $scale);
 
-            // scheduled_minutes_per_week = sum(duration_minutes * number_of_days)
-            $scheduledPerWeek = 0;
+            $scheduledMinutes = 0;
             foreach ($section->meetingBlocks as $mb) {
                 $duration = $this->durationMinutes($mb->starts_at, $mb->ends_at);
-                $daysCount = $this->daysCount($mb->days_json);
-                $scheduledPerWeek += $duration * $daysCount;
+                if ($term->starts_on && $mb->scheduledEvent) {
+                    $scheduledMinutes += $duration * $this->occurrences
+                        ->datesForEvent($term, $mb->scheduledEvent)
+                        ->count();
+                } else {
+                    $scheduledMinutes += $duration * $this->daysCount($mb->days_json) * $weeks;
+                }
             }
 
-            $scheduledMinutes = (int)round($scheduledPerWeek * $weeks);
+            $scheduledMinutes = (int) round($scheduledMinutes);
             $delta = $scheduledMinutes - $requiredMinutes;
             $meetingBlocksRequired = $section->requiresMeetingBlocks();
             $pass = !$meetingBlocksRequired || $requiredMinutes === 0 || $scheduledMinutes >= $requiredMinutes;

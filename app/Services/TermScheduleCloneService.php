@@ -39,6 +39,7 @@ class TermScheduleCloneService
             'buffer_minutes' => $sourceTerm->buffer_minutes,
             'schedule_policy_version' => $sourceTerm->schedule_policy_version
                 ?? SchedulePolicy::COMPATIBILITY_V1,
+            'schedule_timezone' => $sourceTerm->schedule_timezone ?? 'UTC',
         ], true, true);
 
         return $result['term'];
@@ -58,6 +59,9 @@ class TermScheduleCloneService
                 'schedule_policy_version' => $targetTermData['schedule_policy_version']
                     ?? $sourceTerm->schedule_policy_version
                     ?? SchedulePolicy::COMPATIBILITY_V1,
+                'schedule_timezone' => $targetTermData['schedule_timezone']
+                    ?? $sourceTerm->schedule_timezone
+                    ?? 'UTC',
                 'allowed_hours_json' => $sourceTerm->allowed_hours_json,
                 'enforce_schedule_blocks' => $sourceTerm->enforce_schedule_blocks,
                 'is_active' => false,
