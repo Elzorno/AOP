@@ -142,6 +142,117 @@ class ScheduleEventSyncService
         }, 3);
     }
 
+    public function reconcileTerm(Term $term): array
+    {
+        $sources = collect()
+            ->concat(MeetingBlock::query()
+                ->with(['section.offering.catalogCourse', 'section.instructor'])
+                ->whereHas('section.offering', fn ($offerings) => $offerings->where('term_id', $term->id))
+                ->get())
+            ->concat(OpenLab::query()->where('term_id', $term->id)->get())
+            ->concat(OfficeHourBlock::query()->with('instructor')->where('term_id', $term->id)->get());
+        $events = ScheduledEvent::query()
+            ->with('staffAssignments')
+            ->where('term_id', $term->id)
+            ->get();
+        $eventsBySource = $events->keyBy(fn (ScheduledEvent $event) => $event->source_type.':'.$event->source_id);
+        $sourceKeys = $sources->map(fn (object $source) => $source::class.':'.$source->getKey());
+        $missing = 0;
+        $mismatched = 0;
+
+        foreach ($sources as $source) {
+            $event = $eventsBySource->get($source::class.':'.$source->getKey());
+            if (! $event) {
+                $missing++;
+
+                continue;
+            }
+
+            [$attributes, $staff] = $this->expectedProjection($source);
+            $actualStaff = $event->staffAssignments
+                ->map(fn ($assignment) => [$assignment->staff_type, (int) $assignment->staff_id, $assignment->role])
+                ->sort()->values()->all();
+            $expectedStaff = collect($staff)->sort()->values()->all();
+            $different = collect($attributes)->contains(
+                fn ($value, $key) => $this->comparable($event->{$key}) !== $this->comparable($value)
+            );
+
+            if ($different || $actualStaff !== $expectedStaff) {
+                $mismatched++;
+            }
+        }
+
+        $unmatched = $events->reject(
+            fn (ScheduledEvent $event) => $sourceKeys->contains($event->source_type.':'.$event->source_id)
+        )->count();
+
+        return [
+            'sources' => $sources->count(),
+            'events' => $events->count(),
+            'missing' => $missing,
+            'mismatched' => $mismatched,
+            'unmatched' => $unmatched,
+        ];
+    }
+
+    private function expectedProjection(object $source): array
+    {
+        if ($source instanceof MeetingBlock) {
+            $source->loadMissing('section.offering.catalogCourse', 'section.instructor');
+            $section = $source->section;
+            $offering = $section->offering;
+
+            return [[
+                'term_id' => $offering->term_id,
+                'event_type' => ScheduledEvent::TYPE_CLASS,
+                'display_name' => trim(($offering->catalogCourse?->code ?? 'Class').' '.$section->section_code),
+                'category' => $source->type?->value ?? (string) $source->type,
+                'room_id' => $source->room_id,
+                'days_json' => ScheduleConflictService::normalizeDays($source->days_json),
+                'starts_at' => $source->starts_at,
+                'ends_at' => $source->ends_at,
+                'notes' => $source->notes,
+            ], $section->instructor_id ? [['instructor', (int) $section->instructor_id, 'instructor']] : []];
+        }
+
+        if ($source instanceof OpenLab) {
+            return [[
+                'term_id' => $source->term_id,
+                'event_type' => ScheduledEvent::TYPE_OPEN_LAB,
+                'display_name' => $source->name,
+                'category' => 'OPEN_LAB',
+                'room_id' => $source->room_id,
+                'days_json' => ScheduleConflictService::normalizeDays($source->days_json),
+                'starts_at' => $source->starts_at,
+                'ends_at' => $source->ends_at,
+                'notes' => $source->notes,
+            ], [['lab_tech', (int) $source->lab_tech_id, 'lab_tech']]];
+        }
+
+        if ($source instanceof OfficeHourBlock) {
+            $source->loadMissing('instructor');
+
+            return [[
+                'term_id' => $source->term_id,
+                'event_type' => ScheduledEvent::TYPE_OFFICE_HOUR,
+                'display_name' => 'Office Hours'.($source->instructor?->name ? ': '.$source->instructor->name : ''),
+                'category' => 'OFFICE_HOURS',
+                'room_id' => null,
+                'days_json' => ScheduleConflictService::normalizeDays($source->days_json),
+                'starts_at' => $source->starts_at,
+                'ends_at' => $source->ends_at,
+                'notes' => $source->notes,
+            ], [['instructor', (int) $source->instructor_id, 'office_hours']]];
+        }
+
+        throw new \InvalidArgumentException('Unsupported scheduled-event source: '.$source::class);
+    }
+
+    private function comparable(mixed $value): mixed
+    {
+        return is_array($value) ? array_values($value) : ($value === null ? null : (string) $value);
+    }
+
     private function upsert(object $source, array $attributes): ScheduledEvent
     {
         $identity = [

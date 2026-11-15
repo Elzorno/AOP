@@ -4,7 +4,7 @@ The schedule is organized around one event ledger and generic resource assignmen
 
 The Scheduled Events workflow is the common entry point for new class meetings and open labs. The calendar, room conflicts, instructor conflicts, lab-tech conflicts, and HR workload calculations read the shared ledger. Source-detail screens remain available for course-section administration and type-specific edits.
 
-Run `php artisan aop:sync-scheduled-events` after a bulk import or direct database maintenance operation. Use `--term=<id>` to repair only one term. The command upserts current source records and preserves unmatched projected events for explicit reconciliation; it no longer deletes and rebuilds a term's projection.
+Run `php artisan aop:sync-scheduled-events` after a bulk import or direct database maintenance operation. It is read-only by default and reports missing, mismatched and unmatched projections. Use `--term=<id>` to inspect one term and add `--repair` to upsert current source records. Repair preserves unmatched projected events for explicit reconciliation; it never deletes and rebuilds a term's projection.
 
 ## Invariants
 

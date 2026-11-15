@@ -111,7 +111,7 @@ Artisan::command('aop:reset-schedule-data {--force : Actually delete terms and s
     return Command::SUCCESS;
 })->purpose('Delete terms and scheduling data while preserving the course catalog');
 
-Artisan::command('aop:sync-scheduled-events {--term= : Term ID to rebuild; defaults to every term}', function (ScheduleEventSyncService $sync) {
+Artisan::command('aop:sync-scheduled-events {--term= : Term ID to inspect; defaults to every term} {--repair : Upsert source-backed projections after reporting drift}', function (ScheduleEventSyncService $sync) {
     $terms = Term::query()
         ->when($this->option('term'), fn ($query, $termId) => $query->whereKey($termId))
         ->orderBy('id')
@@ -123,13 +123,19 @@ Artisan::command('aop:sync-scheduled-events {--term= : Term ID to rebuild; defau
     }
 
     $rows = $terms->map(function (Term $term) use ($sync) {
-        $counts = $sync->rebuildTerm($term);
+        $counts = $sync->reconcileTerm($term);
 
-        return [$term->code, $counts['meeting_blocks'], $counts['open_labs'], $counts['office_hour_blocks']];
+        return [$term->code, $counts['sources'], $counts['events'], $counts['missing'], $counts['mismatched'], $counts['unmatched']];
     })->all();
 
-    $this->table(['Term', 'Class meetings', 'Open labs', 'Office hours'], $rows);
-    $this->info('Scheduled event projection repaired without deleting unmatched events.');
+    $this->table(['Term', 'Sources', 'Events', 'Missing', 'Mismatched', 'Unmatched'], $rows);
+    if (! $this->option('repair')) {
+        $this->comment('Dry run only. Re-run with --repair to upsert source-backed projections.');
+        return Command::SUCCESS;
+    }
+
+    $terms->each(fn (Term $term) => $sync->rebuildTerm($term));
+    $this->info('Scheduled event projections repaired without deleting unmatched events.');
 
     return Command::SUCCESS;
 })->purpose('Non-destructively repair shared scheduled events from current source records');

@@ -267,6 +267,11 @@ class OpenLabSchedulingTest extends TestCase
         ]);
 
         $this->artisan('aop:sync-scheduled-events', ['--term' => $term->id])
+            ->expectsOutputToContain('Dry run only')
+            ->assertExitCode(0);
+        $this->assertDatabaseCount('scheduled_events', 1);
+
+        $this->artisan('aop:sync-scheduled-events', ['--term' => $term->id, '--repair' => true])
             ->assertExitCode(0);
 
         $this->assertDatabaseHas('scheduled_events', [

@@ -16,7 +16,8 @@ final class RuntimeSafety
         }
 
         $command ??= $_SERVER['argv'][1] ?? '';
-        if (! $app->runningInConsole() || ! preg_match('/^(migrate(?::(fresh|refresh|reset|rollback|install))?|db:wipe|aop:reset-schedule-data|aop:sync-scheduled-events)$/', $command)) {
+        if (! $app->runningInConsole() || ! preg_match('/^(migrate(?::(fresh|refresh|reset|rollback|install))?|db:wipe|aop:reset-schedule-data|aop:sync-scheduled-events)$/', $command) ||
+            ($command === 'aop:sync-scheduled-events' && ! in_array('--repair', $_SERVER['argv'], true))) {
             return;
         }
 
