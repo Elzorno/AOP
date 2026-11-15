@@ -225,3 +225,7 @@ This file tracks what each phase changed so the project remains understandable w
 - Open-lab writes derive their term from the URL, while update/delete verify the resource belongs to that term before mutation.
 - Updated readiness, calendar, reports, schedule studio, event links and navigation; the compatibility GET redirects to the user's selected term.
 - Verified non-active-term rendering and writes plus cross-term rejection; the full suite passes 86 tests / 303 assertions.
+
+## Explicit open-lab release `d556c0f` — deployed 2026-11-15
+- Atomically deployed the open-lab route slice without a schema migration; release `811483a` remains available for rollback.
+- Rebuilt production caches, reloaded PHP-FPM, and verified the cached explicit routes, real production open-lab rendering, SQLite integrity, HTTPS login and service health.
