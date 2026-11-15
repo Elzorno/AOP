@@ -218,6 +218,12 @@ class OpenLabSchedulingTest extends TestCase
             ->assertOk()->assertDontSee('Event-Owned Grid Lab');
         $this->actingAs($admin)->get(route('aop.schedule.grids.room', [$term, $eventRoom]))
             ->assertOk()->assertSee('Event-Owned Grid Lab');
+        $csv = $this->actingAs($admin)
+            ->get(route('aop.schedule.reports.exportRoom', [$term, $eventRoom]))
+            ->assertOk()
+            ->streamedContent();
+        $this->assertStringContainsString('Event-Owned Grid Lab', $csv);
+        $this->assertStringContainsString('Wed,15:00,16:00', $csv);
     }
 
     public function test_room_schedule_csv_includes_open_labs(): void
