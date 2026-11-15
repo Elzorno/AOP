@@ -264,3 +264,7 @@ This file tracks what each phase changed so the project remains understandable w
 - Studio queries, issue links, mutation redirects and term-aware schedule pages preserve the requested term.
 - Kept the legacy studio GET as a selected-term redirect that preserves query filters.
 - Verified non-active-term rendering and distribution preview behavior; the full suite passes 99 tests / 354 assertions.
+
+## Explicit schedule-studio release `e639dc2` — deployed 2026-11-15
+- Atomically deployed the studio route slice without a schema migration; release `1249eb5` remains available for rollback.
+- Rebuilt production caches, reloaded PHP-FPM and nginx, and verified cached routes, real production studio rendering, SQLite integrity, HTTPS login and service health.
