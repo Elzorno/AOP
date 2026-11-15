@@ -120,40 +120,42 @@ class ScheduleEventSyncService
             ->delete();
     }
 
-    public function rebuildTerm(Term $term): array
+    public function repairLegacyMirrors(Term $term): array
     {
         return DB::transaction(function () use ($term) {
-            $meetingBlocks = MeetingBlock::query()
-                ->with(['section.offering.catalogCourse', 'section.instructor'])
-                ->whereHas('section.offering', fn ($offerings) => $offerings->where('term_id', $term->id))
-                ->get();
-            $openLabs = OpenLab::query()->where('term_id', $term->id)->get();
-            $officeHourBlocks = OfficeHourBlock::query()->where('term_id', $term->id)->get();
-
-            $expectedSources = collect([
-                MeetingBlock::class => $meetingBlocks->pluck('id')->all(),
-                OpenLab::class => $openLabs->pluck('id')->all(),
-                OfficeHourBlock::class => $officeHourBlocks->pluck('id')->all(),
-            ]);
-            $unmatchedEvents = ScheduledEvent::query()
+            $events = ScheduledEvent::query()
                 ->where('term_id', $term->id)
-                ->get()
-                ->reject(fn (ScheduledEvent $event) => in_array(
-                    (int) $event->source_id,
-                    $expectedSources->get($event->source_type, []),
-                    true,
-                ))
-                ->count();
+                ->whereIn('source_type', [MeetingBlock::class, OpenLab::class, OfficeHourBlock::class])
+                ->get();
+            $repaired = 0;
 
-            $meetingBlocks->each(fn (MeetingBlock $meetingBlock) => $this->syncMeetingBlock($meetingBlock));
-            $openLabs->each(fn (OpenLab $openLab) => $this->syncOpenLab($openLab));
-            $officeHourBlocks->each(fn (OfficeHourBlock $officeHourBlock) => $this->syncOfficeHourBlock($officeHourBlock));
+            foreach ($events as $event) {
+                $source = $event->source_type::query()->find($event->source_id);
+                if (! $source) {
+                    continue;
+                }
+
+                $attributes = [
+                    'scheduled_event_id' => $event->id,
+                    'days_json' => json_encode(
+                        ScheduleConflictService::normalizeDays($event->days_json),
+                        JSON_THROW_ON_ERROR,
+                    ),
+                    'starts_at' => $event->starts_at,
+                    'ends_at' => $event->ends_at,
+                    'notes' => $event->notes,
+                ];
+                if ($event->source_type !== OfficeHourBlock::class) {
+                    $attributes['room_id'] = $event->room_id;
+                }
+
+                DB::table($source->getTable())->where('id', $source->getKey())->update($attributes);
+                $repaired++;
+            }
 
             return [
-                'meeting_blocks' => $meetingBlocks->count(),
-                'open_labs' => $openLabs->count(),
-                'office_hour_blocks' => $officeHourBlocks->count(),
-                'unmatched_events_preserved' => $unmatchedEvents,
+                'events_inspected' => $events->count(),
+                'legacy_mirrors_repaired' => $repaired,
             ];
         }, 3);
     }

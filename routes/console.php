@@ -111,7 +111,7 @@ Artisan::command('aop:reset-schedule-data {--force : Actually delete terms and s
     return Command::SUCCESS;
 })->purpose('Delete terms and scheduling data while preserving the course catalog');
 
-Artisan::command('aop:sync-scheduled-events {--term= : Term ID to inspect; defaults to every term} {--repair : Upsert source-backed projections after reporting drift}', function (ScheduleEventSyncService $sync) {
+Artisan::command('aop:sync-scheduled-events {--term= : Term ID to inspect; defaults to every term} {--repair : Repair legacy mirrors from authoritative events}', function (ScheduleEventSyncService $sync) {
     $terms = Term::query()
         ->when($this->option('term'), fn ($query, $termId) => $query->whereKey($termId))
         ->orderBy('id')
@@ -130,12 +130,12 @@ Artisan::command('aop:sync-scheduled-events {--term= : Term ID to inspect; defau
 
     $this->table(['Term', 'Sources', 'Events', 'Missing', 'Mismatched', 'Unmatched', 'Bad links'], $rows);
     if (! $this->option('repair')) {
-        $this->comment('Dry run only. Re-run with --repair to upsert source-backed projections.');
+        $this->comment('Dry run only. Re-run with --repair to update legacy mirrors from authoritative events.');
         return Command::SUCCESS;
     }
 
-    $terms->each(fn (Term $term) => $sync->rebuildTerm($term));
-    $this->info('Scheduled event projections repaired without deleting unmatched events.');
+    $terms->each(fn (Term $term) => $sync->repairLegacyMirrors($term));
+    $this->info('Legacy schedule mirrors repaired from authoritative events. Missing events were not reconstructed.');
 
     return Command::SUCCESS;
-})->purpose('Non-destructively repair shared scheduled events from current source records');
+})->purpose('Validate scheduled events and repair legacy mirrors from the event ledger');

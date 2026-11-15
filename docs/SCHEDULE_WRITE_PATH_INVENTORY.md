@@ -11,6 +11,6 @@ Verified 15 November 2026. Supported interactive and clone writes use the same t
 
 The mutation services own term/ownership checks, normalization, resource conflicts, workload and policy enforcement, audit records, scheduled-event projection, and transaction retry behavior. Controllers validate transport input and construct typed commands; they do not persist schedule records directly.
 
-`ScheduleEventSyncService` is the projection adapter during phase 5. Its maintenance command is read-only unless `--repair` is explicit. The reset command is destructive administration rather than an interactive scheduling path and remains protected by exact database targeting and confirmation.
+`ScheduleEventSyncService` maintains the temporary one-way compatibility mirror during phase 5. Its maintenance command is read-only unless `--repair` is explicit; repair copies authoritative event schedule fields to legacy rows and does not rebuild missing events. The reset command is destructive administration rather than an interactive scheduling path and remains protected by exact database targeting and confirmation.
 
 Read-only controllers and services still query legacy source tables until the phase-5 authoritative scheduled-event cutover. Offering, term, preference, lock, catalog, room, instructor and lab-tech administration are separate aggregate writes and are outside this schedule-event mutation inventory.

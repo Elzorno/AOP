@@ -414,7 +414,7 @@ class OpenLabSchedulingTest extends TestCase
         ]);
     }
 
-    public function test_scheduled_event_projection_repair_restores_missing_rows_without_deleting_unmatched_rows(): void
+    public function test_scheduled_event_repair_does_not_rebuild_missing_events_from_legacy_rows(): void
     {
         $term = $this->createActiveTerm();
         $room = Room::create(['name' => 'ATC-234', 'is_active' => true]);
@@ -451,17 +451,57 @@ class OpenLabSchedulingTest extends TestCase
         $this->assertDatabaseCount('scheduled_events', 1);
 
         $this->artisan('aop:sync-scheduled-events', ['--term' => $term->id, '--repair' => true])
+            ->expectsOutputToContain('Missing events were not reconstructed')
             ->assertExitCode(0);
 
-        $this->assertDatabaseHas('scheduled_events', [
-            'term_id' => $term->id,
-            'event_type' => ScheduledEvent::TYPE_OPEN_LAB,
+        $this->assertDatabaseMissing('scheduled_events', [
+            'source_type' => OpenLab::class,
+            'source_id' => $openLab->id,
         ]);
-        $restoredEvent = ScheduledEvent::query()->where('source_type', OpenLab::class)->where('source_id', $openLab->id)->firstOrFail();
-        $this->assertDatabaseHas('open_labs', ['id' => $openLab->id, 'scheduled_event_id' => $restoredEvent->id]);
+        $this->assertDatabaseHas('open_labs', ['id' => $openLab->id, 'scheduled_event_id' => null]);
         $this->assertDatabaseHas('scheduled_events', [
             'id' => $unmatched->id,
             'display_name' => 'Preserve for reconciliation',
+        ]);
+    }
+
+    public function test_scheduled_event_repair_updates_legacy_schedule_fields_from_the_event_ledger(): void
+    {
+        $term = $this->createActiveTerm();
+        $legacyRoom = Room::create(['name' => 'ATC-234A', 'is_active' => true]);
+        $eventRoom = Room::create(['name' => 'ATC-234B', 'is_active' => true]);
+        $labTech = LabTech::create([
+            'name' => 'Mirror Tech',
+            'weekly_hour_limit' => 10,
+            'is_active' => true,
+        ]);
+        $openLab = OpenLab::create([
+            'term_id' => $term->id,
+            'name' => 'Mirror Lab',
+            'room_id' => $legacyRoom->id,
+            'lab_tech_id' => $labTech->id,
+            'days_json' => ['Mon'],
+            'starts_at' => '09:00',
+            'ends_at' => '10:00',
+        ]);
+        ScheduledEvent::query()->whereKey($openLab->scheduled_event_id)->update([
+            'room_id' => $eventRoom->id,
+            'days_json' => json_encode(['Thu']),
+            'starts_at' => '14:00',
+            'ends_at' => '15:30',
+            'notes' => 'Event-owned note',
+        ]);
+
+        $this->artisan('aop:sync-scheduled-events', ['--term' => $term->id, '--repair' => true])
+            ->assertExitCode(0);
+
+        $this->assertDatabaseHas('open_labs', [
+            'id' => $openLab->id,
+            'room_id' => $eventRoom->id,
+            'days_json' => json_encode(['Thu']),
+            'starts_at' => '14:00',
+            'ends_at' => '15:30',
+            'notes' => 'Event-owned note',
         ]);
     }
 
