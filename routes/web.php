@@ -201,12 +201,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
             return redirect()->route('aop.schedule.openLabs.index', $term);
         })->name('schedule.openLabs.legacy');
 
-        // Schedule Grids (active term)
-        Route::get('/schedule/grids', [ScheduleGridController::class, 'index'])->name('schedule.grids.index');
-        Route::get('/schedule/grids/instructors/{instructor}', [ScheduleGridController::class, 'instructor'])->name('schedule.grids.instructor');
-        Route::get('/schedule/grids/instructors/{instructor}/pdf', [ScheduleGridController::class, 'instructorPdf'])->name('schedule.grids.instructor.pdf');
-        Route::get('/schedule/grids/rooms/{room}', [ScheduleGridController::class, 'room'])->name('schedule.grids.room');
-        Route::get('/schedule/grids/rooms/{room}/pdf', [ScheduleGridController::class, 'roomPdf'])->name('schedule.grids.room.pdf');
+        // Schedule Grids
+        Route::prefix('/terms/{term}/schedule/grids')->group(function () {
+            Route::get('/', [ScheduleGridController::class, 'index'])->name('schedule.grids.index');
+            Route::get('/instructors/{instructor}', [ScheduleGridController::class, 'instructor'])->name('schedule.grids.instructor');
+            Route::get('/instructors/{instructor}/pdf', [ScheduleGridController::class, 'instructorPdf'])->name('schedule.grids.instructor.pdf');
+            Route::get('/rooms/{room}', [ScheduleGridController::class, 'room'])->name('schedule.grids.room');
+            Route::get('/rooms/{room}/pdf', [ScheduleGridController::class, 'roomPdf'])->name('schedule.grids.room.pdf');
+        });
+
+        Route::get('/schedule/grids', function (Request $request) {
+            $term = $request->user()->selectedTerm
+                ?? Term::query()->where('is_active', true)->firstOrFail();
+
+            return redirect()->route('aop.schedule.grids.index', $term);
+        })->name('schedule.grids.legacy');
 
         // Schedule Calendar
         Route::prefix('/terms/{term}/schedule/calendar')->group(function () {

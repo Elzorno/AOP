@@ -106,7 +106,7 @@ class OpenLabSchedulingTest extends TestCase
             'notes' => 'Walk-in support',
         ]);
 
-        $response = $this->actingAs($admin)->get(route('aop.schedule.grids.room', $room));
+        $response = $this->actingAs($admin)->get(route('aop.schedule.grids.room', [$term, $room]));
 
         $response->assertOk();
         $response->assertSeeText('Open Lab');

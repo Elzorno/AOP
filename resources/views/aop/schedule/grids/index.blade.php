@@ -41,7 +41,7 @@
             <button class="btn" type="button" onclick="
               const id=document.getElementById('instructorSelect').value;
               if(!id){ alert('Select an instructor.'); return; }
-              window.location='{{ url('/aop/schedule/grids/instructors') }}/'+id;
+              window.location='{{ route('aop.schedule.grids.instructor', [$term, '__INSTRUCTOR__']) }}'.replace('__INSTRUCTOR__', id);
             ">View</button>
           </div>
         </form>
@@ -62,7 +62,7 @@
             <button class="btn" type="button" onclick="
               const id=document.getElementById('roomSelect').value;
               if(!id){ alert('Select a room.'); return; }
-              window.location='{{ url('/aop/schedule/grids/rooms') }}/'+id;
+              window.location='{{ route('aop.schedule.grids.room', [$term, '__ROOM__']) }}'.replace('__ROOM__', id);
             ">View</button>
           </div>
         </form>

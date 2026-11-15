@@ -44,7 +44,7 @@ class ScheduleGridPrintViewTest extends TestCase
             'room_id' => $room->id,
         ]);
 
-        $response = $this->actingAs($admin)->get(route('aop.schedule.grids.room', $room).'?print=1');
+        $response = $this->actingAs($admin)->get(route('aop.schedule.grids.room', [$term, $room]).'?print=1');
 
         $response->assertOk();
         $response->assertSee('@page', false);
@@ -91,7 +91,7 @@ class ScheduleGridPrintViewTest extends TestCase
             'notes' => 'Library annex',
         ]);
 
-        $response = $this->actingAs($admin)->get(route('aop.schedule.grids.instructor', $instructor).'?print=1');
+        $response = $this->actingAs($admin)->get(route('aop.schedule.grids.instructor', [$term, $instructor]).'?print=1');
 
         $response->assertOk();
         $response->assertSee('@page', false);
@@ -130,7 +130,7 @@ class ScheduleGridPrintViewTest extends TestCase
             'room_id' => $room->id,
         ]);
 
-        $response = $this->actingAs($admin)->get(route('aop.schedule.grids.room.pdf', $room));
+        $response = $this->actingAs($admin)->get(route('aop.schedule.grids.room.pdf', [$term, $room]));
 
         $response->assertOk();
         $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));
@@ -161,7 +161,7 @@ class ScheduleGridPrintViewTest extends TestCase
             'room_id' => $room->id,
         ]);
 
-        $response = $this->actingAs($admin)->get(route('aop.schedule.grids.instructor.pdf', $instructor));
+        $response = $this->actingAs($admin)->get(route('aop.schedule.grids.instructor.pdf', [$term, $instructor]));
 
         $response->assertOk();
         $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));

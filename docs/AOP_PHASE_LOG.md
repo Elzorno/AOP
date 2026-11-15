@@ -268,3 +268,9 @@ This file tracks what each phase changed so the project remains understandable w
 ## Explicit schedule-studio release `e639dc2` — deployed 2026-11-15
 - Atomically deployed the studio route slice without a schema migration; release `1249eb5` remains available for rollback.
 - Rebuilt production caches, reloaded PHP-FPM and nginx, and verified cached routes, real production studio rendering, SQLite integrity, HTTPS login and service health.
+
+## Explicit schedule-grid term boundary — development checkpoint 2026-11-15
+- Moved grid selection, instructor/room grids and PDF exports under `/aop/terms/{term}/schedule/grids`.
+- Grid and PDF queries use the requested term; navigation and print links preserve it.
+- Kept the legacy grids GET as a selected-term redirect.
+- Verified non-active-term room grids and PDF output; the full suite passes 101 tests / 361 assertions.

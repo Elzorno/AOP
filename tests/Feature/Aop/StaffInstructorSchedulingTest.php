@@ -50,7 +50,7 @@ class StaffInstructorSchedulingTest extends TestCase
             ->assertOk()
             ->assertViewHas('sectionsMissingInstructor', fn ($sections) => $sections->isEmpty());
 
-        $this->actingAs($admin)->get(route('aop.schedule.grids.room', $room))
+        $this->actingAs($admin)->get(route('aop.schedule.grids.room', [$term, $room]))
             ->assertOk()
             ->assertSeeText('STAFF');
 

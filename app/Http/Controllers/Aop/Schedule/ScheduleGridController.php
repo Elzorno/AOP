@@ -16,22 +16,8 @@ class ScheduleGridController extends Controller
 {
     private const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
-    private function activeTermOrNull(): ?Term
+    public function index(Term $term)
     {
-        return Term::where('is_active', true)->first();
-    }
-
-    private function activeTermOrFail(): Term
-    {
-        $term = $this->activeTermOrNull();
-        abort_if(!$term, 400, 'No active term is set. Go to Terms and set an active term.');
-        return $term;
-    }
-
-    public function index()
-    {
-        $term = $this->activeTermOrNull();
-
         return view('aop.schedule.grids.index', [
             'term' => $term,
             'instructors' => Instructor::where('is_active', true)->orderBy('name')->get(),
@@ -39,19 +25,19 @@ class ScheduleGridController extends Controller
         ]);
     }
 
-    public function instructor(Instructor $instructor)
+    public function instructor(Term $term, Instructor $instructor)
     {
         return view('aop.schedule.grids.instructor', [
-            ...$this->buildInstructorGridViewData($instructor),
+            ...$this->buildInstructorGridViewData($term, $instructor),
             'isPrint' => (bool)request()->boolean('print'),
             'autoPrint' => true,
         ]);
     }
 
-    public function instructorPdf(Instructor $instructor)
+    public function instructorPdf(Term $term, Instructor $instructor)
     {
         $viewData = [
-            ...$this->buildInstructorGridViewData($instructor),
+            ...$this->buildInstructorGridViewData($term, $instructor),
             'isPrint' => true,
             'isPdf' => true,
             'autoPrint' => false,
@@ -64,19 +50,19 @@ class ScheduleGridController extends Controller
             ->download($filename);
     }
 
-    public function room(Room $room)
+    public function room(Term $term, Room $room)
     {
         return view('aop.schedule.grids.room', [
-            ...$this->buildRoomGridViewData($room),
+            ...$this->buildRoomGridViewData($term, $room),
             'isPrint' => (bool)request()->boolean('print'),
             'autoPrint' => true,
         ]);
     }
 
-    public function roomPdf(Room $room)
+    public function roomPdf(Term $term, Room $room)
     {
         $viewData = [
-            ...$this->buildRoomGridViewData($room),
+            ...$this->buildRoomGridViewData($term, $room),
             'isPrint' => true,
             'isPdf' => true,
             'autoPrint' => false,
@@ -89,9 +75,8 @@ class ScheduleGridController extends Controller
             ->download($filename);
     }
 
-    private function buildInstructorGridViewData(Instructor $instructor): array
+    private function buildInstructorGridViewData(Term $term, Instructor $instructor): array
     {
-        $term = $this->activeTermOrFail();
         abort_if(!$instructor->is_active, 404, 'Instructor not found.');
 
         $meetingBlocks = MeetingBlock::query()
@@ -166,9 +151,8 @@ class ScheduleGridController extends Controller
         ];
     }
 
-    private function buildRoomGridViewData(Room $room): array
+    private function buildRoomGridViewData(Term $term, Room $room): array
     {
-        $term = $this->activeTermOrFail();
         abort_if(!$room->is_active, 404, 'Room not found.');
 
         $meetingBlocks = MeetingBlock::query()
