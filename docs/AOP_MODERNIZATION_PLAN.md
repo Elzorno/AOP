@@ -2,7 +2,7 @@
 
 Prepared 14 November 2026. Status: phases 1–4 are deployed. All supported scheduling writes use typed commands and shared transactional mutation services; the write-path inventory is recorded in `docs/SCHEDULE_WRITE_PATH_INVENTORY.md`. Phase 5 is in its expand/reconcile stage with non-destructive reconciliation and constrained staff references deployed.
 
-Current production release: `d35caa5` through `/var/www/aop-current`. The isolated suite passes 126 tests / 509 assertions. Phase 4 is complete. Phase 5 shared reads now include mutation conflicts, calendar, workload, suggestions, readiness, schedule home and section cards, distribution policy metrics, grids, reports and registrar/instructor/room exports. Production has 37 sources and 37 events with zero missing, mismatched, unmatched or incorrectly linked records. Release `9235238` is the immediate application rollback target. Verified pre-release database checkpoint: `/root/aop-backups/20261115T175415Z-pre-d35caa5`.
+Current production release: `5897cae` through `/var/www/aop-current`. The isolated suite passes 126 tests / 511 assertions. Phase 4 is complete. Phase 5 shared reads now include mutation conflicts, calendar, workload, suggestions, readiness, schedule home, section cards and editor conflict notes, distribution metrics, grids, reports and exports. Production has 37 sources and 37 events with zero missing, mismatched, unmatched or incorrectly linked records. Release `d35caa5` is the immediate application rollback target. Verified pre-release database checkpoint: `/root/aop-backups/20261115T175542Z-pre-5897cae`.
 
 ## Outcome and constraints
 
@@ -235,5 +235,6 @@ Release `dc60a9d` was the initial security and phase-3 identity checkpoint: null
 - Cut reports and registrar, instructor and room CSV exports over in `cc8ecdf`. Existing spreadsheet contract tests remain unchanged, and the divergence fixture proves room export selection and values follow the event ledger.
 - Cut term distribution metrics over in `9235238`. A divergence test proves Friday coverage and derived policy percentages use event recurrence rather than source recurrence.
 - Cut section-card conflict counts, badges and HTMX refresh data over in `d35caa5`. The readiness divergence fixture now verifies both the aggregate page and an individual card use event-owned time and room data.
+- Cut section-editor conflict candidates and rendered notes over in `5897cae`; the same divergence fixture verifies the editor exposes the event-owned conflict.
 - Widened `schedule_change_logs.section_id` to nullable so non-section schedule operations can use the same audit mechanism without placeholder section records.
-- Verified 126 tests / 509 assertions, migration status, SQLite integrity and foreign keys, reconciliation and link parity, section-card service resolution and HTTPS login. Release `9235238` is the immediate application rollback target.
+- Verified 126 tests / 511 assertions, migration status, SQLite integrity and foreign keys, reconciliation and link parity, section-editor route rendering and HTTPS login. Release `d35caa5` is the immediate application rollback target.
