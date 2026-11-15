@@ -53,7 +53,7 @@ class OfferingController extends Controller
         $existing = Offering::where('term_id', $term->id)->where('catalog_course_id', $data['catalog_course_id'])->first();
         if ($existing) {
             if ($request->boolean('from_schedule_home')) {
-                return redirect()->route('aop.schedule.home', ['focus_offering' => $existing->id])->with('status', 'Offering already exists for that course in this term.');
+                return redirect()->route('aop.schedule.home', ['term' => $term, 'focus_offering' => $existing->id])->with('status', 'Offering already exists for that course in this term.');
             }
 
             return redirect()->route('aop.schedule.offerings.index', $term)->with('status', 'Offering already exists for that course in this term.');
@@ -62,7 +62,7 @@ class OfferingController extends Controller
         $offering = Offering::create($data);
 
         if ($request->boolean('from_schedule_home')) {
-            return redirect()->route('aop.schedule.home', ['focus_offering' => $offering->id])->with('status', 'Offering created.');
+            return redirect()->route('aop.schedule.home', ['term' => $term, 'focus_offering' => $offering->id])->with('status', 'Offering created.');
         }
 
         return redirect()->route('aop.schedule.offerings.index', $term)->with('status', 'Offering created.');
@@ -75,7 +75,7 @@ class OfferingController extends Controller
         if ($offering->sections()->exists()) {
             $count = $offering->sections()->count();
             $redirect = $request->boolean('from_schedule_home')
-                ? redirect()->route('aop.schedule.home', ['focus_offering' => $offering->id])
+                ? redirect()->route('aop.schedule.home', ['term' => $term, 'focus_offering' => $offering->id])
                 : redirect()->route('aop.schedule.offerings.index', $term);
 
             return $redirect->withErrors(['delete' => "Cannot remove this offering — it has {$count} section(s). Remove all sections first."]);
@@ -84,7 +84,7 @@ class OfferingController extends Controller
         $offering->delete();
 
         if ($request->boolean('from_schedule_home')) {
-            return redirect()->route('aop.schedule.home')->with('status', 'Offering removed.');
+            return redirect()->route('aop.schedule.home', $term)->with('status', 'Offering removed.');
         }
 
         return redirect()->route('aop.schedule.offerings.index', $term)->with('status', 'Offering removed.');

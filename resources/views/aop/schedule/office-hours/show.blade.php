@@ -46,7 +46,7 @@
       <div class="toolbar-line">
         <a class="btn" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
         <a class="btn secondary" href="{{ route('aop.schedule.officeHours.index', $term) }}">Choose Another Instructor</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Schedule Studio</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.home', $term) }}">Schedule Studio</a>
       </div>
     </section>
 

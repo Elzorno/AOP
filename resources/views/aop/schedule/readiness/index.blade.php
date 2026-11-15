@@ -51,7 +51,7 @@
       </div>
 
       <div class="toolbar-line">
-        <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
+        <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Back to Schedule</a>
         <a class="btn secondary" href="{{ route('aop.schedule.sections.index', $term) }}">Section Directory</a>
         <a class="btn secondary" href="{{ route('aop.schedule.officeHours.index', $term) }}">Office Hours</a>
         <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index', $term) }}">Open Labs</a>
@@ -116,7 +116,7 @@
                     </td>
                     <td>
                       @if($row['meeting_blocks_required'])
-                        <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Fix in Studio</a>
+                        <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['term' => $term, 'focus' => $section->id]) }}#section-{{ $section->id }}">Fix in Studio</a>
                       @else
                         —
                       @endif
@@ -301,7 +301,7 @@
                       <div class="queue-copy">{{ $conflict['a_label'] }} vs {{ $conflict['b_label'] }}</div>
                     </div>
                     @if($conflict['a_section_id'])
-                      <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['focus' => $conflict['a_section_id']]) }}#section-{{ $conflict['a_section_id'] }}">Fix</a>
+                      <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['term' => $term, 'focus' => $conflict['a_section_id']]) }}#section-{{ $conflict['a_section_id'] }}">Fix</a>
                     @endif
                   </div>
                 @endforeach
@@ -405,7 +405,7 @@
                     <div class="queue-label">{{ $section->offering?->catalogCourse?->code ?? '—' }} {{ $section->section_code }}</div>
                     <div class="queue-copy">{{ $section->offering?->catalogCourse?->title ?? 'Untitled course' }}</div>
                   </div>
-                  <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Assign</a>
+                  <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['term' => $term, 'focus' => $section->id]) }}#section-{{ $section->id }}">Assign</a>
                 </div>
               @endforeach
             </div>
@@ -427,7 +427,7 @@
                     <div class="queue-label">{{ $section->offering?->catalogCourse?->code ?? '—' }} {{ $section->section_code }}</div>
                     <div class="queue-copy">{{ $section->offering?->catalogCourse?->title ?? 'Untitled course' }}</div>
                   </div>
-                  <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Add Block</a>
+                  <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['term' => $term, 'focus' => $section->id]) }}#section-{{ $section->id }}">Add Block</a>
                 </div>
               @endforeach
             </div>
@@ -450,7 +450,7 @@
                     <div class="queue-copy">{{ $meetingBlock->type->value }} · {{ implode(', ', $meetingBlock->days_json ?? []) ?: 'No days selected' }}</div>
                   </div>
                   @if($meetingBlock->section)
-                    <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['focus' => $meetingBlock->section->id]) }}#section-{{ $meetingBlock->section->id }}">Assign</a>
+                    <a class="btn secondary sm" href="{{ route('aop.schedule.home', ['term' => $term, 'focus' => $meetingBlock->section->id]) }}#section-{{ $meetingBlock->section->id }}">Assign</a>
                   @endif
                 </div>
               @endforeach

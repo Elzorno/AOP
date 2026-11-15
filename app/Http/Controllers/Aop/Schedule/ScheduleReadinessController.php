@@ -345,7 +345,7 @@ class ScheduleReadinessController extends Controller
                         'b' => $b,
                         'a_label' => ScheduleConflictService::formatMeetingBlockLabel($a),
                         'b_label' => ScheduleConflictService::formatMeetingBlockLabel($b),
-                        'action_url' => route('aop.schedule.home', ['focus' => $a->section_id]).'#section-'.$a->section_id,
+                        'action_url' => route('aop.schedule.home', ['term' => $term, 'focus' => $a->section_id]).'#section-'.$a->section_id,
                         'action_label' => 'Fix',
                     ];
                 }
@@ -382,7 +382,7 @@ class ScheduleReadinessController extends Controller
                         'b' => $openLab,
                         'a_label' => ScheduleConflictService::formatMeetingBlockLabel($classBlock),
                         'b_label' => ScheduleConflictService::formatOpenLabLabel($openLab),
-                        'action_url' => route('aop.schedule.home', ['focus' => $classBlock->section_id]).'#section-'.$classBlock->section_id,
+                        'action_url' => route('aop.schedule.home', ['term' => $term, 'focus' => $classBlock->section_id]).'#section-'.$classBlock->section_id,
                         'action_label' => 'Fix',
                     ];
                 }

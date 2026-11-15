@@ -37,7 +37,7 @@
 
       <div class="toolbar-line">
         @if($term->is_active)
-          <a class="btn" href="{{ route('aop.schedule.home') }}">Open Schedule Studio</a>
+          <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Open Schedule Studio</a>
           <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Review Readiness</a>
         @else
           <a class="btn" href="{{ route('aop.terms.index') }}">Back to Terms</a>
@@ -100,7 +100,7 @@
 
             <div class="section-actions">
               @if($term->is_active)
-                <a class="btn" href="{{ route('aop.schedule.home', ['focus_offering' => $offering->id]) }}#offering-{{ $offering->id }}">
+                <a class="btn" href="{{ route('aop.schedule.home', ['term' => $term, 'focus_offering' => $offering->id]) }}#offering-{{ $offering->id }}">
                   {{ $offering->sections_count === 0 ? 'Add First Section' : 'Open' }}
                 </a>
                 <a class="btn secondary" href="{{ route('aop.schedule.sections.index', ['term' => $term, 'q' => $course?->code]) }}">Sections</a>

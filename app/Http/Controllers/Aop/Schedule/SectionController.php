@@ -166,7 +166,7 @@ class SectionController extends Controller
         $section = Section::create($this->normalizeInstructorAssignment($data));
 
         if ($request->boolean('from_schedule_home')) {
-            return redirect()->route('aop.schedule.home', ['focus' => $section->id])->with('status', 'Section created.');
+            return redirect()->route('aop.schedule.home', ['term' => $term, 'focus' => $section->id])->with('status', 'Section created.');
         }
 
         return redirect()->route('aop.schedule.sections.index', $term)->with('status', 'Section created.');
@@ -223,7 +223,7 @@ class SectionController extends Controller
         $section->update($this->normalizeInstructorAssignment($data));
 
         if ($request->boolean('from_schedule_home')) {
-            return redirect()->route('aop.schedule.home', ['focus' => $section->id])->with('status', 'Section updated.');
+            return redirect()->route('aop.schedule.home', ['term' => $term, 'focus' => $section->id])->with('status', 'Section updated.');
         }
 
         return redirect()->route('aop.schedule.sections.edit', [$term, $section])->with('status', 'Section updated.');
@@ -270,7 +270,7 @@ class SectionController extends Controller
         $section->delete();
 
         if ($request->boolean('from_schedule_home')) {
-            return redirect()->route('aop.schedule.home', ['focus_offering' => $offeringId])
+            return redirect()->route('aop.schedule.home', ['term' => $term, 'focus_offering' => $offeringId])
                 ->with('status', "{$label} removed.");
         }
 

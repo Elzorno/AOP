@@ -258,3 +258,9 @@ This file tracks what each phase changed so the project remains understandable w
 ## Explicit office-hours release `1249eb5` — deployed 2026-11-15
 - Atomically deployed the office-hours route slice without a schema migration; release `7a40a49` remains available for rollback.
 - Rebuilt production caches, reloaded PHP-FPM and nginx, and verified cached routes, real production office-hours rendering, SQLite integrity, HTTPS login and service health.
+
+## Explicit schedule-studio term boundary — development checkpoint 2026-11-15
+- Moved the schedule studio and distribution preview under `/aop/terms/{term}/schedule`.
+- Studio queries, issue links, mutation redirects and term-aware schedule pages preserve the requested term.
+- Kept the legacy studio GET as a selected-term redirect that preserves query filters.
+- Verified non-active-term rendering and distribution preview behavior; the full suite passes 99 tests / 354 assertions.

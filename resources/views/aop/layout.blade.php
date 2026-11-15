@@ -29,7 +29,7 @@
       'label' => 'Core',
       'items' => [
         ['route' => 'dashboard', 'label' => 'Dashboard', 'match' => 'dashboard'],
-        ['route' => 'aop.schedule.home', 'label' => 'Schedule', 'match' => 'aop.schedule.*'],
+        ['route' => 'aop.schedule.home.legacy', 'label' => 'Schedule', 'match' => 'aop.schedule.*'],
       ],
     ],
     [
@@ -47,7 +47,7 @@
 
   /* Schedule sub-nav: visible when inside any schedule.* route */
   $scheduleSubNav = [
-    ['route' => 'aop.schedule.home',            'label' => 'Studio',    'match' => 'aop.schedule.home'],
+    ['route' => 'aop.schedule.home.legacy',     'label' => 'Studio',    'match' => 'aop.schedule.home*'],
     ['route' => 'aop.schedule.events.legacy',   'label' => 'Events',    'match' => 'aop.schedule.events.*'],
     ['route' => 'aop.schedule.openLabs.legacy', 'label' => 'Open Labs', 'match' => 'aop.schedule.openLabs.*'],
     ['route' => 'aop.schedule.readiness.index', 'label' => 'Readiness', 'match' => 'aop.schedule.readiness.*'],
@@ -96,7 +96,7 @@
                 </a>
 
                 {{-- Schedule sub-nav: shown when inside schedule pages --}}
-                @if ($item['route'] === 'aop.schedule.home' && $inSchedule)
+                @if ($item['route'] === 'aop.schedule.home.legacy' && $inSchedule)
                   <div class="ml-3 mt-1 space-y-0.5 border-l border-white/10 pl-3">
                     @foreach ($scheduleSubNav as $sub)
                       <a
@@ -175,7 +175,7 @@
             <p class="mt-2 text-sm font-medium text-slate-600">{{ $activeTermLabel ?? 'No active term selected' }}</p>
           </div>
           <div class="flex items-center gap-3">
-            <a href="{{ route('aop.schedule.home') }}" class="btn secondary">Open Schedule</a>
+            <a href="{{ route('aop.schedule.home.legacy') }}" class="btn secondary">Open Schedule</a>
             <a href="{{ route('aop.terms.index') }}" class="btn secondary">Manage Terms</a>
           </div>
         </div>

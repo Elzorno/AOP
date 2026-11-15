@@ -43,7 +43,7 @@
       </div>
 
       <div class="toolbar-line">
-        <a class="btn" href="{{ route('aop.schedule.home') }}">Open Schedule Studio</a>
+        <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Open Schedule Studio</a>
         <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
         <a class="btn secondary" href="{{ route('aop.schedule.sections.create', $term) }}">Fallback Create Form</a>
       </div>
@@ -117,7 +117,7 @@
             <p class="workspace-copy">Reset the filters or add another section.</p>
           </div>
           <div class="actions">
-            <a class="btn" href="{{ route('aop.schedule.home') }}">Go to Studio</a>
+            <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Go to Studio</a>
           </div>
         </div>
       </section>
@@ -234,7 +234,7 @@
               @endif
 
               <div class="section-actions">
-                <a class="btn" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Open</a>
+                <a class="btn" href="{{ route('aop.schedule.home', ['term' => $term, 'focus' => $section->id]) }}#section-{{ $section->id }}">Open</a>
                 <a class="btn secondary" href="{{ route('aop.schedule.sections.edit', [$term, $section]) }}">Edit</a>
               </div>
             </article>

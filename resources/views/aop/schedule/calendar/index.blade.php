@@ -8,7 +8,7 @@
       <p class="page-subtitle">Drag class blocks up or down to adjust meeting times. Open labs are shown for room visibility but are edited from the Open Labs screen.</p>
 
       <div class="toolbar-line">
-        <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
+        <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Back to Schedule</a>
         <a class="btn secondary" href="{{ route('aop.schedule.sections.index', $term) }}">Section Directory</a>
         <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index', $term) }}">Open Labs</a>
       </div>

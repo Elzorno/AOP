@@ -16,7 +16,7 @@
       @endif
     </div>
     <div class="actions">
-      <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
+      <a class="btn secondary" href="{{ route('aop.schedule.home', $term) }}">Back to Schedule</a>
       <a class="btn" href="{{ route('aop.schedule.reports.index') }}">Schedule Reports</a>
       @if(!$term)
         <a class="btn" href="{{ route('aop.terms.index') }}">Go to Terms</a>

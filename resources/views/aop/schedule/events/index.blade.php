@@ -7,7 +7,7 @@
       <h1 class="page-title">Scheduled events for {{ $term->code }}</h1>
       <p class="page-subtitle">Classes and open labs share the same room, time, and staffing rules.</p>
       <div class="toolbar-line">
-        <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Schedule Studio</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.home', $term) }}">Schedule Studio</a>
         @if(!$scheduleLocked)
           <a class="btn" href="{{ route('aop.schedule.events.create', $term) }}">New Scheduled Event</a>
         @endif

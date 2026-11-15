@@ -8,7 +8,7 @@
       <p class="page-subtitle">Choose an instructor to review or update weekly availability.</p>
 
       <div class="toolbar-line">
-        <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
+        <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Back to Schedule</a>
         @if($term)
           <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
         @else

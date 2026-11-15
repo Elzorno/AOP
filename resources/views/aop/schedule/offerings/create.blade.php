@@ -9,7 +9,7 @@
 
       <div class="toolbar-line">
         @if($term->is_active)
-          <a class="btn" href="{{ route('aop.schedule.home') }}">Back to Schedule</a>
+          <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Back to Schedule</a>
         @else
           <a class="btn" href="{{ route('aop.terms.index') }}">Back to Terms</a>
         @endif

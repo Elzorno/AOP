@@ -166,7 +166,7 @@ class MeetingBlockController extends Controller
         }
 
         if ($request->boolean('from_schedule_home')) {
-            return redirect()->route('aop.schedule.home', ['focus' => $section->id])->with('status', 'Meeting block added.');
+            return redirect()->route('aop.schedule.home', ['term' => $term, 'focus' => $section->id])->with('status', 'Meeting block added.');
         }
 
         return redirect()->route('aop.schedule.sections.edit', [$term, $section])->with('status', 'Meeting block added.');
@@ -193,7 +193,7 @@ class MeetingBlockController extends Controller
         ]);
 
         if ($request->boolean('from_schedule_home')) {
-            return redirect()->route('aop.schedule.home', ['focus' => $section->id])->with('status', 'Meeting block removed.');
+            return redirect()->route('aop.schedule.home', ['term' => $term, 'focus' => $section->id])->with('status', 'Meeting block removed.');
         }
 
         return redirect()->route('aop.schedule.sections.edit', [$term, $section])->with('status', 'Meeting block removed.');
@@ -267,7 +267,7 @@ class MeetingBlockController extends Controller
         }
 
         if ($request->boolean('from_schedule_home')) {
-            return redirect()->route('aop.schedule.home', ['focus' => $section->id])->with('status', 'Meeting block updated.');
+            return redirect()->route('aop.schedule.home', ['term' => $term, 'focus' => $section->id])->with('status', 'Meeting block updated.');
         }
 
         return redirect()->route('aop.schedule.sections.edit', [$term, $section])->with('status', 'Meeting block updated.');

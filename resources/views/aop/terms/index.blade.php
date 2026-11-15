@@ -31,7 +31,7 @@
         <div class="mt-8 quick-actions">
           <a class="btn" href="{{ route('aop.terms.create') }}">Create New Term</a>
           @if ($active)
-            <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Open Schedule</a>
+            <a class="btn secondary" href="{{ route('aop.schedule.home.legacy') }}">Open Schedule</a>
           @endif
         </div>
       </div>

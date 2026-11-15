@@ -21,13 +21,11 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class ScheduleHomeController extends Controller
 {
-    public function index(Request $request, ScheduleDistributionService $distributionService)
+    public function index(Request $request, Term $term, ScheduleDistributionService $distributionService)
     {
-        $term = Term::where('is_active', true)->first();
-
-        $summary = $term ? $this->buildTermSummary($term) : null;
-        $workspace = $term ? $this->buildWorkspace($term, $request) : $this->emptyWorkspace();
-        $distributionStats = $term ? $distributionService->compute($term) : null;
+        $summary = $this->buildTermSummary($term);
+        $workspace = $this->buildWorkspace($term, $request);
+        $distributionStats = $distributionService->compute($term);
 
         return view('aop.schedule.index', array_merge([
             'term' => $term,
@@ -230,7 +228,7 @@ class ScheduleHomeController extends Controller
             ->filter(fn (array $sectionCard) => $sectionCard['issue_count'] > 0)
             ->sortByDesc('issue_count')
             ->take(8)
-            ->map(function (array $sectionCard) {
+            ->map(function (array $sectionCard) use ($term) {
                 $section = $sectionCard['model'];
                 $course = $section->offering?->catalogCourse;
 
@@ -238,7 +236,7 @@ class ScheduleHomeController extends Controller
                     'label' => trim(($course?->code ?? 'COURSE').' '.$section->section_code),
                     'course_title' => (string) ($course?->title ?? ''),
                     'issue_count' => $sectionCard['issue_count'],
-                    'url' => route('aop.schedule.home', ['focus' => $section->id]).'#section-'.$section->id,
+                    'url' => route('aop.schedule.home', ['term' => $term, 'focus' => $section->id]).'#section-'.$section->id,
                 ];
             })
             ->values();
@@ -309,13 +307,8 @@ class ScheduleHomeController extends Controller
      * Accepts ?days[]=Mon&days[]=Wed&starts_at=09:30&ends_at=10:45
      * Returns JSON with impact flags for each metric.
      */
-    public function distributionPreview(Request $request, ScheduleDistributionService $distributionService)
+    public function distributionPreview(Request $request, Term $term, ScheduleDistributionService $distributionService)
     {
-        $term = Term::where('is_active', true)->first();
-        if (!$term) {
-            return response()->json(['error' => 'No active term'], 400);
-        }
-
         $days     = array_filter((array) $request->input('days', []), fn($d) => is_string($d));
         $startsAt = (string) $request->input('starts_at', '');
         $endsAt   = (string) $request->input('ends_at', '');

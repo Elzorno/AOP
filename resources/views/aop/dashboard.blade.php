@@ -4,7 +4,7 @@
   @php
     $isReadyToSchedule = $activeTerm && $counts['catalog_courses'] > 0 && $counts['instructors'] > 0 && $counts['rooms'] > 0;
     $nextActionLabel = $activeTerm ? 'Open Schedule' : 'Set Active Term';
-    $nextActionRoute = $activeTerm ? route('aop.schedule.home') : route('aop.terms.index');
+    $nextActionRoute = $activeTerm ? route('aop.schedule.home.legacy') : route('aop.terms.index');
   @endphp
 
   <div class="page-shell">
@@ -86,7 +86,7 @@
         <div class="dock-meta">Review source data</div>
       </a>
 
-      <a href="{{ route('aop.schedule.home') }}" class="dock-item">
+      <a href="{{ route('aop.schedule.home.legacy') }}" class="dock-item">
         <div class="dock-kicker">Execution</div>
         <h2 class="dock-title">Schedule</h2>
         <p class="dock-copy">Build, review, and export the active term schedule.</p>
@@ -153,7 +153,7 @@
               </div>
             </div>
             <div class="actions">
-              <a class="btn" href="{{ route('aop.schedule.home') }}">Open Schedule</a>
+              <a class="btn" href="{{ route('aop.schedule.home.legacy') }}">Open Schedule</a>
               <a class="btn secondary sm" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
             </div>
           </div>

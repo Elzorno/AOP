@@ -43,7 +43,7 @@
       </div>
 
       <div class="toolbar-line">
-        <a class="btn" href="{{ route('aop.schedule.home', ['focus' => $section->id]) }}#section-{{ $section->id }}">Back to Schedule</a>
+        <a class="btn" href="{{ route('aop.schedule.home', ['term' => $term, 'focus' => $section->id]) }}#section-{{ $section->id }}">Back to Schedule</a>
         <a class="btn secondary" href="{{ route('aop.schedule.sections.index', ['term' => $term, 'q' => $course->code]) }}">Section Directory</a>
         <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
       </div>
@@ -534,7 +534,7 @@
       });
 
       // Distribution preview: update on days/time change in the add-block form
-      const previewUrl   = '{{ route('aop.schedule.distribution.preview') }}';
+      const previewUrl   = '{{ route('aop.schedule.distribution.preview', $term) }}';
       const previewPanel = document.getElementById('distPreviewPanel');
 
       function collectNewBlockInputs() {

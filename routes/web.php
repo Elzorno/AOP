@@ -105,8 +105,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/catalog/{course}/edit', [CatalogCourseController::class, 'edit'])->name('catalog.edit');
         Route::put('/catalog/{course}', [CatalogCourseController::class, 'update'])->name('catalog.update');
 
-        // Schedule (active term)
-        Route::get('/schedule', [ScheduleHomeController::class, 'index'])->name('schedule.home');
+        // Schedule studio
+        Route::get('/terms/{term}/schedule', [ScheduleHomeController::class, 'index'])->name('schedule.home');
+        Route::get('/terms/{term}/schedule/distribution/preview', [ScheduleHomeController::class, 'distributionPreview'])->name('schedule.distribution.preview');
+        Route::get('/schedule', function (Request $request) {
+            $term = $request->user()->selectedTerm
+                ?? Term::query()->where('is_active', true)->firstOrFail();
+
+            return redirect()->route('aop.schedule.home', array_merge(['term' => $term], $request->query()));
+        })->name('schedule.home.legacy');
         Route::prefix('/terms/{term}/schedule/events')->group(function () {
             Route::get('/', [ScheduledEventController::class, 'index'])->name('schedule.events.index');
             Route::get('/create', [ScheduledEventController::class, 'create'])->name('schedule.events.create');
@@ -200,9 +207,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/schedule/grids/instructors/{instructor}/pdf', [ScheduleGridController::class, 'instructorPdf'])->name('schedule.grids.instructor.pdf');
         Route::get('/schedule/grids/rooms/{room}', [ScheduleGridController::class, 'room'])->name('schedule.grids.room');
         Route::get('/schedule/grids/rooms/{room}/pdf', [ScheduleGridController::class, 'roomPdf'])->name('schedule.grids.room.pdf');
-
-        // Distribution preview (AJAX)
-        Route::get('/schedule/distribution/preview', [ScheduleHomeController::class, 'distributionPreview'])->name('schedule.distribution.preview');
 
         // Schedule Calendar
         Route::prefix('/terms/{term}/schedule/calendar')->group(function () {

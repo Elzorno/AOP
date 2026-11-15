@@ -327,7 +327,7 @@
         </div>
 
         {{-- Filter bar --}}
-        <form method="GET" action="{{ route('aop.schedule.home') }}">
+        <form method="GET" action="{{ route('aop.schedule.home', $term) }}">
           <div class="filter-grid">
             <div class="md:col-span-2 xl:col-span-2">
               <label for="q">Search</label>
@@ -347,7 +347,7 @@
             </div>
             <div class="actions md:items-end">
               <button class="btn secondary" type="submit">Apply</button>
-              <a class="btn secondary" href="{{ route('aop.schedule.home') }}">Reset</a>
+              <a class="btn secondary" href="{{ route('aop.schedule.home', $term) }}">Reset</a>
             </div>
           </div>
         </form>
