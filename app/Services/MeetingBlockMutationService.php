@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Data\Scheduling\MeetingBlockCommand;
 use App\Models\MeetingBlock;
 use App\Models\ScheduleChangeLog;
 use App\Models\ScheduledEvent;
@@ -17,8 +18,9 @@ class MeetingBlockMutationService
         private readonly ScheduleRuleWarningService $ruleWarnings,
     ) {}
 
-    public function preview(Term $term, Section $section, array $attributes, ?MeetingBlock $meetingBlock = null): array
+    public function preview(Term $term, Section $section, MeetingBlockCommand $command, ?MeetingBlock $meetingBlock = null): array
     {
+        $attributes = $command->attributes();
         $section->loadMissing('offering', 'instructor');
         if ((int) $section->offering->term_id !== (int) $term->id) {
             throw ValidationException::withMessages([
@@ -66,10 +68,11 @@ class MeetingBlockMutationService
         ];
     }
 
-    public function create(Term $term, Section $section, array $attributes, ?int $actorId = null): MeetingBlock
+    public function create(Term $term, Section $section, MeetingBlockCommand $command, ?int $actorId = null): MeetingBlock
     {
-        return DB::transaction(function () use ($term, $section, $attributes, $actorId) {
-            $schedule = $this->preview($term, $section, $attributes)['normalized'];
+        return DB::transaction(function () use ($term, $section, $command, $actorId) {
+            $attributes = $command->attributes();
+            $schedule = $this->preview($term, $section, $command)['normalized'];
 
             $block = MeetingBlock::query()->create([
                 'section_id' => $section->id,
@@ -84,12 +87,13 @@ class MeetingBlockMutationService
         }, 3);
     }
 
-    public function update(Term $term, MeetingBlock $meetingBlock, array $attributes, ?int $actorId = null): MeetingBlock
+    public function update(Term $term, MeetingBlock $meetingBlock, MeetingBlockCommand $command, ?int $actorId = null): MeetingBlock
     {
-        return DB::transaction(function () use ($term, $meetingBlock, $attributes, $actorId) {
+        return DB::transaction(function () use ($term, $meetingBlock, $command, $actorId) {
+            $attributes = $command->attributes();
             $this->assertExpectedRevision($meetingBlock, $attributes['expected_revision'] ?? null);
             $before = $this->snapshot($meetingBlock);
-            $updated = $this->performUpdate($term, $meetingBlock, $attributes);
+            $updated = $this->performUpdate($term, $meetingBlock, $command);
             $this->log($term, $updated->section, $updated, 'updated', $before, $this->snapshot($updated), $actorId);
 
             return $updated;
@@ -113,10 +117,11 @@ class MeetingBlockMutationService
         }, 3);
     }
 
-    private function performUpdate(Term $term, MeetingBlock $meetingBlock, array $attributes): MeetingBlock
+    private function performUpdate(Term $term, MeetingBlock $meetingBlock, MeetingBlockCommand $command): MeetingBlock
     {
+        $attributes = $command->attributes();
         $meetingBlock->loadMissing('section.offering', 'section.instructor', 'room');
-        $payload = $this->preview($term, $meetingBlock->section, $attributes, $meetingBlock)['normalized'];
+        $payload = $this->preview($term, $meetingBlock->section, $command, $meetingBlock)['normalized'];
 
         if (array_key_exists('type', $attributes)) {
             $payload['type'] = $attributes['type'];

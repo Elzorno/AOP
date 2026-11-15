@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Data\Scheduling\OpenLabCommand;
 use App\Models\LabTech;
 use App\Models\OpenLab;
 use App\Models\Room;
@@ -17,9 +18,10 @@ class OpenLabMutationService
         private readonly LabTechWorkloadService $workloads,
     ) {}
 
-    public function create(Term $term, array $attributes, ?int $actorId = null): OpenLab
+    public function create(Term $term, OpenLabCommand $command, ?int $actorId = null): OpenLab
     {
-        return DB::transaction(function () use ($term, $attributes, $actorId) {
+        return DB::transaction(function () use ($term, $command, $actorId) {
+            $attributes = $command->attributes();
             $payload = $this->validatedPayload($term, $attributes);
             $openLab = OpenLab::query()->create(['term_id' => $term->id, ...$payload]);
             $this->log($term, 'created_open_lab', null, $this->snapshot($openLab), $actorId);
@@ -28,13 +30,14 @@ class OpenLabMutationService
         }, 3);
     }
 
-    public function update(Term $term, OpenLab $openLab, array $attributes, ?int $actorId = null): OpenLab
+    public function update(Term $term, OpenLab $openLab, OpenLabCommand $command, ?int $actorId = null): OpenLab
     {
         if ((int) $openLab->term_id !== (int) $term->id) {
             throw ValidationException::withMessages(['open_lab' => 'Open lab does not belong to the requested term.']);
         }
 
-        return DB::transaction(function () use ($term, $openLab, $attributes, $actorId) {
+        return DB::transaction(function () use ($term, $openLab, $command, $actorId) {
+            $attributes = $command->attributes();
             $before = $this->snapshot($openLab);
             $payload = $this->validatedPayload($term, $attributes, $openLab->id);
             $openLab->update($payload);

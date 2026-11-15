@@ -1,6 +1,6 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: phases 1–3 and the major phase-4 schedule mutation, SQLite serialization, stale-edit and shared-preview slices are deployed. Phase 5 has begun by removing the destructive scheduled-event rebuild path. Typed command objects and the final write-path inventory remain before the phase-4 gate is complete.
+Prepared 14 November 2026. Status: phases 1–4 are deployed. All supported scheduling writes use typed commands and shared transactional mutation services; the write-path inventory is recorded in `docs/SCHEDULE_WRITE_PATH_INVENTORY.md`. Phase 5 is in its expand/reconcile stage with non-destructive reconciliation and constrained staff references deployed.
 
 Current production release: `a65800c` through `/var/www/aop-current`. The isolated suite passes 122 tests / 492 assertions. Scheduled-event staff assignments now have typed instructor/lab-tech foreign keys and an exactly-one-target database check while retaining legacy columns during the expand stage. All 35 production assignments backfilled to valid instructor references; reconciliation remains at 37 sources and 37 events with zero drift. Rollback to release `e0435c4` requires reversing migration batch 29 before switching code because the prior service does not populate the new typed columns. Verified pre-release database checkpoint: `/root/aop-backups/20261115T171834Z-pre-a65800c`.
 

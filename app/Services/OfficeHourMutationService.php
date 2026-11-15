@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Data\Scheduling\OfficeHourCommand;
 use App\Models\Instructor;
 use App\Models\InstructorTermLock;
 use App\Models\OfficeHourBlock;
@@ -14,9 +15,10 @@ class OfficeHourMutationService
 {
     public function __construct(private readonly ScheduleConflictService $conflicts) {}
 
-    public function create(Term $term, Instructor $instructor, array $attributes, ?int $actorId = null): OfficeHourBlock
+    public function create(Term $term, Instructor $instructor, OfficeHourCommand $command, ?int $actorId = null): OfficeHourBlock
     {
-        return DB::transaction(function () use ($term, $instructor, $attributes, $actorId) {
+        return DB::transaction(function () use ($term, $instructor, $command, $actorId) {
+            $attributes = $command->attributes();
             $this->assertMutable($term, $instructor);
             $payload = $this->validatedPayload($term, $instructor, $attributes);
             $block = OfficeHourBlock::query()->create([
@@ -30,11 +32,12 @@ class OfficeHourMutationService
         }, 3);
     }
 
-    public function update(Term $term, Instructor $instructor, OfficeHourBlock $block, array $attributes, ?int $actorId = null): OfficeHourBlock
+    public function update(Term $term, Instructor $instructor, OfficeHourBlock $block, OfficeHourCommand $command, ?int $actorId = null): OfficeHourBlock
     {
         $this->assertOwnership($term, $instructor, $block);
 
-        return DB::transaction(function () use ($term, $instructor, $block, $attributes, $actorId) {
+        return DB::transaction(function () use ($term, $instructor, $block, $command, $actorId) {
+            $attributes = $command->attributes();
             $this->assertMutable($term, $instructor);
             $before = $this->snapshot($block);
             $block->update($this->validatedPayload($term, $instructor, $attributes, $block->id));

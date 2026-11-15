@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Aop\Schedule;
 
+use App\Data\Scheduling\MeetingBlockCommand;
 use App\Enums\MeetingBlockType;
 use App\Enums\SectionModality;
 use App\Http\Controllers\Controller;
@@ -84,7 +85,7 @@ class MeetingBlockController extends Controller
         }
 
         try {
-            $mutationService->create($term, $section, $data);
+            $mutationService->create($term, $section, MeetingBlockCommand::fromArray($data));
         } catch (ValidationException $e) {
             $msg = implode(' | ', array_merge(...array_values($e->errors())));
             if ($isHtmx) {
@@ -152,14 +153,14 @@ class MeetingBlockController extends Controller
         }
 
         try {
-            $mutationService->update($term, $meetingBlock, [
+            $mutationService->update($term, $meetingBlock, MeetingBlockCommand::fromArray([
                 'type' => $data['type'],
                 'days' => $data['days'],
                 'starts_at' => $data['starts_at'],
                 'ends_at' => $data['ends_at'],
                 'room_id' => $data['room_id'] ?? null,
                 'notes' => $data['notes'] ?? null,
-            ]);
+            ]));
         } catch (ValidationException $e) {
             $msg = implode(' | ', array_merge(...array_values($e->errors())));
             if ($isHtmx) {

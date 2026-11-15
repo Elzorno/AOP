@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Aop\Schedule;
 
+use App\Data\Scheduling\OpenLabCommand;
 use App\Http\Controllers\Controller;
 use App\Models\LabTech;
 use App\Models\OpenLab;
@@ -50,7 +51,7 @@ class OpenLabController extends Controller
     public function store(Request $request, Term $term, OpenLabMutationService $mutations)
     {
         $data = $this->validatePayload($request);
-        $mutations->create($term, $data);
+        $mutations->create($term, OpenLabCommand::fromArray($data));
 
         return redirect()->route('aop.schedule.openLabs.index', $term)->with('status', 'Open lab added.');
     }
@@ -75,7 +76,7 @@ class OpenLabController extends Controller
         $this->ensureOpenLabInTerm($term, $openLab);
 
         $data = $this->validatePayload($request);
-        $mutations->update($term, $openLab, $data);
+        $mutations->update($term, $openLab, OpenLabCommand::fromArray($data));
 
         return redirect()->route('aop.schedule.openLabs.index', $term)->with('status', 'Open lab updated.');
     }

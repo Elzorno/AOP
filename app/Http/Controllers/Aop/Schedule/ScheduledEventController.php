@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Aop\Schedule;
 
+use App\Data\Scheduling\MeetingBlockCommand;
+use App\Data\Scheduling\OpenLabCommand;
 use App\Enums\MeetingBlockType;
 use App\Http\Controllers\Controller;
 use App\Models\LabTech;
@@ -82,14 +84,14 @@ class ScheduledEventController extends Controller
             throw ValidationException::withMessages(['section_id' => 'The selected section is not in this term.']);
         }
 
-        $source = $mutations->create($term, $section, [
+        $source = $mutations->create($term, $section, MeetingBlockCommand::fromArray([
             'type' => $data['category'] ?? MeetingBlockType::LECTURE->value,
             'days' => $days,
             'starts_at' => $data['starts_at'],
             'ends_at' => $data['ends_at'],
             'room_id' => $data['room_id'] ?? null,
             'notes' => $data['notes'] ?? null,
-        ]);
+        ]));
 
         return ScheduledEvent::query()->where('source_type', MeetingBlock::class)->where('source_id', $source->id)->firstOrFail();
     }
@@ -100,7 +102,7 @@ class ScheduledEventController extends Controller
             throw ValidationException::withMessages(['event_type' => 'Open labs require a name, room, and lab tech.']);
         }
 
-        $source = $mutations->create($term, [
+        $source = $mutations->create($term, OpenLabCommand::fromArray([
             'name' => $data['name'],
             'room_id' => $data['room_id'],
             'lab_tech_id' => $data['lab_tech_id'],
@@ -108,7 +110,7 @@ class ScheduledEventController extends Controller
             'starts_at' => $data['starts_at'],
             'ends_at' => $data['ends_at'],
             'notes' => $data['notes'] ?? null,
-        ]);
+        ]));
 
         return ScheduledEvent::query()->where('source_type', OpenLab::class)->where('source_id', $source->id)->firstOrFail();
     }

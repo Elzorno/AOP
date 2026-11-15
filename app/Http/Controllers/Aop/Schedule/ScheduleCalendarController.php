@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Aop\Schedule;
 
+use App\Data\Scheduling\MeetingBlockCommand;
 use App\Http\Controllers\Controller;
 use App\Models\MeetingBlock;
 use App\Models\OfficeHourBlock;
@@ -69,7 +70,7 @@ class ScheduleCalendarController extends Controller
         $block = isset($data['block_id']) ? MeetingBlock::query()->findOrFail($data['block_id']) : null;
 
         try {
-            $evaluation = $mutationService->preview($term, $section, $data, $block);
+            $evaluation = $mutationService->preview($term, $section, MeetingBlockCommand::fromArray($data), $block);
 
             return response()->json([
                 'valid' => true,
@@ -110,7 +111,7 @@ class ScheduleCalendarController extends Controller
                 $attributes['roomId'] = $data['roomId'];
             }
 
-            $updated = $mutationService->update($term, $block, $attributes);
+            $updated = $mutationService->update($term, $block, MeetingBlockCommand::fromArray($attributes));
             $event = ScheduledEvent::query()
                 ->where('source_type', MeetingBlock::class)
                 ->where('source_id', $updated->id)

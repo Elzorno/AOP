@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Aop\Schedule;
 
+use App\Data\Scheduling\OfficeHourCommand;
 use App\Http\Controllers\Controller;
 use App\Models\Instructor;
 use App\Models\InstructorPreference;
@@ -99,7 +100,7 @@ class OfficeHoursController extends Controller
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $mutations->create($term, $instructor, $data);
+        $mutations->create($term, $instructor, OfficeHourCommand::fromArray($data));
 
         if ($request->has('from_instructor_portal')) {
             return redirect()->route('dashboard')->with('status', 'Office hours block added.');
@@ -124,7 +125,7 @@ class OfficeHoursController extends Controller
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $mutations->update($term, $instructor, $officeHourBlock, $data);
+        $mutations->update($term, $instructor, $officeHourBlock, OfficeHourCommand::fromArray($data));
 
         return redirect()->route('aop.schedule.officeHours.show', [$term, $instructor])->with('status', 'Office hours block updated.');
     }

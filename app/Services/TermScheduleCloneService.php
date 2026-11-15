@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Data\Scheduling\MeetingBlockCommand;
+use App\Data\Scheduling\OfficeHourCommand;
+use App\Data\Scheduling\OpenLabCommand;
 use App\Models\InstructorTermLock;
 use App\Models\MeetingBlock;
 use App\Models\Offering;
@@ -96,14 +99,14 @@ class TermScheduleCloneService
                     $sectionsCopied++;
 
                     foreach ($sourceSection->meetingBlocks->sortBy('id') as $sourceMeetingBlock) {
-                        $this->meetingBlocks->create($targetTerm, $targetSection, [
+                        $this->meetingBlocks->create($targetTerm, $targetSection, MeetingBlockCommand::fromArray([
                             'type' => $sourceMeetingBlock->type?->value ?? (string) $sourceMeetingBlock->type,
                             'days' => $sourceMeetingBlock->days_json ?? [],
                             'starts_at' => $sourceMeetingBlock->starts_at,
                             'ends_at' => $sourceMeetingBlock->ends_at,
                             'room_id' => $sourceMeetingBlock->room_id,
                             'notes' => $sourceMeetingBlock->notes,
-                        ]);
+                        ]));
                         $meetingBlocksCopied++;
                     }
                 }
@@ -113,12 +116,12 @@ class TermScheduleCloneService
             if ($copyOfficeHours) {
                 $sourceOfficeHours = OfficeHourBlock::where('term_id', $sourceTerm->id)->get();
                 foreach ($sourceOfficeHours as $sourceBlock) {
-                    $this->officeHours->create($targetTerm, $sourceBlock->instructor, [
+                    $this->officeHours->create($targetTerm, $sourceBlock->instructor, OfficeHourCommand::fromArray([
                         'days' => $sourceBlock->days_json,
                         'starts_at' => $sourceBlock->starts_at,
                         'ends_at' => $sourceBlock->ends_at,
                         'notes' => $sourceBlock->notes,
-                    ]);
+                    ]));
                     $officeHoursCopied++;
                 }
             }
@@ -128,7 +131,7 @@ class TermScheduleCloneService
                 ->get();
 
             foreach ($sourceOpenLabs as $sourceOpenLab) {
-                $this->openLabs->create($targetTerm, [
+                $this->openLabs->create($targetTerm, OpenLabCommand::fromArray([
                     'name' => $sourceOpenLab->name,
                     'room_id' => $sourceOpenLab->room_id,
                     'lab_tech_id' => $sourceOpenLab->lab_tech_id,
@@ -136,7 +139,7 @@ class TermScheduleCloneService
                     'starts_at' => $sourceOpenLab->starts_at,
                     'ends_at' => $sourceOpenLab->ends_at,
                     'notes' => $sourceOpenLab->notes,
-                ]);
+                ]));
                 $openLabsCopied++;
             }
 
