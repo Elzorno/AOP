@@ -274,3 +274,7 @@ This file tracks what each phase changed so the project remains understandable w
 - Grid and PDF queries use the requested term; navigation and print links preserve it.
 - Kept the legacy grids GET as a selected-term redirect.
 - Verified non-active-term room grids and PDF output; the full suite passes 101 tests / 361 assertions.
+
+## Explicit schedule-grid release `1929c48` — deployed 2026-11-15
+- Atomically deployed the grid route slice without a schema migration; release `e639dc2` remains available for rollback.
+- Rebuilt production caches, reloaded PHP-FPM and nginx, and verified cached routes, real production grid rendering, SQLite integrity, HTTPS login and service health.
