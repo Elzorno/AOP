@@ -50,7 +50,7 @@
     ['route' => 'aop.schedule.home.legacy',     'label' => 'Studio',    'match' => 'aop.schedule.home*'],
     ['route' => 'aop.schedule.events.legacy',   'label' => 'Events',    'match' => 'aop.schedule.events.*'],
     ['route' => 'aop.schedule.openLabs.legacy', 'label' => 'Open Labs', 'match' => 'aop.schedule.openLabs.*'],
-    ['route' => 'aop.schedule.readiness.index', 'label' => 'Readiness', 'match' => 'aop.schedule.readiness.*'],
+    ['route' => 'aop.schedule.readiness.legacy', 'label' => 'Readiness', 'match' => 'aop.schedule.readiness.*'],
     ['route' => 'aop.schedule.calendar.legacy', 'label' => 'Calendar',  'match' => 'aop.schedule.calendar.*'],
     ['route' => 'aop.schedule.grids.legacy',    'label' => 'Grids',     'match' => 'aop.schedule.grids.*'],
     ['route' => 'aop.schedule.reports.legacy',  'label' => 'Registrar Export', 'match' => 'aop.schedule.reports.*'],

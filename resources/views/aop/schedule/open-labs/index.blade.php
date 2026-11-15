@@ -37,7 +37,7 @@
       <div class="toolbar-line">
         <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Back to Schedule</a>
         <a class="btn secondary" href="{{ route('aop.labtechs.index') }}">Lab Techs</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.readiness.index', $term) }}">Readiness</a>
         @if(!$scheduleLocked)
           <a class="btn" href="{{ route('aop.schedule.openLabs.create', $term) }}">New Open Lab</a>
         @endif

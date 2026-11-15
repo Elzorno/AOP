@@ -236,7 +236,7 @@ class ScheduleSafetyWorkflowTest extends TestCase
             ->assertSeeText($inPerson->section_code)
             ->assertDontSeeText($online->section_code);
 
-        $this->actingAs($admin)->get(route('aop.schedule.readiness.index'))
+        $this->actingAs($admin)->get(route('aop.schedule.readiness.index', $term))
             ->assertOk()
             ->assertViewHas('sectionsMissingMeetingBlocks', function ($sections) use ($online, $inPerson) {
                 return $sections->contains('id', $inPerson->id)

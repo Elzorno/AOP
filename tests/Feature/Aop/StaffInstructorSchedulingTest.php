@@ -46,7 +46,7 @@ class StaffInstructorSchedulingTest extends TestCase
             'room_id' => $room->id,
         ]);
 
-        $this->actingAs($admin)->get(route('aop.schedule.readiness.index'))
+        $this->actingAs($admin)->get(route('aop.schedule.readiness.index', $term))
             ->assertOk()
             ->assertViewHas('sectionsMissingInstructor', fn ($sections) => $sections->isEmpty());
 

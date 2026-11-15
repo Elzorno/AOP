@@ -154,7 +154,7 @@
             </div>
             <div class="actions">
               <a class="btn" href="{{ route('aop.schedule.home.legacy') }}">Open Schedule</a>
-              <a class="btn secondary sm" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
+              <a class="btn secondary sm" href="{{ route('aop.schedule.readiness.legacy') }}">Readiness</a>
             </div>
           </div>
           <div class="sequence-strip">

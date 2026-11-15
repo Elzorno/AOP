@@ -45,7 +45,7 @@
       <div class="toolbar-line">
         <a class="btn" href="{{ route('aop.schedule.home', ['term' => $term, 'focus' => $section->id]) }}#section-{{ $section->id }}">Back to Schedule</a>
         <a class="btn secondary" href="{{ route('aop.schedule.sections.index', ['term' => $term, 'q' => $course->code]) }}">Section Directory</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.readiness.index', $term) }}">Readiness</a>
       </div>
     </section>
 

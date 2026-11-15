@@ -84,12 +84,12 @@
       <div class="sched-header-actions">
         @if ($term)
           @if ($blockingIssues > 0 || $officeHourIssues > 0)
-            <a class="btn" href="{{ route('aop.schedule.readiness.index') }}">
+            <a class="btn" href="{{ route('aop.schedule.readiness.index', $term) }}">
               Review {{ $blockingIssues + $officeHourIssues }} issue{{ ($blockingIssues + $officeHourIssues) === 1 ? '' : 's' }}
             </a>
           @endif
           <a class="btn success" href="{{ route('aop.schedule.reports.exportRegistrar', $term) }}">Download Registrar CSV</a>
-          <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.readiness.index', $term) }}">Readiness</a>
           <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index', $term) }}">Open Labs</a>
           <a class="btn secondary" href="{{ route('aop.schedule.calendar.index', $term) }}">Calendar</a>
           <a class="btn secondary" href="{{ route('aop.schedule.grids.index', $term) }}">Grids</a>
@@ -125,7 +125,7 @@
           <span class="stage-step-note">Offerings, sections &amp; meetings</span>
         </span>
         <a
-          href="{{ route('aop.schedule.readiness.index') }}"
+          href="{{ route('aop.schedule.readiness.index', $term) }}"
           class="stage-step {{ $validateDone ? 'stage-step-done' : '' }}"
         >
           <span class="stage-step-icon">
@@ -206,7 +206,7 @@
             </span>
           @endif
 
-          <a class="dist-health-detail-link" href="{{ route('aop.schedule.readiness.index') }}#distribution">Details</a>
+          <a class="dist-health-detail-link" href="{{ route('aop.schedule.readiness.index', $term) }}#distribution">Details</a>
         </div>
       @endif
 
@@ -226,7 +226,7 @@
               </a>
             @endforeach
           </span>
-          <a class="issue-alert-more" href="{{ route('aop.schedule.readiness.index') }}">Review all →</a>
+          <a class="issue-alert-more" href="{{ route('aop.schedule.readiness.index', $term) }}">Review all →</a>
         </div>
       @endif
 

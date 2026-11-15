@@ -38,7 +38,7 @@
       <div class="toolbar-line">
         @if($term->is_active)
           <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Open Schedule Studio</a>
-          <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Review Readiness</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.readiness.index', $term) }}">Review Readiness</a>
         @else
           <a class="btn" href="{{ route('aop.terms.index') }}">Back to Terms</a>
         @endif

@@ -36,17 +36,8 @@ class ScheduleReadinessController extends Controller
     private const LAB_MINUTES_PER_CREDIT_15W = 2250;
     private const BASE_WEEKS = 15;
 
-    private function activeTermOrFail(): Term
+    public function index(Term $term, ScheduleDistributionService $distribution, LabTechWorkloadService $labTechWorkloads)
     {
-        $term = Term::where('is_active', true)->first();
-        abort_if(!$term, 400, 'No active term is set. Go to Terms and set an active term.');
-        return $term;
-    }
-
-    public function index(ScheduleDistributionService $distribution, LabTechWorkloadService $labTechWorkloads)
-    {
-        $term = $this->activeTermOrFail();
-
         $sections = Section::query()
             ->with(['offering.catalogCourse', 'instructor', 'meetingBlocks.room'])
             ->whereHas('offering', fn($q) => $q->where('term_id', $term->id))

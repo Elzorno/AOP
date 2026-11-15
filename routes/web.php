@@ -255,7 +255,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/schedule/publish/{publication}/download/rooms', [SchedulePublishController::class, 'downloadRoomsZip'])->name('schedule.publish.downloadRoomsZip');
 
         // Readiness + Term Lock (active term)
-        Route::get('/schedule/readiness', [ScheduleReadinessController::class, 'index'])->name('schedule.readiness.index');
+        Route::get('/terms/{term}/schedule/readiness', [ScheduleReadinessController::class, 'index'])->name('schedule.readiness.index');
+        Route::get('/schedule/readiness', function (Request $request) {
+            $term = $request->user()->selectedTerm
+                ?? Term::query()->where('is_active', true)->firstOrFail();
+
+            return redirect()->route('aop.schedule.readiness.index', $term);
+        })->name('schedule.readiness.legacy');
         Route::post('/schedule/lock', [ScheduleTermLockController::class, 'lock'])->name('schedule.lock');
         Route::post('/schedule/unlock', [ScheduleTermLockController::class, 'unlock'])->name('schedule.unlock');
 

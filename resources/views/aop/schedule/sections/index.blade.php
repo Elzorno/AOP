@@ -44,7 +44,7 @@
 
       <div class="toolbar-line">
         <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Open Schedule Studio</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.readiness.index', $term) }}">Readiness</a>
         <a class="btn secondary" href="{{ route('aop.schedule.sections.create', $term) }}">Fallback Create Form</a>
       </div>
     </section>

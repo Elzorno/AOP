@@ -67,7 +67,7 @@
       @endif
 
       <div style="margin-top:10px;" class="actions">
-        <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Review Readiness Details</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.readiness.index', $term) }}">Review Readiness Details</a>
       </div>
     </div>
 

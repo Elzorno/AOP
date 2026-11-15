@@ -288,3 +288,9 @@ This file tracks what each phase changed so the project remains understandable w
 ## Explicit reports and exports release `fb417a4` — deployed 2026-11-15
 - Atomically deployed the reports route slice without a schema migration; release `1929c48` remains available for rollback.
 - Rebuilt production caches, reloaded PHP-FPM and nginx, and verified cached routes, real production report rendering and export headers, SQLite integrity, HTTPS login and service health.
+
+## Explicit readiness term boundary — development checkpoint 2026-11-15
+- Moved readiness evaluation under `/aop/terms/{term}/schedule/readiness`.
+- All readiness queries and remediation links use the requested term.
+- Kept the legacy readiness GET as a selected-term redirect.
+- Verified non-active-term issue isolation; the full suite passes 105 tests / 375 assertions.

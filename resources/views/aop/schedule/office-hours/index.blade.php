@@ -10,7 +10,7 @@
       <div class="toolbar-line">
         <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Back to Schedule</a>
         @if($term)
-          <a class="btn secondary" href="{{ route('aop.schedule.readiness.index') }}">Readiness</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.readiness.index', $term) }}">Readiness</a>
         @else
           <a class="btn secondary" href="{{ route('aop.terms.index') }}">Manage Terms</a>
         @endif
