@@ -13,6 +13,7 @@ use App\Models\ScheduleChangeLog;
 use App\Models\Section;
 use App\Models\Term;
 use App\Services\ScheduleConflictService;
+use App\Services\ScheduleEventReadAdapter;
 use App\Services\ScheduleSuggestionService;
 use App\Services\SectionInstructorAssignmentService;
 use Illuminate\Http\Request;
@@ -173,10 +174,11 @@ class SectionController extends Controller
         return redirect()->route('aop.schedule.sections.index', $term)->with('status', 'Section created.');
     }
 
-    public function edit(Term $term, Section $section, ScheduleConflictService $conflicts)
+    public function edit(Term $term, Section $section, ScheduleConflictService $conflicts, ScheduleEventReadAdapter $eventReads)
     {
         $section->load(['offering.catalogCourse', 'instructor', 'meetingBlocks.room']);
         abort_if($section->offering->term_id !== $term->id, 404, 'Section not in this term.');
+        $eventReads->meetingBlocks($section->meetingBlocks);
 
         $conflictNotes = $this->sectionConflictNotes($term, $section, $conflicts);
 

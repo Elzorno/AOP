@@ -89,6 +89,8 @@ class OpenLabSchedulingTest extends TestCase
                 && $conflicts[0]['b']->id === $second->id);
         $card = app(SectionCardBuilderService::class)->build($first->section, $term);
         $this->assertSame(1, $card['room_conflict_count']);
+        $this->actingAs($admin)->get(route('aop.schedule.sections.edit', [$term, $first->section]))
+            ->assertOk()->assertSee('room conflict');
     }
 
     public function test_schedule_suggestions_use_authoritative_event_time_and_room(): void
