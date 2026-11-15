@@ -1,8 +1,8 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: phases 1–2 and the identity, offering, section, meeting-block, open-lab, scheduled-event, calendar, office-hours, schedule-studio and grid portions of phase 3 are deployed; the reports and exports term boundary is verified and ready to deploy.
+Prepared 14 November 2026. Status: phases 1–2 and the identity, offering, section, meeting-block, open-lab, scheduled-event, calendar, office-hours, schedule-studio, grid, reports and exports portions of phase 3 are deployed; readiness and legacy compatibility routes remain.
 
-Current production release: `1929c48` through `/var/www/aop-current`. The isolated suite passes 103 tests / 370 assertions. Report pages and registrar, instructor and room CSV exports use explicit term routes. Release `e639dc2` remains available for immediate rollback. Verified pre-migration checkpoint: `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`.
+Current production release: `fb417a4` through `/var/www/aop-current`. The isolated suite passes 103 tests / 370 assertions. Report pages and registrar, instructor and room CSV exports use explicit term routes. Release `1929c48` remains available for immediate rollback. Verified pre-migration checkpoint: `/root/aop-backups/2026-11-14T154720Z-pre-term-scope`.
 
 ## Outcome and constraints
 
