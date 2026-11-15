@@ -1,8 +1,8 @@
 # AOP modernization plan
 
-Prepared 14 November 2026. Status: phases 1–4 are deployed. All supported scheduling writes use typed commands and shared transactional mutation services; the write-path inventory is recorded in `docs/SCHEDULE_WRITE_PATH_INVENTORY.md`. Phase 5 is in its expand/reconcile stage with non-destructive reconciliation and constrained staff references deployed.
+Prepared 14 November 2026. Status: phases 1–4 are deployed. All supported scheduling writes use typed commands and shared transactional mutation services; the write-path inventory is recorded in `docs/SCHEDULE_WRITE_PATH_INVENTORY.md`. Phase 5 cutover is underway: shared event reads are deployed and supported mutations now write the event ledger before maintaining compatibility mirrors.
 
-Current production release: `5897cae` through `/var/www/aop-current`. The isolated suite passes 126 tests / 511 assertions. Phase 4 is complete. Phase 5 shared reads now include mutation conflicts, calendar, workload, suggestions, readiness, schedule home, section cards and editor conflict notes, distribution metrics, grids, reports and exports. Production has 37 sources and 37 events with zero missing, mismatched, unmatched or incorrectly linked records. Release `d35caa5` is the immediate application rollback target. Verified pre-release database checkpoint: `/root/aop-backups/20261115T175542Z-pre-5897cae`.
+Current production release: `86a9a94` through `/var/www/aop-current`. The isolated suite passes 127 tests / 515 assertions. Phase 4 is complete. Phase 5 shared reads now include mutation conflicts, calendar, workload, suggestions, readiness, schedule home, section cards and editor conflict notes, distribution metrics, grids, reports and exports. Supported class-meeting, open-lab and office-hour mutations write events first and mirror legacy detail fields in the same transaction. Production has 37 sources and 37 events with zero missing, mismatched, unmatched or incorrectly linked records. Release `5897cae` is the immediate application rollback target. Verified pre-release database checkpoint: `/root/aop-backups/20261115T180013Z-pre-86a9a94`.
 
 ## Outcome and constraints
 
@@ -195,7 +195,7 @@ Primary files: Schedule Studio, section cards, calendar, grids, instructor dashb
 
 The modernization is complete when the security remediation release is verified; all scheduling writes are term-scoped and authorized; the event model has a single authoritative owner; all views evaluate the same versioned rules; current registrar/print/instructor workflows pass regression checks; releases and recoveries are reproducible; and documentation reflects implemented behavior. Preserve meaningful tests and add coverage for new boundaries; do not create tests merely to mirror implementation details.
 
-Next executable step: continue phase 4 by consolidating term-scoped office-hours mutations, followed by instructor reassignment, bulk assignment and cloning paths.
+Next executable step: complete the phase-5 write cutover by removing recursive source-model projection hooks and rejecting direct legacy schedule writes, while retaining the explicit one-way compatibility mirror in the mutation services.
 
 ## Implementation checkpoint — 14 November 2026
 
@@ -236,5 +236,6 @@ Release `dc60a9d` was the initial security and phase-3 identity checkpoint: null
 - Cut term distribution metrics over in `9235238`. A divergence test proves Friday coverage and derived policy percentages use event recurrence rather than source recurrence.
 - Cut section-card conflict counts, badges and HTMX refresh data over in `d35caa5`. The readiness divergence fixture now verifies both the aggregate page and an individual card use event-owned time and room data.
 - Cut section-editor conflict candidates and rendered notes over in `5897cae`; the same divergence fixture verifies the editor exposes the event-owned conflict.
+- Inverted supported scheduling mutations in `86a9a94`. Class meetings, open labs and office hours now write the scheduled event and staff ledger before quietly maintaining legacy detail mirrors in the same transaction; creates quietly allocate the source identity required by the current polymorphic key, and deletes remove the event before the legacy source. A database-trigger test enforces event-before-mirror update ordering.
 - Widened `schedule_change_logs.section_id` to nullable so non-section schedule operations can use the same audit mechanism without placeholder section records.
-- Verified 126 tests / 511 assertions, migration status, SQLite integrity and foreign keys, reconciliation and link parity, section-editor route rendering and HTTPS login. Release `d35caa5` is the immediate application rollback target.
+- Verified 127 tests / 515 assertions, migration status, SQLite integrity and foreign keys, reconciliation and link parity, and the HTTPS login path. Release `5897cae` is the immediate application rollback target.
