@@ -294,3 +294,7 @@ This file tracks what each phase changed so the project remains understandable w
 - All readiness queries and remediation links use the requested term.
 - Kept the legacy readiness GET as a selected-term redirect.
 - Verified non-active-term issue isolation; the full suite passes 105 tests / 375 assertions.
+
+## Explicit readiness release `5fb4ea0` — deployed 2026-11-15
+- Atomically deployed the readiness route slice without a schema migration; release `fb417a4` remains available for rollback.
+- Rebuilt production caches, reloaded PHP-FPM and nginx, and verified cached routes, real production readiness rendering, SQLite integrity, HTTPS login and service health.
