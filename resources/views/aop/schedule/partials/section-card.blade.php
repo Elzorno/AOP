@@ -98,7 +98,7 @@
     @foreach($sectionCard['meeting_cards'] as $meetingCard)
       @php $meetingBlock = $meetingCard['model']; @endphp
       <details class="block-edit-row"
-        x-data='conflictChecker({{ $section->id }}, {{ $meetingBlock->id }}, @js(route('aop.schedule.calendar.preview', $term)), @js(csrf_token()))'
+        x-data='conflictChecker({{ $section->id }}, {{ $meetingBlock->id }}, @js(route('aop.schedule.calendar.preview', $term)), @js(csrf_token()), @js($meetingBlock->type->value))'
         {{ ($oldMeetingBlockId ?? null) === $meetingBlock->id ? 'open' : '' }}>
         <summary class="disclosure-summary">
           Edit {{ $meetingBlock->type->value }}
@@ -122,7 +122,7 @@
             <div class="inline-form-grid">
               <div>
                 <label for="block_type_{{ $meetingBlock->id }}">Type</label>
-                <select id="block_type_{{ $meetingBlock->id }}" name="type" required>
+                <select id="block_type_{{ $meetingBlock->id }}" name="type" x-model="blockType" @change="check()" required>
                   @foreach($meetingBlockTypes as $type)
                     <option value="{{ $type->value }}" {{ $meetingBlock->type->value === $type->value ? 'selected' : '' }}>{{ $type->value }}</option>
                   @endforeach
@@ -184,7 +184,7 @@
 
     {{-- Add meeting block row --}}
     <details class="block-edit-row"
-      x-data='conflictChecker({{ $section->id }}, null, @js(route('aop.schedule.calendar.preview', $term)), @js(csrf_token()))'
+      x-data='conflictChecker({{ $section->id }}, null, @js(route('aop.schedule.calendar.preview', $term)), @js(csrf_token()), "LECTURE")'
       {{ $sectionCard['has_missing_meetings'] ? 'open' : '' }}>
       <summary class="disclosure-summary">+ Add meeting block</summary>
       <div class="disclosure-body">
@@ -201,7 +201,7 @@
           <div class="inline-form-grid">
             <div>
               <label for="new_block_type_{{ $section->id }}">Type</label>
-              <select id="new_block_type_{{ $section->id }}" name="type" required>
+              <select id="new_block_type_{{ $section->id }}" name="type" x-model="blockType" @change="check()" required>
                 @foreach($meetingBlockTypes as $type)
                   <option value="{{ $type->value }}">{{ $type->value }}</option>
                 @endforeach

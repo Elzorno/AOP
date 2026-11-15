@@ -9,13 +9,14 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 window.Alpine = Alpine;
 window.AopCalendar = { Calendar, interactionPlugin, timeGridPlugin };
 
-function conflictChecker(sectionId, blockId, previewUrl, csrfToken) {
+function conflictChecker(sectionId, blockId, previewUrl, csrfToken, initialBlockType = 'LECTURE') {
     return {
         conflicts: [],
         days: [],
         startsAt: '',
         endsAt: '',
         roomId: '',
+        blockType: initialBlockType,
         requestSequence: 0,
         timer: null,
 
@@ -51,13 +52,14 @@ function conflictChecker(sectionId, blockId, previewUrl, csrfToken) {
                             starts_at: this.startsAt,
                             ends_at: this.endsAt,
                             room_id: this.roomId || null,
+                            type: this.blockType,
                         }),
                     });
                     const result = await response.json();
                     if (sequence !== this.requestSequence) return;
 
                     this.conflicts = result.valid
-                        ? []
+                        ? (result.warnings ?? [])
                         : [...new Set(Object.values(result.errors ?? {}).flat())];
                 } catch (_error) {
                     if (sequence === this.requestSequence) {

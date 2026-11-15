@@ -36,8 +36,8 @@ class TermCloneWorkflowTest extends TestCase
             'section_id' => $section->id,
             'type' => 'LECTURE',
             'days_json' => ['Mon'],
-            'starts_at' => '09:00',
-            'ends_at' => '10:00',
+            'starts_at' => '17:00',
+            'ends_at' => '19:35',
             'room_id' => $room->id,
         ]);
         OfficeHourBlock::query()->create([
@@ -73,7 +73,7 @@ class TermCloneWorkflowTest extends TestCase
         $this->assertSame(24, $targetSection->section_capacity);
         $this->assertSame(18, $targetSection->enrolled_count);
         $this->assertSame(3, $target->scheduledEvents()->count());
-        $this->assertSame(3, $target->hasMany(ScheduleChangeLog::class)->count());
+        $this->assertSame(4, $target->hasMany(ScheduleChangeLog::class)->count());
         $this->assertDatabaseHas('office_hour_blocks', ['term_id' => $target->id, 'instructor_id' => $instructor->id]);
         $this->assertDatabaseHas('open_labs', ['term_id' => $target->id, 'name' => 'Clone Open Lab']);
         $this->assertDatabaseMissing('instructor_term_locks', ['term_id' => $target->id]);
@@ -91,8 +91,8 @@ class TermCloneWorkflowTest extends TestCase
                 'section_id' => $section->id,
                 'type' => 'LECTURE',
                 'days_json' => ['Thu'],
-                'starts_at' => '09:00',
-                'ends_at' => '10:00',
+                'starts_at' => '17:00',
+                'ends_at' => '19:35',
             ]);
         }
         $admin = User::factory()->create(['is_admin' => true]);

@@ -62,19 +62,26 @@ class ScheduleCalendarController extends Controller
             'starts_at' => 'required|date_format:H:i',
             'ends_at' => 'required|date_format:H:i',
             'room_id' => 'sometimes|nullable|integer|exists:rooms,id',
+            'type' => 'sometimes|string|in:LECTURE,LAB,OTHER',
         ]);
 
         $section = Section::query()->findOrFail($data['section_id']);
         $block = isset($data['block_id']) ? MeetingBlock::query()->findOrFail($data['block_id']) : null;
 
         try {
-            $normalized = $mutationService->preview($term, $section, $data, $block);
+            $evaluation = $mutationService->preview($term, $section, $data, $block);
 
-            return response()->json(['valid' => true, 'normalized' => $normalized, 'errors' => []]);
+            return response()->json([
+                'valid' => true,
+                'normalized' => $evaluation['normalized'],
+                'warnings' => $evaluation['warnings'],
+                'errors' => [],
+            ]);
         } catch (ValidationException $exception) {
             return response()->json([
                 'valid' => false,
                 'normalized' => null,
+                'warnings' => [],
                 'errors' => $exception->errors(),
             ]);
         }

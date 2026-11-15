@@ -12,7 +12,10 @@ use Illuminate\Validation\ValidationException;
 
 class MeetingBlockMutationService
 {
-    public function __construct(private readonly ScheduleConflictService $conflicts) {}
+    public function __construct(
+        private readonly ScheduleConflictService $conflicts,
+        private readonly ScheduleRuleWarningService $ruleWarnings,
+    ) {}
 
     public function preview(Term $term, Section $section, array $attributes, ?MeetingBlock $meetingBlock = null): array
     {
@@ -46,18 +49,27 @@ class MeetingBlockMutationService
             $meetingBlock?->id,
         );
 
+        $blockType = (string) ($attributes['type'] ?? $meetingBlock?->type?->value ?? $meetingBlock?->type ?? 'OTHER');
+        $warnings = $this->ruleWarnings->warnForBlock($days, $startsAt, $endsAt, $blockType, $term);
+        if ($warnings !== [] && $this->ruleWarnings->isEnforced($term)) {
+            throw ValidationException::withMessages(['schedule_rules' => implode(' | ', $warnings)]);
+        }
+
         return [
-            'days_json' => $days,
-            'starts_at' => $startsAt,
-            'ends_at' => $endsAt,
-            'room_id' => $roomId,
+            'normalized' => [
+                'days_json' => $days,
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+                'room_id' => $roomId,
+            ],
+            'warnings' => $warnings,
         ];
     }
 
     public function create(Term $term, Section $section, array $attributes, ?int $actorId = null): MeetingBlock
     {
         return DB::transaction(function () use ($term, $section, $attributes, $actorId) {
-            $schedule = $this->preview($term, $section, $attributes);
+            $schedule = $this->preview($term, $section, $attributes)['normalized'];
 
             $block = MeetingBlock::query()->create([
                 'section_id' => $section->id,
@@ -104,7 +116,7 @@ class MeetingBlockMutationService
     private function performUpdate(Term $term, MeetingBlock $meetingBlock, array $attributes): MeetingBlock
     {
         $meetingBlock->loadMissing('section.offering', 'section.instructor', 'room');
-        $payload = $this->preview($term, $meetingBlock->section, $attributes, $meetingBlock);
+        $payload = $this->preview($term, $meetingBlock->section, $attributes, $meetingBlock)['normalized'];
 
         if (array_key_exists('type', $attributes)) {
             $payload['type'] = $attributes['type'];

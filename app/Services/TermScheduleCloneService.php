@@ -19,6 +19,7 @@ class TermScheduleCloneService
         private readonly MeetingBlockMutationService $meetingBlocks,
         private readonly OfficeHourMutationService $officeHours,
         private readonly OpenLabMutationService $openLabs,
+        private readonly SectionInstructorAssignmentService $sections,
     ) {}
 
     public function cloneToDraft(Term $sourceTerm): Term
@@ -82,11 +83,11 @@ class TermScheduleCloneService
                 $offeringsCopied++;
 
                 foreach ($sourceOffering->sections->sortBy('id') as $sourceSection) {
-                    $targetSection = Section::create([
-                        'offering_id' => $targetOffering->id,
+                    $targetSection = $this->sections->createSection($targetTerm, $targetOffering, [
                         'section_code' => $sourceSection->section_code,
-                        'instructor_id' => $copyInstructorAssignments ? $sourceSection->instructor_id : null,
-                        'instructor_is_staff' => $copyInstructorAssignments && $sourceSection->instructor_is_staff,
+                        'instructor_id' => $copyInstructorAssignments
+                            ? ($sourceSection->instructor_is_staff ? Section::STAFF_ASSIGNMENT : $sourceSection->instructor_id)
+                            : null,
                         'modality' => $sourceSection->modality?->value ?? (string) $sourceSection->modality,
                         'notes' => $sourceSection->notes,
                         'section_capacity' => $sourceSection->section_capacity,

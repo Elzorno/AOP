@@ -273,6 +273,35 @@ class ScheduleSafetyWorkflowTest extends TestCase
         $this->assertSame('10:00', substr((string) $block->fresh()->starts_at, 0, 5));
     }
 
+    public function test_calendar_cannot_bypass_configured_institutional_enforcement(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $term = $this->createActiveTerm(['enforce_schedule_blocks' => true]);
+        $section = $this->createSection($term);
+        $room = Room::create(['name' => 'SCI-403', 'is_active' => true]);
+        $block = MeetingBlock::create([
+            'section_id' => $section->id,
+            'type' => 'LECTURE',
+            'days_json' => ['Fri'],
+            'starts_at' => '17:00',
+            'ends_at' => '19:50',
+            'room_id' => $room->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->postJson(route('aop.schedule.calendar.update', $term), [
+                'blockId' => $block->id,
+                'starts_at' => '12:00',
+                'ends_at' => '13:00',
+                'revision' => $this->revision($block),
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('status', 'error')
+            ->assertJsonStructure(['errors' => ['schedule_rules']]);
+
+        $this->assertSame('17:00', substr((string) $block->fresh()->starts_at, 0, 5));
+    }
+
     public function test_sections_index_missing_meeting_blocks_filter_works(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
