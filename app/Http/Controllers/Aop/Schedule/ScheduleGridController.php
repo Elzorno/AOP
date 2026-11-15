@@ -10,11 +10,14 @@ use App\Models\OfficeHourBlock;
 use App\Models\OpenLab;
 use App\Models\Room;
 use App\Models\Term;
+use App\Services\ScheduleEventReadAdapter;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class ScheduleGridController extends Controller
 {
     private const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+    public function __construct(private readonly ScheduleEventReadAdapter $eventReads) {}
 
     public function index(Term $term)
     {
@@ -81,18 +84,20 @@ class ScheduleGridController extends Controller
 
         $meetingBlocks = MeetingBlock::query()
             ->with(['section.offering.catalogCourse', 'section.instructor', 'room'])
-            ->whereHas('section', function ($q) use ($instructor, $term) {
-                $q->where('instructor_id', $instructor->id)
-                    ->whereHas('offering', fn ($qq) => $qq->where('term_id', $term->id));
-            })
+            ->whereHas('scheduledEvent', fn ($events) => $events
+                ->where('term_id', $term->id)
+                ->whereHas('staffAssignments', fn ($staff) => $staff->where('instructor_id', $instructor->id)))
             ->orderBy('starts_at')
             ->get();
+        $this->eventReads->meetingBlocks($meetingBlocks);
 
         $officeBlocks = OfficeHourBlock::query()
-            ->where('term_id', $term->id)
-            ->where('instructor_id', $instructor->id)
+            ->whereHas('scheduledEvent', fn ($events) => $events
+                ->where('term_id', $term->id)
+                ->whereHas('staffAssignments', fn ($staff) => $staff->where('instructor_id', $instructor->id)))
             ->orderBy('starts_at')
             ->get();
+        $this->eventReads->officeHours($officeBlocks);
 
         $events = [];
         $classStyle = $this->buildClassEventStyle($instructor->color_hex_css);
@@ -157,17 +162,17 @@ class ScheduleGridController extends Controller
 
         $meetingBlocks = MeetingBlock::query()
             ->with(['section.offering.catalogCourse', 'section.instructor', 'room'])
-            ->where('room_id', $room->id)
-            ->whereHas('section', fn ($q) => $q->whereHas('offering', fn ($qq) => $qq->where('term_id', $term->id)))
+            ->whereHas('scheduledEvent', fn ($events) => $events->where('term_id', $term->id)->where('room_id', $room->id))
             ->orderBy('starts_at')
             ->get();
+        $this->eventReads->meetingBlocks($meetingBlocks);
 
         $openLabs = OpenLab::query()
             ->with(['room', 'labTech'])
-            ->where('term_id', $term->id)
-            ->where('room_id', $room->id)
+            ->whereHas('scheduledEvent', fn ($events) => $events->where('term_id', $term->id)->where('room_id', $room->id))
             ->orderBy('starts_at')
             ->get();
+        $this->eventReads->openLabs($openLabs);
 
         $events = [];
 

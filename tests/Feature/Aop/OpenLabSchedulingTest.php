@@ -191,6 +191,35 @@ class OpenLabSchedulingTest extends TestCase
         $response->assertSeeText('Morgan Coverage');
     }
 
+    public function test_room_grid_filters_and_renders_from_authoritative_event(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $term = $this->createActiveTerm();
+        $legacyRoom = Room::create(['name' => 'ATC-230A', 'is_active' => true]);
+        $eventRoom = Room::create(['name' => 'ATC-230B', 'is_active' => true]);
+        $labTech = LabTech::create(['name' => 'Grid Authority', 'weekly_hour_limit' => 15, 'is_active' => true]);
+        $openLab = OpenLab::create([
+            'term_id' => $term->id,
+            'name' => 'Event-Owned Grid Lab',
+            'room_id' => $legacyRoom->id,
+            'lab_tech_id' => $labTech->id,
+            'days_json' => ['Tue'],
+            'starts_at' => '13:00',
+            'ends_at' => '14:00',
+        ]);
+        ScheduledEvent::query()->where('source_type', OpenLab::class)->where('source_id', $openLab->id)->update([
+            'room_id' => $eventRoom->id,
+            'days_json' => json_encode(['Wed']),
+            'starts_at' => '15:00',
+            'ends_at' => '16:00',
+        ]);
+
+        $this->actingAs($admin)->get(route('aop.schedule.grids.room', [$term, $legacyRoom]))
+            ->assertOk()->assertDontSee('Event-Owned Grid Lab');
+        $this->actingAs($admin)->get(route('aop.schedule.grids.room', [$term, $eventRoom]))
+            ->assertOk()->assertSee('Event-Owned Grid Lab');
+    }
+
     public function test_room_schedule_csv_includes_open_labs(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
