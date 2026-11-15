@@ -45,12 +45,6 @@ class Section extends Model
 
     protected static function booted(): void
     {
-        static::saved(function (self $section) {
-            $section->meetingBlocks()->get()->each(
-                fn (MeetingBlock $meetingBlock) => app(ScheduleEventSyncService::class)->syncMeetingBlock($meetingBlock)
-            );
-        });
-
         static::deleting(function (self $section) {
             app(ScheduleEventSyncService::class)->removeForSources(
                 MeetingBlock::class,

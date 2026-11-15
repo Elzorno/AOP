@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\ScheduleSuggestionService;
 use App\Services\ScheduleDistributionService;
 use App\Services\SectionCardBuilderService;
+use App\Services\SectionInstructorAssignmentService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -381,8 +382,16 @@ class OpenLabSchedulingTest extends TestCase
             'ends_at' => '10:00',
             'room_id' => $room->id,
         ]);
+        ScheduledEvent::query()
+            ->where('source_type', MeetingBlock::class)
+            ->where('source_id', $meetingBlock->id)
+            ->update(['days_json' => json_encode(['Fri']), 'starts_at' => '15:00', 'ends_at' => '16:00']);
 
-        $section->update(['instructor_id' => $secondInstructor->id]);
+        app(SectionInstructorAssignmentService::class)->updateSection(
+            $term,
+            $section,
+            ['instructor_id' => $secondInstructor->id],
+        );
         $event = ScheduledEvent::query()->where('source_type', MeetingBlock::class)->where('source_id', $meetingBlock->id)->firstOrFail();
 
         $this->assertDatabaseMissing('scheduled_event_staff_assignments', [
@@ -395,6 +404,13 @@ class OpenLabSchedulingTest extends TestCase
             'staff_type' => 'instructor',
             'staff_id' => $secondInstructor->id,
             'role' => 'instructor',
+        ]);
+        $this->assertDatabaseHas('scheduled_events', [
+            'source_type' => MeetingBlock::class,
+            'source_id' => $meetingBlock->id,
+            'days_json' => json_encode(['Fri']),
+            'starts_at' => '15:00',
+            'ends_at' => '16:00',
         ]);
     }
 

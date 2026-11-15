@@ -16,6 +16,7 @@ class SectionInstructorAssignmentService
     public function __construct(
         private readonly ScheduleConflictService $conflicts,
         private readonly MeetingBlockMutationService $meetingBlocks,
+        private readonly ScheduleEventSyncService $scheduleEvents,
     ) {}
 
     public function createSection(Term $term, Offering $offering, array $attributes, ?int $actorId = null): Section
@@ -46,6 +47,7 @@ class SectionInstructorAssignmentService
             $assignment = $this->assignmentFrom($attributes);
             $this->validateReassignment($term, collect([$section]), $assignment);
             $section->update([...$attributes, ...$assignment]);
+            $this->refreshMeetingBlockContext($section);
             $this->log($term, $section, 'section_updated', $before, $this->snapshot($section), $actorId);
 
             return $section->fresh(['offering.catalogCourse', 'instructor', 'meetingBlocks.room']);
@@ -74,6 +76,7 @@ class SectionInstructorAssignmentService
             foreach ($sections as $section) {
                 $before = $this->snapshot($section);
                 $section->update($assignment);
+                $this->refreshMeetingBlockContext($section);
                 $this->log($term, $section, 'section_updated', $before, $this->snapshot($section), $actorId);
             }
 
@@ -110,6 +113,14 @@ class SectionInstructorAssignmentService
             'instructor_id' => $instructorId,
             'instructor_is_staff' => $isStaff,
         ];
+    }
+
+    private function refreshMeetingBlockContext(Section $section): void
+    {
+        $section->loadMissing('offering.catalogCourse', 'instructor', 'meetingBlocks');
+        $section->meetingBlocks->each(
+            fn ($meetingBlock) => $this->scheduleEvents->refreshMeetingBlockContext($meetingBlock)
+        );
     }
 
     private function validateReassignment(Term $term, iterable $sections, array $assignment): void

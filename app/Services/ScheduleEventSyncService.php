@@ -12,6 +12,30 @@ use Illuminate\Support\Facades\Schema;
 
 class ScheduleEventSyncService
 {
+    public function refreshMeetingBlockContext(MeetingBlock $meetingBlock): ScheduledEvent
+    {
+        $meetingBlock->loadMissing('section.offering.catalogCourse', 'section.instructor');
+        $section = $meetingBlock->section;
+        $courseCode = $section->offering->catalogCourse?->code ?? 'Class';
+        $event = ScheduledEvent::query()
+            ->where('source_type', MeetingBlock::class)
+            ->where('source_id', $meetingBlock->id)
+            ->firstOrFail();
+
+        $event->display_name = trim($courseCode.' '.$section->section_code);
+        $event->revision = ((int) $event->revision) + 1;
+        $event->save();
+
+        $event->staffAssignments()->delete();
+        if ($section->instructor_id) {
+            $event->staffAssignments()->create(
+                $this->staffAttributes('instructor', $section->instructor_id, 'instructor')
+            );
+        }
+
+        return $event;
+    }
+
     public function syncMeetingBlock(MeetingBlock $meetingBlock): ScheduledEvent
     {
         $meetingBlock->loadMissing('section.offering.catalogCourse', 'section.instructor');
