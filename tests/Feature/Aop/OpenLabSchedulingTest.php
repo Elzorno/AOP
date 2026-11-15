@@ -194,6 +194,10 @@ class OpenLabSchedulingTest extends TestCase
         ]);
 
         $event = ScheduledEvent::query()->where('source_type', OpenLab::class)->where('source_id', $openLab->id)->firstOrFail();
+        $this->assertDatabaseHas('open_labs', [
+            'id' => $openLab->id,
+            'scheduled_event_id' => $event->id,
+        ]);
         $this->assertDatabaseHas('scheduled_event_staff_assignments', [
             'scheduled_event_id' => $event->id,
             'staff_type' => 'lab_tech',
@@ -271,7 +275,7 @@ class OpenLabSchedulingTest extends TestCase
             'is_active' => true,
         ]);
 
-        OpenLab::create([
+        $openLab = OpenLab::create([
             'term_id' => $term->id,
             'name' => 'Rebuild Lab',
             'room_id' => $room->id,
@@ -304,6 +308,8 @@ class OpenLabSchedulingTest extends TestCase
             'term_id' => $term->id,
             'event_type' => ScheduledEvent::TYPE_OPEN_LAB,
         ]);
+        $restoredEvent = ScheduledEvent::query()->where('source_type', OpenLab::class)->where('source_id', $openLab->id)->firstOrFail();
+        $this->assertDatabaseHas('open_labs', ['id' => $openLab->id, 'scheduled_event_id' => $restoredEvent->id]);
         $this->assertDatabaseHas('scheduled_events', [
             'id' => $unmatched->id,
             'display_name' => 'Preserve for reconciliation',

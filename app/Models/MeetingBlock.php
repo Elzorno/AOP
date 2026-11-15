@@ -20,6 +20,7 @@ class MeetingBlock extends Model
 
     public function section(): BelongsTo { return $this->belongsTo(Section::class); }
     public function room(): BelongsTo { return $this->belongsTo(Room::class); }
+    public function scheduledEvent(): BelongsTo { return $this->belongsTo(ScheduledEvent::class); }
 
     protected static function booted(): void
     {

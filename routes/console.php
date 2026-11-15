@@ -125,10 +125,10 @@ Artisan::command('aop:sync-scheduled-events {--term= : Term ID to inspect; defau
     $rows = $terms->map(function (Term $term) use ($sync) {
         $counts = $sync->reconcileTerm($term);
 
-        return [$term->code, $counts['sources'], $counts['events'], $counts['missing'], $counts['mismatched'], $counts['unmatched']];
+        return [$term->code, $counts['sources'], $counts['events'], $counts['missing'], $counts['mismatched'], $counts['unmatched'], $counts['link_mismatches']];
     })->all();
 
-    $this->table(['Term', 'Sources', 'Events', 'Missing', 'Mismatched', 'Unmatched'], $rows);
+    $this->table(['Term', 'Sources', 'Events', 'Missing', 'Mismatched', 'Unmatched', 'Bad links'], $rows);
     if (! $this->option('repair')) {
         $this->comment('Dry run only. Re-run with --repair to upsert source-backed projections.');
         return Command::SUCCESS;

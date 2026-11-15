@@ -35,6 +35,7 @@ class ScheduleEventSyncService
         if ($section->instructor_id) {
             $event->staffAssignments()->create($this->staffAttributes('instructor', $section->instructor_id, 'instructor'));
         }
+        $this->linkSource($meetingBlock, $event);
 
         return $event;
     }
@@ -55,6 +56,7 @@ class ScheduleEventSyncService
 
         $event->staffAssignments()->delete();
         $event->staffAssignments()->create($this->staffAttributes('lab_tech', $openLab->lab_tech_id, 'lab_tech'));
+        $this->linkSource($openLab, $event);
 
         return $event;
     }
@@ -76,6 +78,7 @@ class ScheduleEventSyncService
 
         $event->staffAssignments()->delete();
         $event->staffAssignments()->create($this->staffAttributes('instructor', $officeHourBlock->instructor_id, 'office_hours'));
+        $this->linkSource($officeHourBlock, $event);
 
         return $event;
     }
@@ -148,13 +151,19 @@ class ScheduleEventSyncService
         $sourceKeys = $sources->map(fn (object $source) => $source::class.':'.$source->getKey());
         $missing = 0;
         $mismatched = 0;
+        $linkMismatches = 0;
 
         foreach ($sources as $source) {
             $event = $eventsBySource->get($source::class.':'.$source->getKey());
             if (! $event) {
                 $missing++;
+                $linkMismatches++;
 
                 continue;
+            }
+
+            if ((int) $source->scheduled_event_id !== (int) $event->id) {
+                $linkMismatches++;
             }
 
             [$attributes, $staff] = $this->expectedProjection($source);
@@ -181,6 +190,7 @@ class ScheduleEventSyncService
             'missing' => $missing,
             'mismatched' => $mismatched,
             'unmatched' => $unmatched,
+            'link_mismatches' => $linkMismatches,
         ];
     }
 
@@ -251,6 +261,16 @@ class ScheduleEventSyncService
         }
 
         return $attributes;
+    }
+
+    private function linkSource(object $source, ScheduledEvent $event): void
+    {
+        if (! Schema::hasColumn($source->getTable(), 'scheduled_event_id')) {
+            return;
+        }
+
+        DB::table($source->getTable())->where('id', $source->getKey())->update(['scheduled_event_id' => $event->id]);
+        $source->setAttribute('scheduled_event_id', $event->id);
     }
 
     private function upsert(object $source, array $attributes): ScheduledEvent

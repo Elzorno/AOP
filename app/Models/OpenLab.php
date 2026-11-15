@@ -38,6 +38,11 @@ class OpenLab extends Model
         return $this->belongsTo(LabTech::class);
     }
 
+    public function scheduledEvent(): BelongsTo
+    {
+        return $this->belongsTo(ScheduledEvent::class);
+    }
+
     protected static function booted(): void
     {
         static::saved(fn (self $openLab) => app(ScheduleEventSyncService::class)->syncOpenLab($openLab));

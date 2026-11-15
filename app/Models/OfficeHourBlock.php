@@ -21,6 +21,7 @@ class OfficeHourBlock extends Model
 
     public function term(): BelongsTo { return $this->belongsTo(Term::class); }
     public function instructor(): BelongsTo { return $this->belongsTo(Instructor::class); }
+    public function scheduledEvent(): BelongsTo { return $this->belongsTo(ScheduledEvent::class); }
 
     protected static function booted(): void
     {
