@@ -184,6 +184,13 @@ class ScheduleSafetyWorkflowTest extends TestCase
         $block->refresh();
         $this->assertSame('10:00', substr((string) $block->starts_at, 0, 5));
         $this->assertSame('11:15', substr((string) $block->ends_at, 0, 5));
+        $this->assertDatabaseHas('schedule_change_logs', [
+            'term_id' => $term->id,
+            'section_id' => $section->id,
+            'meeting_block_id' => $block->id,
+            'user_id' => $admin->id,
+            'action' => 'updated',
+        ]);
     }
 
     public function test_sections_index_missing_meeting_blocks_filter_works(): void

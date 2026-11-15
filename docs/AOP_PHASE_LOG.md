@@ -308,3 +308,9 @@ This file tracks what each phase changed so the project remains understandable w
 ## Explicit retired-action release `26387ce` — deployed 2026-11-15
 - Atomically deployed the final administrator term-route slice without a schema migration; release `5fb4ea0` remains available for rollback.
 - Rebuilt production caches, reloaded PHP-FPM and nginx, and verified cached routes, production compatibility-export headers, SQLite integrity, HTTPS login and service health.
+
+## Consolidated meeting-block mutations — development checkpoint 2026-11-15
+- Extended `MeetingBlockMutationService` to own create, update and delete persistence plus hard time, room, instructor and ownership validation.
+- Wrapped persistence, scheduled-event projection hooks and schedule change logging in the same database transaction.
+- Routed both form and calendar updates through the service, so calendar edits now produce the same actor-aware audit evidence.
+- Verified create/update/delete audit behavior and existing conflict workflows; the full suite passes 109 tests / 393 assertions.

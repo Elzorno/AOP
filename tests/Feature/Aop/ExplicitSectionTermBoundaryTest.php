@@ -97,6 +97,46 @@ class ExplicitSectionTermBoundaryTest extends TestCase
         $this->assertDatabaseHas('meeting_blocks', ['id' => $block->id]);
     }
 
+    public function test_meeting_block_create_and_delete_share_transactional_audit_path(): void
+    {
+        $term = $this->term('AUDIT', true);
+        $section = $this->section($term, 'CIS-207');
+        $room = Room::query()->create(['name' => 'R-207', 'is_active' => true]);
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->post(route('aop.schedule.meetingBlocks.store', [$term, $section]), [
+                'type' => 'LECTURE',
+                'days' => ['Tue'],
+                'starts_at' => '10:00',
+                'ends_at' => '11:00',
+                'room_id' => $room->id,
+            ])
+            ->assertRedirect(route('aop.schedule.sections.edit', [$term, $section]));
+
+        $block = MeetingBlock::query()->firstOrFail();
+        $this->assertDatabaseHas('schedule_change_logs', [
+            'term_id' => $term->id,
+            'section_id' => $section->id,
+            'meeting_block_id' => $block->id,
+            'user_id' => $admin->id,
+            'action' => 'created',
+        ]);
+
+        $this->actingAs($admin)
+            ->delete(route('aop.schedule.meetingBlocks.destroy', [$term, $section, $block]))
+            ->assertRedirect(route('aop.schedule.sections.edit', [$term, $section]));
+
+        $this->assertDatabaseMissing('meeting_blocks', ['id' => $block->id]);
+        $this->assertDatabaseHas('schedule_change_logs', [
+            'term_id' => $term->id,
+            'section_id' => $section->id,
+            'meeting_block_id' => null,
+            'user_id' => $admin->id,
+            'action' => 'deleted',
+        ]);
+    }
+
     public function test_bulk_assignment_rejects_a_mixed_term_request_without_partial_updates(): void
     {
         $first = $this->term('FIRST', true);
