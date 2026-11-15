@@ -2,7 +2,7 @@
 
 Prepared 14 November 2026. Status: phases 1–4 are deployed. All supported scheduling writes use typed commands and shared transactional mutation services; the write-path inventory is recorded in `docs/SCHEDULE_WRITE_PATH_INVENTORY.md`. Phase 5 is in its expand/reconcile stage with non-destructive reconciliation and constrained staff references deployed.
 
-Current production release: `92286e6` through `/var/www/aop-current`. The isolated suite passes 122 tests / 492 assertions. Phase 4 is complete: meeting, open-lab and office-hour writes use typed commands at every supported form, calendar, unified-event and clone entry point. Reconciliation remains at 37 sources and 37 events with zero drift. Release `a65800c` is the immediate application rollback target. Verified pre-release database checkpoint: `/root/aop-backups/20261115T172650Z-pre-92286e6`.
+Current production release: `5af0682` through `/var/www/aop-current`. The isolated suite passes 122 tests / 494 assertions. Phase 4 is complete. Phase 5 source records now carry unique foreign-key links to their scheduled events, and synchronization maintains those links without recursive model saves. Production has 37 sources and 37 events with zero missing, mismatched, unmatched or incorrectly linked records. Release `92286e6` is the application rollback target after reversing migration batch 30. Verified pre-release database checkpoint: `/root/aop-backups/20261115T173611Z-pre-5af0682`.
 
 ## Outcome and constraints
 
@@ -228,5 +228,6 @@ Release `dc60a9d` was the initial security and phase-3 identity checkpoint: null
 - Added dry-run reconciliation in `e0435c4`; repair now requires `--repair` and retains the exact-database maintenance guard. The production audit found 37 source records and 37 projected events with no missing, mismatched or unmatched rows across four terms.
 - Added constrained staff targets in `a65800c`. The expand-stage table retains legacy type/ID columns, adds instructor and lab-tech foreign keys, and enforces exactly one matching typed target. All 35 production assignments migrated cleanly and foreign-key validation found no violations.
 - Completed the phase-4 write boundary in `92286e6`. Meeting blocks, open labs and office hours now require typed commands across form, calendar, unified-event and clone entry points; `docs/SCHEDULE_WRITE_PATH_INVENTORY.md` records the audited paths.
+- Linked every type-specific source to its scheduled event in `5af0682` with nullable unique foreign keys for the expand stage. All 37 production links backfilled successfully, and reconciliation now checks link parity independently from event fields and staff.
 - Widened `schedule_change_logs.section_id` to nullable so non-section schedule operations can use the same audit mechanism without placeholder section records.
-- Verified 122 tests / 492 assertions, migration status, SQLite integrity and foreign keys, reconciliation parity, service resolution, route responses and HTTPS login. Release `a65800c` is the immediate application rollback target.
+- Verified 122 tests / 494 assertions, migration status, SQLite integrity and foreign keys, reconciliation and link parity, service resolution, route responses and HTTPS login. To select `92286e6`, reverse migration batch 30 first using release `5af0682`.
