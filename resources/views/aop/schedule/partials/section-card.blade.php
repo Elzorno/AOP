@@ -167,7 +167,15 @@
             <label for="block_notes_{{ $meetingBlock->id }}">Notes</label>
             <input id="block_notes_{{ $meetingBlock->id }}" name="notes" value="{{ $meetingBlock->notes }}" placeholder="Optional notes">
 
-            <div x-show="hasConflict" x-cloak class="conflict-preview-alert">
+            <div x-show="hasFeedback" x-cloak class="conflict-preview-alert" role="status" aria-live="polite">
+              <p x-show="checking" class="conflict-preview-note">Checking schedule…</p>
+              <template x-for="finding in findings" :key="finding.rule_id">
+                <div class="conflict-preview-item">
+                  <strong x-text="finding.severity === 'error' ? 'Required' : 'Advisory'"></strong>
+                  <span x-text="finding.explanation"></span>
+                  <small x-text="finding.policy_version"></small>
+                </div>
+              </template>
               <template x-for="c in conflicts" :key="c">
                 <div class="conflict-preview-item" x-text="c"></div>
               </template>
@@ -243,7 +251,15 @@
           <label for="new_block_notes_{{ $section->id }}">Notes</label>
           <input id="new_block_notes_{{ $section->id }}" name="notes" placeholder="Optional notes">
 
-          <div x-show="hasConflict" x-cloak class="conflict-preview-alert">
+          <div x-show="hasFeedback" x-cloak class="conflict-preview-alert" role="status" aria-live="polite">
+            <p x-show="checking" class="conflict-preview-note">Checking schedule…</p>
+            <template x-for="finding in findings" :key="finding.rule_id">
+              <div class="conflict-preview-item">
+                <strong x-text="finding.severity === 'error' ? 'Required' : 'Advisory'"></strong>
+                <span x-text="finding.explanation"></span>
+                <small x-text="finding.policy_version"></small>
+              </div>
+            </template>
             <template x-for="c in conflicts" :key="c">
               <div class="conflict-preview-item" x-text="c"></div>
             </template>
