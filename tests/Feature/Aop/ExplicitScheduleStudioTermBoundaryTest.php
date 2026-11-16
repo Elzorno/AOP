@@ -47,6 +47,25 @@ class ExplicitScheduleStudioTermBoundaryTest extends TestCase
             ->assertJsonPath('impact.policy_version', 'compatibility-v1');
     }
 
+    public function test_section_editor_exposes_accessible_normalized_distribution_preview(): void
+    {
+        $selected = $this->term('SELECTED', true);
+        $offering = $this->offering($selected, 'SELECTED-101');
+        $section = $offering->sections()->create([
+            'section_code' => '01',
+            'modality' => 'IN_PERSON',
+        ]);
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->get(route('aop.schedule.sections.edit', [$selected, $section]))
+            ->assertOk()
+            ->assertSee('id="distPreviewPanel"', false)
+            ->assertSee('aria-live="polite"', false)
+            ->assertSee('i.findings', false)
+            ->assertSee('Distribution preview is temporarily unavailable');
+    }
+
     public function test_legacy_get_preserves_query_and_redirects_to_selected_term(): void
     {
         $this->term('ACTIVE', true);

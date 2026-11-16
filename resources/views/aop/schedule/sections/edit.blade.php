@@ -311,7 +311,7 @@
             <label for="new_block_notes">Notes</label>
             <input id="new_block_notes" name="notes" value="{{ $isAddingNewBlock ? old('notes') : '' }}" placeholder="Optional notes">
 
-            <div id="distPreviewPanel" hidden style="margin-top:12px;"></div>
+            <div id="distPreviewPanel" role="status" aria-live="polite" tabindex="-1" hidden style="margin-top:12px;"></div>
 
             <div class="section-actions">
               <button class="btn" type="submit">Add Meeting Block</button>
@@ -459,6 +459,7 @@
 
         status.textContent = 'Slot applied — review the room below and save when ready.';
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        schedulePreview();
       };
 
       button?.addEventListener('click', async () => {
@@ -547,22 +548,43 @@
       }
 
       let previewTimer = null;
+      let previewSequence = 0;
       function schedulePreview() {
         clearTimeout(previewTimer);
-        previewTimer = setTimeout(async () => {
-          const inputs = collectNewBlockInputs();
-          if (!inputs || inputs.days.length === 0 || !inputs.startsAt || !inputs.endsAt || inputs.endsAt <= inputs.startsAt) {
-            if (previewPanel) previewPanel.hidden = true;
-            return;
+        const sequence = ++previewSequence;
+        const inputs = collectNewBlockInputs();
+        if (!inputs || inputs.days.length === 0 || !inputs.startsAt || !inputs.endsAt || inputs.endsAt <= inputs.startsAt) {
+          if (previewPanel) {
+            previewPanel.hidden = true;
+            previewPanel.replaceChildren();
           }
+          return;
+        }
+
+        if (previewPanel) {
+          previewPanel.hidden = false;
+          previewPanel.setAttribute('role', 'status');
+          previewPanel.setAttribute('aria-live', 'polite');
+          previewPanel.textContent = 'Checking distribution impact…';
+        }
+
+        previewTimer = setTimeout(async () => {
           const params = new URLSearchParams({ starts_at: inputs.startsAt, ends_at: inputs.endsAt });
           inputs.days.forEach(d => params.append('days[]', d));
           try {
             const resp = await fetch(`${previewUrl}?${params.toString()}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-            if (!resp.ok) return;
+            if (!resp.ok) throw new Error('Preview request failed');
             const data = await resp.json();
+            if (sequence !== previewSequence) return;
             renderPreview(data, previewPanel);
-          } catch {}
+          } catch {
+            if (sequence !== previewSequence || !previewPanel) return;
+            previewPanel.hidden = false;
+            previewPanel.setAttribute('role', 'alert');
+            previewPanel.setAttribute('aria-live', 'assertive');
+            previewPanel.textContent = 'Distribution preview is temporarily unavailable. You can still save the meeting block.';
+            previewPanel.focus();
+          }
         }, 350);
       }
 
@@ -576,10 +598,18 @@
           return `${sign}${d.toFixed(1)}pp`;
         };
         const flagClass = (flag) => flag ? 'dist-preview-warn' : 'dist-preview-good';
+        const findings = Array.isArray(i.findings) ? i.findings : [];
+        const findingsHtml = findings.length > 0
+          ? `<div class="mt-3"><strong>Advisory findings</strong><ul class="mt-1 list-disc pl-5">${findings.map((finding) => `
+              <li>${escapeHtml(finding.explanation)} <span class="text-xs">(${escapeHtml(finding.rule_id)}, ${escapeHtml(finding.policy_version)})</span></li>
+            `).join('')}</ul></div>`
+          : '<p class="mt-3">No distribution targets are missed by this preview.</p>';
 
         panel.hidden = false;
+        panel.setAttribute('role', 'status');
+        panel.setAttribute('aria-live', 'polite');
         panel.innerHTML = `
-          <div class="dist-preview-title">Distribution impact preview</div>
+          <div class="dist-preview-title">Distribution impact preview <span class="text-xs">Policy ${escapeHtml(i.policy_version)}</span></div>
           <div class="dist-preview-grid">
             <div class="dist-preview-stat ${flagClass(i.flags.friday_low)}">
               <span class="dist-preview-value">${i.friday_pct}%</span>
@@ -601,7 +631,8 @@
               <span class="dist-preview-label">TR %</span>
               <span class="dist-preview-delta">${fmtDelta(b.tr_pct, i.tr_pct)}</span>
             </div>
-          </div>`;
+          </div>
+          ${findingsHtml}`;
       }
 
       document.getElementById('addBlockForm')?.addEventListener('change', schedulePreview);
