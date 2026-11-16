@@ -27,7 +27,13 @@ class ExplicitCalendarTermBoundaryTest extends TestCase
         $this->actingAs($admin)
             ->get(route('aop.schedule.calendar.index', $selected))
             ->assertOk()
-            ->assertSee('SELECTED');
+            ->assertSee('SELECTED')
+            ->assertSee('id="calendarStatus"', false)
+            ->assertSee('aria-live="polite"', false)
+            ->assertSee('tabindex="-1"', false)
+            ->assertSee('id="calendarReload"', false)
+            ->assertSee("data.errors && data.errors.revision", false)
+            ->assertSee("info.revert()", false);
         $this->actingAs($admin)
             ->getJson(route('aop.schedule.calendar.events', $selected))
             ->assertOk()
