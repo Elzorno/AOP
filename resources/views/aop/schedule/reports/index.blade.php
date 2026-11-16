@@ -1,7 +1,7 @@
 <x-aop-layout>
   <x-slot:title>Registrar Schedule Export</x-slot:title>
 
-  <div class="row" style="margin-bottom:14px;">
+  <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
     <div>
       <h1>Registrar Schedule Export</h1>
       @if($term)
@@ -11,7 +11,7 @@
         <p class="muted">No active term is set.</p>
       @endif
     </div>
-    <div class="actions">
+    <div class="flex flex-wrap gap-2">
       <a class="btn secondary" href="{{ route('aop.schedule.home', $term) }}">Back to Schedule</a>
       @if(!$term)
         <a class="btn" href="{{ route('aop.terms.index') }}">Go to Terms</a>
@@ -54,7 +54,7 @@
       </div>
     </div>
 
-    <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+    <div class="grid gap-4 lg:grid-cols-2">
       <div class="card">
         <h2>Overview</h2>
         <div class="muted" style="margin-top:8px;">
@@ -84,55 +84,43 @@
       </div>
     </div>
 
-    <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top:14px;">
+    <div class="mt-4 grid gap-4 lg:grid-cols-2">
       <div class="card">
         <h2>Export Instructor Schedule</h2>
         <p class="muted">Includes classes + office hours.</p>
-        <div class="row" style="gap:10px; align-items:flex-end;">
-          <div style="flex:1;">
-            <label class="label">Instructor</label>
-            <select class="input" id="instructorSelect">
+        <form method="GET" action="{{ route('aop.schedule.reports.exportSelectedInstructor', $term) }}" class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div class="min-w-0 flex-1">
+            <label class="label" for="instructor_id">Instructor</label>
+            <select class="input" id="instructor_id" name="instructor_id" required>
               <option value="">Select...</option>
               @foreach($instructors as $ins)
                 <option value="{{ $ins->id }}">{{ $ins->name }}</option>
               @endforeach
             </select>
           </div>
-          <div>
-            <button class="btn" type="button" onclick="
-              const id=document.getElementById('instructorSelect').value;
-              if(!id){ alert('Select an instructor.'); return; }
-              window.location='{{ route('aop.schedule.reports.exportInstructor', [$term, '__INSTRUCTOR__']) }}'.replace('__INSTRUCTOR__', id);
-            ">Download CSV</button>
-          </div>
-        </div>
+          <button class="btn" type="submit">Download CSV</button>
+        </form>
       </div>
 
       <div class="card">
         <h2>Export Room Schedule</h2>
         <p class="muted">Includes classes and open labs (office hours excluded).</p>
-        <div class="row" style="gap:10px; align-items:flex-end;">
-          <div style="flex:1;">
-            <label class="label">Room</label>
-            <select class="input" id="roomSelect">
+        <form method="GET" action="{{ route('aop.schedule.reports.exportSelectedRoom', $term) }}" class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div class="min-w-0 flex-1">
+            <label class="label" for="room_id">Room</label>
+            <select class="input" id="room_id" name="room_id" required>
               <option value="">Select...</option>
               @foreach($rooms as $r)
                 <option value="{{ $r->id }}">{{ $r->name }}</option>
               @endforeach
             </select>
           </div>
-          <div>
-            <button class="btn" type="button" onclick="
-              const id=document.getElementById('roomSelect').value;
-              if(!id){ alert('Select a room.'); return; }
-              window.location='{{ route('aop.schedule.reports.exportRoom', [$term, '__ROOM__']) }}'.replace('__ROOM__', id);
-            ">Download CSV</button>
-          </div>
-        </div>
+          <button class="btn" type="submit">Download CSV</button>
+        </form>
       </div>
     </div>
 
-    <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top:14px;">
+    <div class="mt-4 grid gap-4 lg:grid-cols-2">
       <div class="card">
         <h2>Unassigned</h2>
 

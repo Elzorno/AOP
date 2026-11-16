@@ -14,6 +14,7 @@ use App\Models\Term;
 use App\Services\ScheduleEventReadAdapter;
 use App\Support\SafeCsv;
 use Carbon\CarbonInterface;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ScheduleReportsController extends Controller
@@ -134,6 +135,24 @@ class ScheduleReportsController extends Controller
     public function exportTerm(Term $term): StreamedResponse
     {
         return $this->exportRegistrar($term);
+    }
+
+    public function exportSelectedInstructor(Request $request, Term $term): StreamedResponse
+    {
+        $data = $request->validate([
+            'instructor_id' => 'required|integer|exists:instructors,id',
+        ]);
+
+        return $this->exportInstructor($term, Instructor::query()->findOrFail($data['instructor_id']));
+    }
+
+    public function exportSelectedRoom(Request $request, Term $term): StreamedResponse
+    {
+        $data = $request->validate([
+            'room_id' => 'required|integer|exists:rooms,id',
+        ]);
+
+        return $this->exportRoom($term, Room::query()->findOrFail($data['room_id']));
     }
 
     public function exportInstructor(Term $term, Instructor $instructor): StreamedResponse

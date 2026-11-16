@@ -239,6 +239,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/', [ScheduleReportsController::class, 'index'])->name('schedule.reports.index');
             Route::get('/export/registrar', [ScheduleReportsController::class, 'exportRegistrar'])->name('schedule.reports.exportRegistrar');
             Route::get('/export/term', [ScheduleReportsController::class, 'exportTerm'])->name('schedule.reports.exportTerm');
+            Route::get('/export/instructor', [ScheduleReportsController::class, 'exportSelectedInstructor'])->name('schedule.reports.exportSelectedInstructor');
+            Route::get('/export/room', [ScheduleReportsController::class, 'exportSelectedRoom'])->name('schedule.reports.exportSelectedRoom');
             Route::get('/export/instructors/{instructor}', [ScheduleReportsController::class, 'exportInstructor'])->name('schedule.reports.exportInstructor');
             Route::get('/export/rooms/{room}', [ScheduleReportsController::class, 'exportRoom'])->name('schedule.reports.exportRoom');
         });
