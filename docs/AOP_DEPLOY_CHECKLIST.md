@@ -64,6 +64,8 @@ scripts/deploy-release.sh --verify-only /path/aop-<release>.tar.gz /path/aop-<re
 
 The guarded deployment script consumes explicit environment paths rather than assuming a host layout. It verifies the artifact, takes an online SQLite and environment backup, runs guarded migrations and release-specific caches, atomically changes the current pointer, reloads named services, and restores the previous code pointer if a smoke check fails. See `scripts/deploy-release.sh` for the required variables. Database migrations are not automatically reversed; migrations must remain backward-compatible through the rollback window.
 
+The exact production variables, commands, evidence to record and compatible-release selection procedure are in `docs/RELEASE_RUNBOOK.md`.
+
 ## 6. Upgrade optimization
 
 ```bash
