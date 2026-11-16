@@ -44,6 +44,7 @@ class TrustedProxyHttpsTest extends TestCase
     {
         config()->set('aop.trusted_proxies', ['192.168.1.167']);
         config()->set('aop.enforce_https', true);
+        $this->app['url']->forceRootUrl('http://127.0.0.1:8081');
 
         $response = $this->withServerVariables([
             'REMOTE_ADDR' => '192.168.1.167',
