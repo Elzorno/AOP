@@ -32,12 +32,16 @@ class ExplicitCalendarTermBoundaryTest extends TestCase
             ->assertSee('aria-live="polite"', false)
             ->assertSee('tabindex="-1"', false)
             ->assertSee('id="calendarReload"', false)
+            ->assertSee('focus a class meeting and press Enter')
             ->assertSee("data.errors && data.errors.revision", false)
             ->assertSee("info.revert()", false);
         $this->actingAs($admin)
             ->getJson(route('aop.schedule.calendar.events', $selected))
             ->assertOk()
-            ->assertJsonFragment(['blockId' => $block->id]);
+            ->assertJsonFragment([
+                'blockId' => $block->id,
+                'url' => route('aop.schedule.sections.edit', [$selected, $block->section_id]),
+            ]);
     }
 
     public function test_calendar_update_rejects_a_block_from_another_term_without_mutation(): void

@@ -5,7 +5,7 @@
     <section class="page-header">
       <span class="page-eyebrow">Weekly Grid</span>
       <h1 class="page-title">Schedule — {{ $term->code }}</h1>
-      <p class="page-subtitle">Drag class blocks up or down to adjust meeting times. Open labs are shown for room visibility but are edited from the Open Labs screen.</p>
+      <p class="page-subtitle">Drag class blocks up or down to adjust meeting times. To edit without dragging, focus a class meeting and press Enter to open its section editor. Open labs are shown for room visibility but are edited from the Open Labs screen.</p>
 
       <div class="toolbar-line">
         <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Back to Schedule</a>

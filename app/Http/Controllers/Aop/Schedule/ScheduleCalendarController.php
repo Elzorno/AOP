@@ -36,7 +36,7 @@ class ScheduleCalendarController extends Controller
     {
         $rooms = Room::where('is_active', true)->orderBy('name')->get();
 
-        $events = $this->buildEvents($this->scheduledEventsForTerm($term));
+        $events = $this->buildEvents($term, $this->scheduledEventsForTerm($term));
 
         return view('aop.schedule.calendar.index', [
             'term' => $term,
@@ -50,7 +50,7 @@ class ScheduleCalendarController extends Controller
      */
     public function events(Term $term)
     {
-        return response()->json($this->buildEvents($this->scheduledEventsForTerm($term)));
+        return response()->json($this->buildEvents($term, $this->scheduledEventsForTerm($term)));
     }
 
     public function preview(Request $request, Term $term, MeetingBlockMutationService $mutationService)
@@ -160,7 +160,7 @@ class ScheduleCalendarController extends Controller
         return $events;
     }
 
-    private function buildEvents($scheduledEvents): array
+    private function buildEvents(Term $term, $scheduledEvents): array
     {
         $events = [];
 
@@ -204,6 +204,9 @@ class ScheduleCalendarController extends Controller
                     'backgroundColor' => $color,
                     'borderColor' => $isOpenLab ? '#B45309' : $color,
                     'editable' => $isClass,
+                    'url' => $isClass && $source?->section_id
+                        ? route('aop.schedule.sections.edit', [$term, $source->section_id])
+                        : null,
                     'extendedProps' => [
                         'eventKind' => $scheduledEvent->event_type,
                         'blockId' => $isClass ? $source?->id : null,
