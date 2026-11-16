@@ -66,3 +66,14 @@ Record:
 - HTTPS login/asset results;
 - reconciliation, integrity and foreign-key results;
 - operator and UTC timestamp.
+
+## Consistent local backup
+
+`create-backup.sh` captures a transaction-consistent SQLite copy, the environment, and durable `storage/app` content. It verifies SQLite integrity/foreign keys, the storage archive and SHA-256 checksums before atomically publishing the backup directory.
+
+```bash
+export AOP_BACKUP_LOCK=/run/lock/aop-backup.lock
+scripts/create-backup.sh daily
+```
+
+It uses the other production path variables from this runbook and records the selected artifact release when `AOP_CURRENT_LINK` is set. Framework sessions, caches, compiled views and logs are deliberately excluded. Local backup success is not disaster recovery until an encrypted copy is retrieved from an independent operator-selected destination.
