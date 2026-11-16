@@ -89,7 +89,8 @@ jobs:
         run: scripts/build-release.sh "$GITHUB_WORKSPACE" "$RUNNER_TEMP/aop-release"
 
       - name: Verify release checksum
-        run: sha256sum --check "$RUNNER_TEMP/aop-release/"*.sha256
+        working-directory: ${{ runner.temp }}/aop-release
+        run: sha256sum --check *.sha256
 
       - name: Upload verified artifact
         uses: actions/upload-artifact@v4
