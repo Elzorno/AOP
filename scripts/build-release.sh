@@ -92,6 +92,7 @@ artifact_path="$output_directory/$artifact_name"
         --numeric-owner \
         --exclude='./database/*.sqlite*' \
         --exclude='./node_modules' \
+        --exclude='./storage' \
         -cf - . | gzip -n > "$artifact_path"
 )
 
