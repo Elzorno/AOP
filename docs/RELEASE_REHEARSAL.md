@@ -42,3 +42,11 @@ No database restore was performed. The rehearsal proves automatic code-pointer r
 - Stopped the loopback server after the checks. The retained rehearsal directory and its parent are mode 0700; `.env` and SQLite are mode 0600.
 
 The source database SHA-256 was `8af25fcbfe3d78ad95659a51cf5d15a6ce339d4a091e278f1ac90fa2288beb3d`. The isolated database changed during the intentional login/session test and therefore is not expected to retain that hash.
+
+## Scheduled verified local backup
+
+- `scripts/create-backup.sh phase8-rehearsal` produced `/root/aop-backups/20261116T110116Z-phase8-rehearsal`; all files are mode 0600 and its manifest, SHA-256, SQLite integrity, foreign-key and storage-archive checks pass.
+- Deployed artifact release `6d6594188cc3`, which preserves executable modes for repository operational scripts.
+- Installed and enabled `aop-backup.timer`. Its sandboxed service can write only the backup/lock paths and reads application/runtime sources.
+- The first systemd run produced `/root/aop-backups/20261116T110326Z-daily` for release `6d6594188cc3`; its manifest and all checksums pass.
+- The timer runs daily at 2:15 AM Eastern with up to 15 minutes of randomized delay and persistent catch-up. No automatic deletion is enabled pending an approved retention and off-host policy.

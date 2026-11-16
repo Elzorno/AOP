@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - modernization/2026-11-14
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-audit:
+    name: Test, audit, and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, dom, fileinfo, mbstring, pdo_sqlite, sqlite3, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Create disposable discovery database
+        run: install -m 600 /dev/null database/database.sqlite
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install frontend dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Audit PHP dependencies
+        run: composer audit --locked --no-interaction
+
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=high
+
+      - name: Run isolated application tests
+        run: composer test
+
+      - name: Build frontend assets
+        run: npm run build
+
+  release-artifact:
+    name: Build guarded release artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: test-and-audit
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, dom, fileinfo, mbstring, pdo_sqlite, sqlite3, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Build release artifact
+        run: scripts/build-release.sh "$GITHUB_WORKSPACE" "$RUNNER_TEMP/aop-release"
+
+      - name: Verify release checksum
+        run: sha256sum --check "$RUNNER_TEMP/aop-release/"*.sha256
+
+      - name: Upload verified artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aop-release-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/aop-release/*.tar.gz
+            ${{ runner.temp }}/aop-release/*.sha256
+          if-no-files-found: error
+          retention-days: 14
