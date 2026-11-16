@@ -44,7 +44,7 @@ fi
 temporary_root=$(mktemp -d "${TMPDIR:-/tmp}/aop-release-build.XXXXXX")
 cleanup() {
     case "$temporary_root" in
-        "${TMPDIR:-/tmp}"/aop-release-build.*) rm -rf -- "$temporary_root" ;;
+        "${TMPDIR:-/tmp}"/aop-release-build.*) find "$temporary_root" -depth -delete ;;
         *) echo "Refusing to remove unexpected temporary path: $temporary_root" >&2 ;;
     esac
 }
@@ -53,6 +53,7 @@ trap cleanup EXIT
 stage_directory="$temporary_root/aop"
 mkdir -p "$stage_directory"
 git -C "$source_checkout" archive "$release_commit" | tar -x -C "$stage_directory"
+install -m 600 /dev/null "$stage_directory/database/database.sqlite"
 
 (
     cd "$stage_directory"
@@ -65,6 +66,8 @@ git -C "$source_checkout" archive "$release_commit" | tar -x -C "$stage_director
     npm ci --ignore-scripts
     npm run build
 )
+
+unlink "$stage_directory/database/database.sqlite"
 
 cat > "$stage_directory/RELEASE" <<EOF
 release_id=$release_id
@@ -83,6 +86,7 @@ artifact_path="$output_directory/$artifact_name"
         --owner=0 \
         --group=0 \
         --numeric-owner \
+        --exclude='./database/*.sqlite*' \
         --exclude='./node_modules' \
         -cf - . | gzip -n > "$artifact_path"
 )
