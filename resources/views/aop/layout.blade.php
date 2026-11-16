@@ -23,6 +23,7 @@
   </style>
 </head>
 <body class="font-sans antialiased text-slate-900 min-h-screen selection:bg-blue-100 selection:text-blue-900">
+<a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:font-semibold focus:text-blue-700 focus:shadow-xl">Skip to main content</a>
 @php
   $navGroups = [
     [
@@ -167,6 +168,19 @@
               @endforeach
             @endforeach
           </div>
+
+          @if ($inSchedule)
+            <nav class="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label="Schedule navigation">
+              @foreach ($scheduleSubNav as $sub)
+                <a
+                  href="{{ route($sub['route']) }}"
+                  class="nav-pill whitespace-nowrap {{ request()->routeIs($sub['match']) ? 'nav-pill-active bg-blue-700 text-white border-blue-700' : 'nav-pill-idle bg-blue-50 text-blue-800 border-blue-100' }}"
+                >
+                  {{ $sub['label'] }}
+                </a>
+              @endforeach
+            </nav>
+          @endif
         </div>
 
         <div class="hidden md:flex md:items-center md:justify-between md:gap-6">
@@ -182,7 +196,7 @@
       </div>
     </header>
 
-    <main class="mx-auto w-full max-w-[1680px] px-6 py-8 xl:px-10">
+    <main id="main-content" tabindex="-1" class="mx-auto w-full max-w-[1680px] px-4 py-6 sm:px-6 sm:py-8 xl:px-10">
       @if (session('schedule_warnings'))
         <div class="mb-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50/95 p-4 shadow-sm">
           <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>

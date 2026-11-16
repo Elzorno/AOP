@@ -19,7 +19,9 @@
       <button id="calendarReload" type="button" class="btn secondary sm ml-3 hidden">Reload calendar</button>
     </div>
 
-    <div id="calendar" class="rounded-2xl border border-slate-200 bg-white shadow-sm"></div>
+    <div class="overflow-x-auto rounded-2xl" aria-label="Weekly schedule calendar; scroll horizontally on smaller screens">
+      <div id="calendar" class="min-w-[56rem] rounded-2xl border border-slate-200 bg-white shadow-sm"></div>
+    </div>
   </div>
 
   <script>

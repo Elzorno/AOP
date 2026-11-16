@@ -26,6 +26,11 @@
         color: var(--aop-text);
     }
 
+    :where(a, button, input, select, textarea, summary):focus-visible {
+        outline: 3px solid #2563eb;
+        outline-offset: 3px;
+    }
+
     /* Legacy Layout Shims */
     .card {
         @apply rounded-3xl border p-6;

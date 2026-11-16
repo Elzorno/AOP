@@ -32,6 +32,11 @@ class ExplicitCalendarTermBoundaryTest extends TestCase
             ->assertSee('aria-live="polite"', false)
             ->assertSee('tabindex="-1"', false)
             ->assertSee('id="calendarReload"', false)
+            ->assertSee('Skip to main content')
+            ->assertSee('id="main-content"', false)
+            ->assertSee('aria-label="Schedule navigation"', false)
+            ->assertSee('scroll horizontally on smaller screens')
+            ->assertSee('min-w-[56rem]', false)
             ->assertSee('focus a class meeting and press Enter')
             ->assertSee("data.errors && data.errors.revision", false)
             ->assertSee("info.revert()", false);
