@@ -19,6 +19,7 @@ use App\Services\ScheduleDistributionService;
 use App\Services\ScheduleEventReadAdapter;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Validation\ValidationException;
 
 class ScheduleHomeController extends Controller
 {
@@ -318,12 +319,33 @@ class ScheduleHomeController extends Controller
      */
     public function distributionPreview(Request $request, Term $term, ScheduleDistributionService $distributionService)
     {
-        $days     = array_filter((array) $request->input('days', []), fn($d) => is_string($d));
-        $startsAt = (string) $request->input('starts_at', '');
-        $endsAt   = (string) $request->input('ends_at', '');
+        $data = $request->validate([
+            'section_id' => 'required|integer|exists:sections,id',
+            'days' => 'required|array|min:1',
+            'days.*' => 'string|in:Mon,Tue,Wed,Thu,Fri,Sat,Sun|distinct',
+            'starts_at' => 'required|date_format:H:i',
+            'ends_at' => 'required|date_format:H:i|after:starts_at',
+        ]);
+
+        $section = Section::query()
+            ->whereKey($data['section_id'])
+            ->whereHas('offering', fn ($query) => $query->where('term_id', $term->id))
+            ->first();
+
+        if (! $section) {
+            throw ValidationException::withMessages([
+                'section_id' => 'Section does not belong to the requested term.',
+            ]);
+        }
 
         $base   = $distributionService->compute($term);
-        $impact = $distributionService->previewBlock($term, $days, $startsAt, $endsAt);
+        $impact = $distributionService->previewBlock(
+            $term,
+            $section,
+            $data['days'],
+            $data['starts_at'],
+            $data['ends_at'],
+        );
 
         return response()->json([
             'base'   => $base,

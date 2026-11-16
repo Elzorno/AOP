@@ -569,7 +569,11 @@
         }
 
         previewTimer = setTimeout(async () => {
-          const params = new URLSearchParams({ starts_at: inputs.startsAt, ends_at: inputs.endsAt });
+          const params = new URLSearchParams({
+            section_id: '{{ $section->id }}',
+            starts_at: inputs.startsAt,
+            ends_at: inputs.endsAt,
+          });
           inputs.days.forEach(d => params.append('days[]', d));
           try {
             const resp = await fetch(`${previewUrl}?${params.toString()}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });

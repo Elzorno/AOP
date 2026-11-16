@@ -136,12 +136,11 @@ class ScheduleDistributionService
     }
 
     /**
-     * Compute distribution impact of adding a hypothetical block with the given
-     * days/time to the active term.
+     * Compute distribution impact of adding a block to an existing section.
      *
      * Returns the same shape as compute() but with the hypothetical block counted.
      */
-    public function previewBlock(Term $term, array $days, string $startsAt, string $endsAt): array
+    public function previewBlock(Term $term, Section $section, array $days, string $startsAt, string $endsAt): array
     {
         if (empty($days) || $startsAt === '' || $endsAt === '' || $endsAt <= $startsAt) {
             return $this->compute($term);
@@ -183,9 +182,16 @@ class ScheduleDistributionService
         $newMwf     = $base['totals']['mwf_minutes']   + $addMwf;
         $newTr      = $base['totals']['tr_minutes']    + $addTr;
 
-        // Friday: a new section with Fri increases numerator by 1
-        $newTotalSections     = $base['totals']['sections'] + 1;
-        $newSectionsWithFriday = $base['totals']['sections_with_friday'] + ($addFri ? 1 : 0);
+        $newTotalSections = Section::query()
+            ->whereHas('offering', fn ($query) => $query->where('term_id', $term->id))
+            ->count();
+        $sectionBlocks = MeetingBlock::query()->where('section_id', $section->id)->get();
+        $this->eventReads->meetingBlocks($sectionBlocks);
+        $sectionAlreadyMeetsFriday = $sectionBlocks->contains(
+            fn (MeetingBlock $block) => in_array('Fri', $block->days_json ?? [], true)
+        );
+        $newSectionsWithFriday = $base['totals']['sections_with_friday']
+            + ($addFri && ! $sectionAlreadyMeetsFriday ? 1 : 0);
 
         $fridayPct = $newTotalSections > 0 ? round(($newSectionsWithFriday / $newTotalSections) * 100, 1) : 0.0;
         $peakPct   = $newTotal > 0  ? round(($newPeak / $newTotal) * 100, 1) : 0.0;

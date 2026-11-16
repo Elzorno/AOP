@@ -32,11 +32,17 @@ class ExplicitScheduleStudioTermBoundaryTest extends TestCase
     {
         $this->term('ACTIVE', true);
         $selected = $this->term('SELECTED', false);
+        $offering = $this->offering($selected, 'SELECTED-101');
+        $section = $offering->sections()->create([
+            'section_code' => '01',
+            'modality' => 'IN_PERSON',
+        ]);
         $admin = User::factory()->create(['is_admin' => true]);
 
         $this->actingAs($admin)
             ->getJson(route('aop.schedule.distribution.preview', [
                 'term' => $selected,
+                'section_id' => $section->id,
                 'days' => ['Mon'],
                 'starts_at' => '09:00',
                 'ends_at' => '10:00',
@@ -45,6 +51,52 @@ class ExplicitScheduleStudioTermBoundaryTest extends TestCase
             ->assertJsonStructure(['base', 'impact'])
             ->assertJsonPath('base.policy_version', 'compatibility-v1')
             ->assertJsonPath('impact.policy_version', 'compatibility-v1');
+    }
+
+    public function test_distribution_preview_models_a_block_on_the_existing_section(): void
+    {
+        $selected = $this->term('SELECTED', true);
+        $offering = $this->offering($selected, 'SELECTED-101');
+        $section = $offering->sections()->create([
+            'section_code' => '01',
+            'modality' => 'IN_PERSON',
+        ]);
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->getJson(route('aop.schedule.distribution.preview', [
+                'term' => $selected,
+                'section_id' => $section->id,
+                'days' => ['Fri'],
+                'starts_at' => '09:00',
+                'ends_at' => '10:00',
+            ]))
+            ->assertOk()
+            ->assertJsonPath('impact.totals.sections', 1)
+            ->assertJsonPath('impact.totals.sections_with_friday', 1)
+            ->assertJsonPath('impact.friday_pct', 100);
+    }
+
+    public function test_distribution_preview_rejects_a_section_from_another_term(): void
+    {
+        $selected = $this->term('SELECTED', true);
+        $other = $this->term('OTHER', false);
+        $section = $this->offering($other, 'OTHER-101')->sections()->create([
+            'section_code' => '01',
+            'modality' => 'IN_PERSON',
+        ]);
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->getJson(route('aop.schedule.distribution.preview', [
+                'term' => $selected,
+                'section_id' => $section->id,
+                'days' => ['Fri'],
+                'starts_at' => '09:00',
+                'ends_at' => '10:00',
+            ]))
+            ->assertStatus(422)
+            ->assertJsonPath('errors.section_id.0', 'Section does not belong to the requested term.');
     }
 
     public function test_section_editor_exposes_accessible_normalized_distribution_preview(): void
