@@ -53,6 +53,14 @@ class OpenLabSchedulingTest extends TestCase
         $this->assertSame('compatibility-v1', $result['findings'][0]['policy_version']);
         $this->assertSame(1, $result['totals']['sections_with_friday']);
         $this->assertSame(100.0, $result['friday_pct']);
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $this->actingAs($admin)
+            ->get(route('aop.schedule.home', $term))
+            ->assertOk()
+            ->assertSee('Distribution advisories')
+            ->assertSee('policy compatibility-v1')
+            ->assertSee('distribution.mwf_load');
     }
 
     public function test_readiness_conflicts_use_authoritative_event_fields(): void

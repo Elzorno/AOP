@@ -159,55 +159,69 @@
         @php
           $df = $distributionStats['flags'];
           $dp = $distributionStats;
-          $anyDistFlag = $df['friday_low'] || $df['peak_high'] || $df['mwf_high'] || $df['tr_high']
-                      || $df['gep_online_high'] || $df['prog_online_high'];
+          $distFindings = collect($distributionStats['findings'] ?? []);
+          $anyDistFlag = $distFindings->isNotEmpty();
         @endphp
-        <div class="dist-health-bar">
+        <div class="dist-health-bar" role="status" aria-label="Distribution policy summary">
           <span class="dist-health-label">
             Distribution
             @if ($anyDistFlag)
-              <span class="dist-health-badge warn">{{ collect($df)->filter()->count() }} target{{ collect($df)->filter()->count() === 1 ? '' : 's' }} missed</span>
+              <span class="dist-health-badge warn">{{ $distFindings->count() }} target{{ $distFindings->count() === 1 ? '' : 's' }} missed</span>
             @else
               <span class="dist-health-badge good">On target</span>
             @endif
           </span>
 
-          <span class="dist-stat {{ $df['friday_low'] ? 'dist-stat-warn' : 'dist-stat-good' }}" title="Target: ≥ 12% of sections have a Friday meeting">
+          <span class="dist-stat {{ $df['friday_low'] ? 'dist-stat-warn' : 'dist-stat-good' }}" title="Target: ≥ {{ $dp['targets']['friday_min_pct'] }}% of sections have a Friday meeting">
             <span class="dist-stat-value">{{ number_format($dp['friday_pct'], 1) }}%</span>
-            <span class="dist-stat-label">Friday <span class="dist-stat-target">≥12%</span></span>
+            <span class="dist-stat-label">Friday <span class="dist-stat-target">≥{{ $dp['targets']['friday_min_pct'] }}%</span></span>
           </span>
 
-          <span class="dist-stat {{ $df['peak_high'] ? 'dist-stat-danger' : 'dist-stat-good' }}" title="Target: ≤ 60% of classroom minutes 9:30 am–3:00 pm">
+          <span class="dist-stat {{ $df['peak_high'] ? 'dist-stat-danger' : 'dist-stat-good' }}" title="Target: ≤ {{ $dp['targets']['peak_max_pct'] }}% of classroom minutes 9:30 am–3:00 pm">
             <span class="dist-stat-value">{{ number_format($dp['peak_hour_pct'], 1) }}%</span>
-            <span class="dist-stat-label">Peak hrs <span class="dist-stat-target">≤60%</span></span>
+            <span class="dist-stat-label">Peak hrs <span class="dist-stat-target">≤{{ $dp['targets']['peak_max_pct'] }}%</span></span>
           </span>
 
-          <span class="dist-stat {{ $df['mwf_high'] ? 'dist-stat-danger' : 'dist-stat-good' }}" title="Target: ≤ 60% of classroom minutes on M/W/F">
+          <span class="dist-stat {{ $df['mwf_high'] ? 'dist-stat-danger' : 'dist-stat-good' }}" title="Target: ≤ {{ $dp['targets']['mwf_max_pct'] }}% of classroom minutes on M/W/F">
             <span class="dist-stat-value">{{ number_format($dp['mwf_pct'], 1) }}%</span>
-            <span class="dist-stat-label">MWF <span class="dist-stat-target">≤60%</span></span>
+            <span class="dist-stat-label">MWF <span class="dist-stat-target">≤{{ $dp['targets']['mwf_max_pct'] }}%</span></span>
           </span>
 
-          <span class="dist-stat {{ $df['tr_high'] ? 'dist-stat-danger' : 'dist-stat-good' }}" title="Target: ≤ 60% of classroom minutes on T/R">
+          <span class="dist-stat {{ $df['tr_high'] ? 'dist-stat-danger' : 'dist-stat-good' }}" title="Target: ≤ {{ $dp['targets']['tr_max_pct'] }}% of classroom minutes on T/R">
             <span class="dist-stat-value">{{ number_format($dp['tr_pct'], 1) }}%</span>
-            <span class="dist-stat-label">TR <span class="dist-stat-target">≤60%</span></span>
+            <span class="dist-stat-label">TR <span class="dist-stat-target">≤{{ $dp['targets']['tr_max_pct'] }}%</span></span>
           </span>
 
           @if ($dp['totals']['gep_total'] > 0)
-            <span class="dist-stat {{ $df['gep_online_high'] ? 'dist-stat-danger' : 'dist-stat-good' }}" title="Target: ≤ 40% of GEP sections offered online ({{ $dp['totals']['gep_online'] }}/{{ $dp['totals']['gep_total'] }} GEP sections)">
+            <span class="dist-stat {{ $df['gep_online_high'] ? 'dist-stat-danger' : 'dist-stat-good' }}" title="Target: ≤ {{ $dp['targets']['gep_online_max_pct'] }}% of GEP sections offered online ({{ $dp['totals']['gep_online'] }}/{{ $dp['totals']['gep_total'] }} GEP sections)">
               <span class="dist-stat-value">{{ number_format($dp['gep_online_pct'], 1) }}%</span>
-              <span class="dist-stat-label">GEP online <span class="dist-stat-target">≤40%</span></span>
+              <span class="dist-stat-label">GEP online <span class="dist-stat-target">≤{{ $dp['targets']['gep_online_max_pct'] }}%</span></span>
             </span>
           @endif
 
           @if ($dp['totals']['program_total'] > 0)
-            <span class="dist-stat {{ $df['prog_online_high'] ? 'dist-stat-danger' : 'dist-stat-good' }}" title="Target: ≤ 25% of required program sections offered online ({{ $dp['totals']['program_online'] }}/{{ $dp['totals']['program_total'] }} program sections)">
+            <span class="dist-stat {{ $df['prog_online_high'] ? 'dist-stat-danger' : 'dist-stat-good' }}" title="Target: ≤ {{ $dp['targets']['program_online_max_pct'] }}% of required program sections offered online ({{ $dp['totals']['program_online'] }}/{{ $dp['totals']['program_total'] }} program sections)">
               <span class="dist-stat-value">{{ number_format($dp['program_online_pct'], 1) }}%</span>
-              <span class="dist-stat-label">Program online <span class="dist-stat-target">≤25%</span></span>
+              <span class="dist-stat-label">Program online <span class="dist-stat-target">≤{{ $dp['targets']['program_online_max_pct'] }}%</span></span>
             </span>
           @endif
 
           <a class="dist-health-detail-link" href="{{ route('aop.schedule.readiness.index', $term) }}#distribution">Details</a>
         </div>
+        @if ($anyDistFlag)
+          <details class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <summary class="cursor-pointer font-semibold">Distribution advisories · policy {{ $dp['policy_version'] }}</summary>
+            <ul class="mt-2 list-disc space-y-1 pl-5">
+              @foreach ($distFindings as $finding)
+                <li>
+                  {{ $finding['explanation'] }}
+                  <span class="text-xs">({{ $finding['rule_id'] }})</span>
+                </li>
+              @endforeach
+            </ul>
+            <a class="mt-2 inline-block underline" href="{{ route('aop.schedule.readiness.index', $term) }}#distribution">Review detailed distribution evidence</a>
+          </details>
+        @endif
       @endif
 
       {{-- ── ISSUE ALERT STRIP (replaces sidebar action queue) ────────────── --}}
