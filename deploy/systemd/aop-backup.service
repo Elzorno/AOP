@@ -1,0 +1,27 @@
+[Unit]
+Description=AOP verified local backup
+Documentation=file:/var/www/aop-current/docs/RELEASE_RUNBOOK.md
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+EnvironmentFile=/etc/aop/backup.env
+ExecStart=/usr/bin/bash /var/www/aop-current/scripts/create-backup.sh daily
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadOnlyPaths=/var/www/aop /var/www/aop-current /var/www/aop-releases
+ReadWritePaths=/root/aop-backups /run/lock
+
+[Install]
+WantedBy=multi-user.target

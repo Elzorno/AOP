@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the AOP verified local backup daily
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 America/New_York
+RandomizedDelaySec=15m
+Persistent=true
+Unit=aop-backup.service
+
+[Install]
+WantedBy=timers.target

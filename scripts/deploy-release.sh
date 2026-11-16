@@ -136,6 +136,9 @@ chown -R root:root "$release_directory"
 find "$release_directory" -type d -exec chmod 755 {} +
 find "$release_directory" -type f -exec chmod 644 {} +
 chmod 755 "$release_directory/artisan"
+if [[ -d "$release_directory/scripts" ]]; then
+    find "$release_directory/scripts" -type f -name '*.sh' -exec chmod 755 {} +
+fi
 
 backup_directory="$AOP_BACKUP_ROOT/$(date -u +%Y%m%dT%H%M%SZ)-pre-$release_id"
 mkdir "$backup_directory"

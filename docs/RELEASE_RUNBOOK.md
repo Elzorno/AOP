@@ -77,3 +77,5 @@ scripts/create-backup.sh daily
 ```
 
 It uses the other production path variables from this runbook and records the selected artifact release when `AOP_CURRENT_LINK` is set. Framework sessions, caches, compiled views and logs are deliberately excluded. Local backup success is not disaster recovery until an encrypted copy is retrieved from an independent operator-selected destination.
+
+The production timer uses `deploy/systemd/aop-backup.{service,timer}` and `/etc/aop/backup.env`. It runs daily at 2:15 AM Eastern with up to 15 minutes of randomized delay and `Persistent=true` catch-up. The service is sandboxed read-only except for `/root/aop-backups` and `/run/lock`. No automatic deletion policy is enabled until the operator approves a retention requirement and off-host retrieval is proven.
