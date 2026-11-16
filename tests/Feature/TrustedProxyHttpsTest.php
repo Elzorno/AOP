@@ -42,6 +42,7 @@ class TrustedProxyHttpsTest extends TestCase
 
     public function test_https_enforcement_generates_secure_application_redirects(): void
     {
+        config()->set('app.url', 'http://127.0.0.1:8081');
         config()->set('aop.trusted_proxies', ['192.168.1.167']);
         config()->set('aop.enforce_https', true);
 

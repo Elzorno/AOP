@@ -53,11 +53,11 @@ jobs:
       - name: Audit frontend dependencies
         run: npm audit --audit-level=high
 
-      - name: Run isolated application tests
-        run: composer test
-
       - name: Build frontend assets
         run: npm run build
+
+      - name: Run isolated application tests
+        run: composer test
 
   release-artifact:
     name: Build guarded release artifact
