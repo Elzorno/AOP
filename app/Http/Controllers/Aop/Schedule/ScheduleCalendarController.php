@@ -189,13 +189,20 @@ class ScheduleCalendarController extends Controller
                 $staffName ? ($isOpenLab ? 'Lab Tech: ' : '').$staffName : null,
             ]));
             $color = $isOpenLab ? '#D97706' : ($isClass ? ($instructor?->color_hex_css ?? '#3b82f6') : '#0F766E');
+            $eventUrl = match (true) {
+                $isClass && $source?->section_id => route('aop.schedule.sections.edit', [$term, $source->section_id]),
+                $isOpenLab && $source?->id => route('aop.schedule.openLabs.edit', [$term, $source->id]),
+                ! $isClass && ! $isOpenLab && $source?->instructor_id => route('aop.schedule.officeHours.show', [$term, $source->instructor_id]),
+                default => null,
+            };
+
             foreach ($days as $day) {
                 $date = self::DAY_MAP[$day] ?? null;
                 if ($date === null) {
                     continue;
                 }
 
-                $events[] = [
+                $event = [
                     'id' => 'scheduled_event_'.$scheduledEvent->id.'_'.$day,
                     'groupId' => 'scheduled_event_'.$scheduledEvent->id,
                     'title' => $title,
@@ -204,9 +211,6 @@ class ScheduleCalendarController extends Controller
                     'backgroundColor' => $color,
                     'borderColor' => $isOpenLab ? '#B45309' : $color,
                     'editable' => $isClass,
-                    'url' => $isClass && $source?->section_id
-                        ? route('aop.schedule.sections.edit', [$term, $source->section_id])
-                        : null,
                     'extendedProps' => [
                         'eventKind' => $scheduledEvent->event_type,
                         'blockId' => $isClass ? $source?->id : null,
@@ -216,6 +220,12 @@ class ScheduleCalendarController extends Controller
                         'staff' => $staffName,
                     ],
                 ];
+
+                if ($eventUrl !== null) {
+                    $event['url'] = $eventUrl;
+                }
+
+                $events[] = $event;
             }
         }
 

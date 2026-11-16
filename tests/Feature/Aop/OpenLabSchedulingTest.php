@@ -586,6 +586,7 @@ class OpenLabSchedulingTest extends TestCase
 
     public function test_office_hours_are_projected_as_instructor_schedule_events(): void
     {
+        $admin = User::factory()->create(['is_admin' => true]);
         $term = $this->createActiveTerm();
         $instructor = Instructor::create(['name' => 'Office Hour Instructor', 'is_active' => true]);
 
@@ -609,6 +610,16 @@ class OpenLabSchedulingTest extends TestCase
             'staff_id' => $instructor->id,
             'role' => 'office_hours',
         ]);
+        $this->actingAs($admin)
+            ->getJson(route('aop.schedule.calendar.events', $term))
+            ->assertOk()
+            ->assertJsonFragment([
+                'eventKind' => ScheduledEvent::TYPE_OFFICE_HOUR,
+                'url' => route('aop.schedule.officeHours.show', [$term, $instructor]),
+            ]);
+        $this->actingAs($admin)
+            ->get(route('aop.schedule.officeHours.show', [$term, $instructor]))
+            ->assertOk();
     }
 
     public function test_deleting_an_instructor_removes_staff_assignments_and_office_hour_events(): void
@@ -663,7 +674,11 @@ class OpenLabSchedulingTest extends TestCase
             ->assertJsonFragment([
                 'eventKind' => ScheduledEvent::TYPE_OPEN_LAB,
                 'scheduledEventId' => ScheduledEvent::query()->value('id'),
+                'url' => route('aop.schedule.openLabs.edit', [$term, OpenLab::query()->firstOrFail()]),
             ]);
+        $this->actingAs($admin)
+            ->get(route('aop.schedule.openLabs.edit', [$term, OpenLab::query()->firstOrFail()]))
+            ->assertOk();
     }
 
     private function createActiveTerm(array $overrides = []): Term
