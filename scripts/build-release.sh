@@ -36,6 +36,10 @@ source_epoch=$(git -C "$source_checkout" show -s --format=%ct HEAD)
 artifact_name="aop-${release_id}.tar.gz"
 
 mkdir -p "$output_directory"
+if [[ ! -w "$output_directory" ]]; then
+    echo "Output directory is not writable: $output_directory" >&2
+    exit 73
+fi
 if [[ -e "$output_directory/$artifact_name" || -e "$output_directory/$artifact_name.sha256" ]]; then
     echo "Release artifact already exists: $output_directory/$artifact_name" >&2
     exit 73
