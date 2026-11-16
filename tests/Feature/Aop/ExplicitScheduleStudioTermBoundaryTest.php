@@ -42,7 +42,9 @@ class ExplicitScheduleStudioTermBoundaryTest extends TestCase
                 'ends_at' => '10:00',
             ]))
             ->assertOk()
-            ->assertJsonStructure(['base', 'impact']);
+            ->assertJsonStructure(['base', 'impact'])
+            ->assertJsonPath('base.policy_version', 'compatibility-v1')
+            ->assertJsonPath('impact.policy_version', 'compatibility-v1');
     }
 
     public function test_legacy_get_preserves_query_and_redirects_to_selected_term(): void

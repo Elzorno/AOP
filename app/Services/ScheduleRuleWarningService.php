@@ -17,6 +17,8 @@ use App\Policies\SchedulePolicy;
  */
 class ScheduleRuleWarningService
 {
+    public function __construct(private readonly SchedulePolicyRegistry $policies) {}
+
     /**
      * Returns whether rule warnings should be treated as hard errors
      * for the given term.
@@ -57,7 +59,8 @@ class ScheduleRuleWarningService
         string $blockType,
         ?Term $term = null,
     ): array {
-        $policyVersion = $term?->schedule_policy_version ?: SchedulePolicy::COMPATIBILITY_V1;
+        $policy = $term ? $this->policies->forTerm($term) : new SchedulePolicy(SchedulePolicy::COMPATIBILITY_V1);
+        $policyVersion = $policy->version;
         $severity = $term && $this->isEnforced($term) ? 'error' : 'warning';
 
         return array_map(
@@ -70,7 +73,13 @@ class ScheduleRuleWarningService
                 remediationUrl: null,
                 policyVersion: $policyVersion,
             ),
-            $this->warningMessagesForBlock($days, $startsAt, $endsAt, $blockType),
+            $this->warningMessagesForBlock(
+                $days,
+                $startsAt,
+                $endsAt,
+                $blockType,
+                $policy->meetingWindowRules(),
+            ),
         );
     }
 
@@ -79,6 +88,7 @@ class ScheduleRuleWarningService
         string $startsAt,
         string $endsAt,
         string $blockType,
+        array $rules,
     ): array {
         $warnings = [];
 
@@ -98,7 +108,7 @@ class ScheduleRuleWarningService
             $sig = ScheduleBlockLibrary::makeSig($days);
             if (
                 in_array($sig, ScheduleBlockLibrary::TWO_DAY_AFTERNOON_PATTERNS, true) &&
-                $startMin < self::toMin('14:00')
+                $startMin < self::toMin($rules['two_day_afternoon_start'])
             ) {
                 $warnings[] = 'Two-day ' . implode('/', $days) . ' courses should start at 2:00 pm or later.';
             }
@@ -107,7 +117,7 @@ class ScheduleRuleWarningService
         // ----------------------------------------------------------------
         // Rule: 1-day-per-week courses should start at 5:00 pm or later
         // ----------------------------------------------------------------
-        if ($count === 1 && $startMin < self::toMin('17:00')) {
+        if ($count === 1 && $startMin < self::toMin($rules['evening_start'])) {
             $warnings[] = 'One-day-per-week courses should start at 5:00 pm or later.';
         }
 
@@ -115,12 +125,12 @@ class ScheduleRuleWarningService
         // Rule: standard meeting hours are 8:00 am – 6:30 pm (non-evening)
         // Evening courses start at 5:00 pm or later.
         // ----------------------------------------------------------------
-        if ($startMin < self::toMin('08:00')) {
+        if ($startMin < self::toMin($rules['standard_open'])) {
             $warnings[] = 'Class start time is before the standard 8:00 am opening.';
         }
 
         $endMin = ScheduleBlockLibrary::toMinutes($endsAt);
-        if ($endMin > self::toMin('22:50')) {
+        if ($endMin > self::toMin($rules['latest_close'])) {
             $warnings[] = 'Class end time exceeds the 10:50 pm closing limit.';
         }
 
@@ -128,8 +138,8 @@ class ScheduleRuleWarningService
         // Rule: MW 3:30 pm – 5:00 pm is reserved for campus faculty meetings
         // Flag any block that meets on Monday or Wednesday and overlaps this window.
         // ----------------------------------------------------------------
-        $campusMeetingStart = self::toMin('15:30');
-        $campusMeetingEnd   = self::toMin('17:00');
+        $campusMeetingStart = self::toMin($rules['faculty_meeting_start']);
+        $campusMeetingEnd   = self::toMin($rules['faculty_meeting_end']);
         $hasMWDay = !empty(array_intersect($days, ['Mon', 'Wed']));
         if ($hasMWDay) {
             $overlap = max(0, min($endMin, $campusMeetingEnd) - max($startMin, $campusMeetingStart));
@@ -142,7 +152,7 @@ class ScheduleRuleWarningService
         // Rule: standard day hours end at 6:30 pm; flag non-evening blocks
         // that run past 18:30. (Evening courses starting at 5:00 pm+ are exempt.)
         // ----------------------------------------------------------------
-        if ($startMin < self::toMin('17:00') && $endMin > self::toMin('18:30')) {
+        if ($startMin < self::toMin($rules['evening_start']) && $endMin > self::toMin($rules['day_course_close'])) {
             $warnings[] = 'This block ends after the 6:30 pm standard close for day courses. Consider scheduling as an evening course (5:00 pm start) instead.';
         }
 

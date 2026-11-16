@@ -33,4 +33,17 @@ final readonly class SchedulePolicy
     {
         return ['minutes_per_week' => 240, 'distinct_days' => 3];
     }
+
+    public function meetingWindowRules(): array
+    {
+        return [
+            'two_day_afternoon_start' => '14:00',
+            'evening_start' => '17:00',
+            'standard_open' => '08:00',
+            'latest_close' => '22:50',
+            'faculty_meeting_start' => '15:30',
+            'faculty_meeting_end' => '17:00',
+            'day_course_close' => '18:30',
+        ];
+    }
 }

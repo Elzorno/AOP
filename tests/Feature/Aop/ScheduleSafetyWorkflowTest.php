@@ -12,6 +12,7 @@ use App\Models\ScheduledEvent;
 use App\Models\Section;
 use App\Models\Term;
 use App\Models\User;
+use App\Services\ScheduleRuleWarningService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -188,6 +189,31 @@ class ScheduleSafetyWorkflowTest extends TestCase
                 'remediation_url', 'policy_version',
             ]]])
             ->assertJsonPath('warnings.0', fn ($warning) => is_string($warning) && $warning !== '');
+    }
+
+    public function test_compatibility_policy_preserves_meeting_window_rules(): void
+    {
+        $term = $this->createActiveTerm();
+        $rules = app(ScheduleRuleWarningService::class);
+        $fixtures = [
+            [["Mon", "Wed"], '13:00', '14:00', 'class.two_day_afternoon_start'],
+            [['Mon'], '07:30', '08:30', 'class.standard_opening_time'],
+            [['Tue'], '21:00', '23:00', 'class.latest_closing_time'],
+            [['Mon'], '16:00', '17:30', 'class.faculty_meeting_window'],
+            [['Thu'], '16:00', '19:00', 'class.day_course_closing_time'],
+        ];
+
+        foreach ($fixtures as [$days, $startsAt, $endsAt, $expectedRule]) {
+            $ruleIds = collect($rules->findingsForBlock(
+                $days,
+                $startsAt,
+                $endsAt,
+                'LECTURE',
+                $term,
+            ))->pluck('ruleId')->all();
+
+            $this->assertContains($expectedRule, $ruleIds);
+        }
     }
 
     public function test_calendar_update_rejects_instructor_office_hour_conflict(): void
