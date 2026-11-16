@@ -16,11 +16,15 @@ use App\Services\ScheduleDistributionService;
 use App\Services\ScheduleEventReadAdapter;
 use App\Services\ScheduleReadinessFindingService;
 use App\Services\ScheduleOccurrenceService;
+use App\Services\SchedulePolicyRegistry;
 use Carbon\Carbon;
 
 class ScheduleReadinessController extends Controller
 {
-    public function __construct(private readonly ScheduleOccurrenceService $occurrences) {}
+    public function __construct(
+        private readonly ScheduleOccurrenceService $occurrences,
+        private readonly SchedulePolicyRegistry $policies,
+    ) {}
 
     /**
      * Instructional minutes rule (ODHE / SSU):
@@ -37,10 +41,6 @@ class ScheduleReadinessController extends Controller
      * We scale linearly if Term::weeks_in_term is not 15:
      *   required_minutes = required_minutes_base_15w * (weeks_in_term / 15)
      */
-    private const LECTURE_MINUTES_PER_CREDIT_15W = 750;
-    private const LAB_MINUTES_PER_CREDIT_15W = 2250;
-    private const BASE_WEEKS = 15;
-
     public function index(Term $term, ScheduleDistributionService $distribution, LabTechWorkloadService $labTechWorkloads, ScheduleEventReadAdapter $eventReads, ScheduleReadinessFindingService $readinessFindings)
     {
         $sections = Section::query()
@@ -124,6 +124,11 @@ class ScheduleReadinessController extends Controller
             'instructor_conflicts' => $instructorConflicts,
             'lab_tech_conflicts' => $labTechConflicts,
             'distribution' => $distributionStats,
+            'lab_techs_over_limit' => $labTechsOverLimit,
+            'office_hours_failing' => $officeHoursFailing,
+            'minutes_failing' => $minutesFailing,
+            'sections_over_capacity' => $sectionsOverCapacity,
+            'sections_low_enrollment' => $sectionsLowEnrollment,
         ]);
 
         return view('aop.schedule.readiness.index', [
@@ -149,10 +154,11 @@ class ScheduleReadinessController extends Controller
 
     private function computeInstructionalMinutes(Term $term, $sections): array
     {
-        $weeks = (int)($term->weeks_in_term ?? self::BASE_WEEKS);
-        if ($weeks <= 0) $weeks = self::BASE_WEEKS;
+        $rules = $this->policies->forTerm($term)->instructionalMinuteRules();
+        $weeks = (int)($term->weeks_in_term ?? $rules['base_weeks']);
+        if ($weeks <= 0) $weeks = $rules['base_weeks'];
 
-        $scale = $weeks / self::BASE_WEEKS;
+        $scale = $weeks / $rules['base_weeks'];
 
         $results = [];
 
@@ -172,8 +178,8 @@ class ScheduleReadinessController extends Controller
             $lectureCredits = $lectureContact;
             $labCredits = $labContact / 3.0;
 
-            $requiredBase15 = ($lectureCredits * self::LECTURE_MINUTES_PER_CREDIT_15W)
-                + ($labCredits * self::LAB_MINUTES_PER_CREDIT_15W);
+            $requiredBase15 = ($lectureCredits * $rules['lecture_minutes_per_credit_15_weeks'])
+                + ($labCredits * $rules['lab_minutes_per_credit_15_weeks']);
 
             $requiredMinutes = (int)round($requiredBase15 * $scale);
 
@@ -222,6 +228,7 @@ class ScheduleReadinessController extends Controller
 
     private function computeOfficeHoursCompliance(Term $term, $officeBlocks): array
     {
+        $rules = $this->policies->forTerm($term)->fullTimeOfficeHourRules();
         // Pull active instructors; show full-time requirement PASS/FAIL.
         $instructors = Instructor::query()
             ->where('is_active', true)
@@ -266,8 +273,8 @@ class ScheduleReadinessController extends Controller
             $hoursPerWeek = $minutesPerWeek / 60.0;
 
             $isFullTime = (bool)$ins->is_full_time;
-            $meetsHours = $minutesPerWeek >= 240; // 4 hours/week
-            $meetsDays = $distinctDays >= 3;
+            $meetsHours = $minutesPerWeek >= $rules['minutes_per_week'];
+            $meetsDays = $distinctDays >= $rules['distinct_days'];
 
             $pass = $isFullTime ? ($meetsHours && $meetsDays) : true;
 

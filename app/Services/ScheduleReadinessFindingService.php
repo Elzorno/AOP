@@ -83,6 +83,77 @@ final class ScheduleReadinessFindingService
             ));
         }
 
+        foreach ($groups['lab_techs_over_limit'] as $row) {
+            $findings->push($this->finding(
+                $version,
+                'readiness.lab_tech_weekly_limit',
+                'workload',
+                'error',
+                ['lab_tech:'.$row['lab_tech']->id],
+                sprintf(
+                    '%s is assigned %d minutes against a %d-minute weekly limit.',
+                    $row['lab_tech']->name,
+                    $row['assigned_minutes'],
+                    $row['limit_minutes'],
+                ),
+                route('aop.schedule.openLabs.index', $term),
+            ));
+        }
+        foreach ($groups['office_hours_failing'] as $row) {
+            $findings->push($this->finding(
+                $version,
+                'readiness.full_time_office_hours',
+                'institutional_policy',
+                'warning',
+                ['instructor:'.$row['instructor']->id],
+                sprintf(
+                    '%s has %d office-hour minutes across %d days.',
+                    $row['instructor']->name,
+                    $row['minutes_per_week'],
+                    $row['distinct_days'],
+                ),
+                route('aop.schedule.officeHours.show', [$term, $row['instructor']]),
+            ));
+        }
+        foreach ($groups['minutes_failing'] as $row) {
+            $findings->push($this->finding(
+                $version,
+                'readiness.instructional_minutes',
+                'institutional_policy',
+                'warning',
+                ['section:'.$row['section']->id],
+                sprintf(
+                    'Section %s has %d scheduled occurrence minutes against %d required minutes.',
+                    $row['section']->section_code,
+                    $row['scheduled_minutes'],
+                    $row['required_minutes'],
+                ),
+                route('aop.schedule.sections.edit', [$term, $row['section']]),
+            ));
+        }
+        foreach ($groups['sections_over_capacity'] as $section) {
+            $findings->push($this->finding(
+                $version,
+                'readiness.section_capacity',
+                'structural_validity',
+                'error',
+                ['section:'.$section->id],
+                'Section '.$section->section_code.' exceeds its configured capacity.',
+                route('aop.schedule.sections.edit', [$term, $section]),
+            ));
+        }
+        foreach ($groups['sections_low_enrollment'] as $section) {
+            $findings->push($this->finding(
+                $version,
+                'readiness.low_enrollment',
+                'institutional_policy',
+                'advisory',
+                ['section:'.$section->id],
+                'Section '.$section->section_code.' is at or below 70% of capacity.',
+                route('aop.schedule.sections.edit', [$term, $section]),
+            ));
+        }
+
         return $findings->values()->all();
     }
 

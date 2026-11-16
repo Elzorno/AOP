@@ -19,4 +19,18 @@ final readonly class SchedulePolicy
             'program_online_max_pct' => 25.0,
         ];
     }
+
+    public function instructionalMinuteRules(): array
+    {
+        return [
+            'lecture_minutes_per_credit_15_weeks' => 750,
+            'lab_minutes_per_credit_15_weeks' => 2250,
+            'base_weeks' => 15,
+        ];
+    }
+
+    public function fullTimeOfficeHourRules(): array
+    {
+        return ['minutes_per_week' => 240, 'distinct_days' => 3];
+    }
 }

@@ -34,6 +34,7 @@ class ScheduleOccurrenceTest extends TestCase
         $course = CatalogCourse::query()->create([
             'code' => 'DATE-101',
             'title' => 'Date-aware scheduling',
+            'lecture_hours_per_week' => 3,
             'is_active' => true,
         ]);
         $offering = Offering::query()->create([
@@ -87,7 +88,14 @@ class ScheduleOccurrenceTest extends TestCase
         $this->actingAs($admin)
             ->get(route('aop.schedule.readiness.index', $term))
             ->assertOk()
-            ->assertViewHas('instructionalMinutes', fn (array $rows) => $rows[0]['scheduled_minutes'] === 180);
+            ->assertViewHas('instructionalMinutes', fn (array $rows) => $rows[0]['scheduled_minutes'] === 180
+                && $rows[0]['required_minutes'] === 300)
+            ->assertViewHas('policyFindings', fn (array $findings) => collect($findings)->contains(
+                fn (array $finding) => $finding['rule_id'] === 'readiness.instructional_minutes'
+                    && str_contains($finding['explanation'], '180 scheduled occurrence minutes')
+                    && str_contains($finding['explanation'], '300 required minutes')
+                    && $finding['policy_version'] === 'compatibility-v1'
+            ));
 
         $this->actingAs($admin)
             ->post(route('aop.terms.scheduleExceptions.store', $term), [
