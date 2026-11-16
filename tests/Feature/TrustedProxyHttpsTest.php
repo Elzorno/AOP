@@ -42,11 +42,13 @@ class TrustedProxyHttpsTest extends TestCase
 
     public function test_https_enforcement_generates_secure_application_redirects(): void
     {
-        config()->set('app.url', 'http://127.0.0.1:8081');
         config()->set('aop.trusted_proxies', ['192.168.1.167']);
         config()->set('aop.enforce_https', true);
 
-        $response = $this->withServerVariables(['REMOTE_ADDR' => '192.168.1.167'])
+        $response = $this->withServerVariables([
+            'REMOTE_ADDR' => '192.168.1.167',
+            'HTTP_HOST' => '127.0.0.1:8081',
+        ])
             ->withHeader('X-Forwarded-Proto', 'https')
             ->get('/');
 
