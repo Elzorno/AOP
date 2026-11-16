@@ -111,7 +111,7 @@ Artisan::command('aop:reset-schedule-data {--force : Actually delete terms and s
     return Command::SUCCESS;
 })->purpose('Delete terms and scheduling data while preserving the course catalog');
 
-Artisan::command('aop:sync-scheduled-events {--term= : Term ID to inspect; defaults to every term} {--repair : Repair legacy mirrors from authoritative events}', function (ScheduleEventSyncService $sync) {
+Artisan::command('aop:sync-scheduled-events {--term= : Term ID to inspect; defaults to every term} {--repair : Repair legacy mirrors from authoritative events} {--fail-on-drift : Return failure when reconciliation finds any discrepancy}', function (ScheduleEventSyncService $sync) {
     $terms = Term::query()
         ->when($this->option('term'), fn ($query, $termId) => $query->whereKey($termId))
         ->orderBy('id')
@@ -129,6 +129,14 @@ Artisan::command('aop:sync-scheduled-events {--term= : Term ID to inspect; defau
     })->all();
 
     $this->table(['Term', 'Sources', 'Events', 'Missing', 'Mismatched', 'Unmatched', 'Bad links'], $rows);
+    $hasDrift = collect($rows)->contains(
+        fn (array $row) => array_sum(array_slice($row, 3)) > 0
+    );
+    if ($this->option('fail-on-drift') && $hasDrift) {
+        $this->error('Schedule-event reconciliation found drift.');
+        return Command::FAILURE;
+    }
+
     if (! $this->option('repair')) {
         $this->comment('Dry run only. Re-run with --repair to update legacy mirrors from authoritative events.');
         return Command::SUCCESS;

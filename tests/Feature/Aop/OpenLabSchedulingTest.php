@@ -467,6 +467,12 @@ class OpenLabSchedulingTest extends TestCase
         $this->artisan('aop:sync-scheduled-events', ['--term' => $term->id])
             ->expectsOutputToContain('Dry run only')
             ->assertExitCode(0);
+        $this->artisan('aop:sync-scheduled-events', [
+            '--term' => $term->id,
+            '--fail-on-drift' => true,
+        ])
+            ->expectsOutputToContain('reconciliation found drift')
+            ->assertExitCode(1);
         $this->assertDatabaseCount('scheduled_events', 1);
 
         $this->artisan('aop:sync-scheduled-events', ['--term' => $term->id, '--repair' => true])
@@ -513,6 +519,10 @@ class OpenLabSchedulingTest extends TestCase
 
         $this->artisan('aop:sync-scheduled-events', ['--term' => $term->id, '--repair' => true])
             ->assertExitCode(0);
+        $this->artisan('aop:sync-scheduled-events', [
+            '--term' => $term->id,
+            '--fail-on-drift' => true,
+        ])->assertExitCode(0);
 
         $this->assertDatabaseHas('open_labs', [
             'id' => $openLab->id,

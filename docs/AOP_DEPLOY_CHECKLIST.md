@@ -56,6 +56,14 @@ sha256sum --check /absolute/path/to/artifacts/aop-<release>.tar.gz.sha256
 
 The artifact includes a `RELEASE` manifest with the full commit and lockfile hashes. It does not contain `.env`, SQLite databases, writable storage or `node_modules`.
 
+Verify an artifact without changing the server:
+
+```bash
+scripts/deploy-release.sh --verify-only /path/aop-<release>.tar.gz /path/aop-<release>.tar.gz.sha256
+```
+
+The guarded deployment script consumes explicit environment paths rather than assuming a host layout. It verifies the artifact, takes an online SQLite and environment backup, runs guarded migrations and release-specific caches, atomically changes the current pointer, reloads named services, and restores the previous code pointer if a smoke check fails. See `scripts/deploy-release.sh` for the required variables. Database migrations are not automatically reversed; migrations must remain backward-compatible through the rollback window.
+
 ## 6. Upgrade optimization
 
 ```bash
