@@ -184,14 +184,19 @@ class ScheduleReadinessController extends Controller
             $requiredMinutes = (int)round($requiredBase15 * $scale);
 
             $scheduledMinutes = 0;
+            $scheduledOccurrences = 0;
             foreach ($section->meetingBlocks as $mb) {
                 $duration = $this->durationMinutes($mb->starts_at, $mb->ends_at);
                 if ($term->starts_on && $mb->scheduledEvent) {
-                    $scheduledMinutes += $duration * $this->occurrences
+                    $occurrenceCount = $this->occurrences
                         ->datesForEvent($term, $mb->scheduledEvent)
                         ->count();
+                    $scheduledOccurrences += $occurrenceCount;
+                    $scheduledMinutes += $duration * $occurrenceCount;
                 } else {
-                    $scheduledMinutes += $duration * $this->daysCount($mb->days_json) * $weeks;
+                    $occurrenceCount = $this->daysCount($mb->days_json) * $weeks;
+                    $scheduledOccurrences += $occurrenceCount;
+                    $scheduledMinutes += $duration * $occurrenceCount;
                 }
             }
 
@@ -210,6 +215,7 @@ class ScheduleReadinessController extends Controller
                 'lab_credits' => $labCredits,
                 'required_minutes' => $requiredMinutes,
                 'scheduled_minutes' => $scheduledMinutes,
+                'scheduled_occurrences' => $scheduledOccurrences,
                 'delta_minutes' => $delta,
                 'pass' => $pass,
                 'meeting_blocks_required' => $meetingBlocksRequired,

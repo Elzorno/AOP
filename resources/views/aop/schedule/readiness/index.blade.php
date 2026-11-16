@@ -59,6 +59,38 @@
       </div>
     </section>
 
+    <details class="workspace-card" style="margin-bottom:16px;" {{ count($policyFindings ?? []) > 0 ? 'open' : '' }}>
+      <summary style="cursor:pointer;font-weight:700;">
+        Policy findings ({{ count($policyFindings ?? []) }}) · {{ $term->schedule_policy_version ?? 'compatibility-v1' }}
+      </summary>
+      <p class="workspace-copy" style="margin-top:10px;">
+        These results use the term's saved policy version and occurrence calendar. Existing detailed readiness tables remain below.
+      </p>
+      @forelse($policyFindings ?? [] as $finding)
+        @php
+          $findingBadge = match($finding['severity']) {
+            'error' => 'danger',
+            'warning' => 'warn',
+            default => 'info',
+          };
+        @endphp
+        <div class="row" style="align-items:flex-start;padding:10px 0;border-top:1px solid var(--border);">
+          <div>
+            <span class="badge {{ $findingBadge }}">{{ ucfirst($finding['severity']) }}</span>
+            <strong>{{ $finding['explanation'] }}</strong>
+            <div class="text-slate-500" style="font-size:12px;margin-top:4px;">
+              {{ $finding['rule_id'] }} · {{ str_replace('_', ' ', $finding['category']) }} · {{ $finding['policy_version'] }}
+            </div>
+          </div>
+          @if($finding['remediation_url'])
+            <a class="btn secondary sm" href="{{ $finding['remediation_url'] }}">Review</a>
+          @endif
+        </div>
+      @empty
+        <p class="table-note">No normalized policy findings for this term.</p>
+      @endforelse
+    </details>
+
     <section class="insight-grid">
       <div class="insight-main">
         <section class="workspace-card">
@@ -104,7 +136,14 @@
                     </td>
                     <td>{{ number_format($row['lecture_contact_hours'] ?? 0, 2) }} / {{ number_format($row['lab_contact_hours'] ?? 0, 2) }}</td>
                     <td>{{ $row['meeting_blocks_required'] ? number_format($row['required_minutes']).' min' : 'Not required' }}</td>
-                    <td>{{ $row['meeting_blocks_required'] ? number_format($row['scheduled_minutes']).' min' : 'Asynchronous' }}</td>
+                    <td>
+                      @if($row['meeting_blocks_required'])
+                        {{ number_format($row['scheduled_minutes']) }} min<br>
+                        <span class="text-slate-500">{{ number_format($row['scheduled_occurrences'] ?? 0) }} occurrences</span>
+                      @else
+                        Asynchronous
+                      @endif
+                    </td>
                     <td>
                       @if($row['meeting_blocks_required'])
                         <span class="badge {{ $delta >= 0 ? 'success' : 'danger' }}">

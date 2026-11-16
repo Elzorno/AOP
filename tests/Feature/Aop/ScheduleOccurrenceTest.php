@@ -89,13 +89,17 @@ class ScheduleOccurrenceTest extends TestCase
             ->get(route('aop.schedule.readiness.index', $term))
             ->assertOk()
             ->assertViewHas('instructionalMinutes', fn (array $rows) => $rows[0]['scheduled_minutes'] === 180
+                && $rows[0]['scheduled_occurrences'] === 3
                 && $rows[0]['required_minutes'] === 300)
             ->assertViewHas('policyFindings', fn (array $findings) => collect($findings)->contains(
                 fn (array $finding) => $finding['rule_id'] === 'readiness.instructional_minutes'
                     && str_contains($finding['explanation'], '180 scheduled occurrence minutes')
                     && str_contains($finding['explanation'], '300 required minutes')
                     && $finding['policy_version'] === 'compatibility-v1'
-            ));
+            ))
+            ->assertSee('Policy findings')
+            ->assertSee('compatibility-v1')
+            ->assertSee('3 occurrences');
 
         $this->actingAs($admin)
             ->post(route('aop.terms.scheduleExceptions.store', $term), [
