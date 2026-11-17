@@ -1,213 +1,91 @@
-<x-aop-layout :activeTermLabel="$activeTerm ? 'Active Term: '.$activeTerm->code.' - '.$activeTerm->name : 'No active term selected'">
-  <x-slot:title>Dashboard</x-slot:title>
+<x-aop-layout :activeTermLabel="$workingTerm ? 'Working term: '.$workingTerm->code.' — '.$workingTerm->name : 'No working term selected'">
+  <x-slot:title>Academic Operations</x-slot:title>
 
   @php
-    $isReadyToSchedule = $activeTerm && $counts['catalog_courses'] > 0 && $counts['instructors'] > 0 && $counts['rooms'] > 0;
-    $nextActionLabel = $activeTerm ? 'Open Schedule' : 'Set Active Term';
-    $nextActionRoute = $activeTerm ? route('aop.schedule.home.legacy') : route('aop.terms.index');
+    $setupReady = $counts['catalog_courses'] > 0 && $counts['instructors'] > 0 && $counts['rooms'] > 0;
+    $needsAttention = ! $workingTerm || ! $setupReady || $workingCounts['unassigned_sections'] > 0;
   @endphp
 
   <div class="page-shell">
     <section class="briefing-grid">
       <div class="briefing-panel briefing-panel-strong">
-        <div class="briefing-kicker">Dashboard</div>
-        <h1 class="briefing-title">{{ $activeTerm ? $activeTerm->code.' overview' : 'Set the active term' }}</h1>
+        <div class="briefing-kicker">Academic operations</div>
+        <h1 class="briefing-title">{{ $workingTerm ? $workingTerm->code.' schedule' : 'Choose a working term' }}</h1>
         <p class="briefing-copy">
-          {{ $activeTerm
-              ? 'Review setup and continue scheduling.'
-              : 'Choose the term before scheduling.' }}
+          {{ $workingTerm
+              ? 'Continue building, checking, and exporting '.$workingTerm->name.'.'
+              : 'Open a term to begin scheduling. This changes only your workspace.' }}
         </p>
 
-        <div class="status-ribbon">
-          <span class="status-ribbon-item">
-            <span class="status-ribbon-dot {{ $activeTerm ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>
-            {{ $activeTerm ? $activeTerm->code.' in focus' : 'No active term selected' }}
-          </span>
-          <span class="status-ribbon-item">
-            <span class="status-ribbon-dot {{ $isReadyToSchedule ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
-            {{ $isReadyToSchedule ? 'Core setup is ready' : 'Setup data still needs review' }}
-          </span>
-          <span class="status-ribbon-item">
-            <span class="status-ribbon-dot bg-blue-500"></span>
-            {{ number_format($counts['sections']) }} total sections on file
-          </span>
-        </div>
+        @if ($workingTerm)
+          <div class="status-ribbon">
+            <span class="status-ribbon-item"><span class="status-ribbon-dot bg-blue-500"></span>{{ $workingCounts['offerings'] }} {{ $workingCounts['offerings'] === 1 ? 'course' : 'courses' }}</span>
+            <span class="status-ribbon-item"><span class="status-ribbon-dot bg-blue-500"></span>{{ $workingCounts['sections'] }} {{ $workingCounts['sections'] === 1 ? 'section' : 'sections' }}</span>
+            <span class="status-ribbon-item"><span class="status-ribbon-dot {{ $workingCounts['unassigned_sections'] ? 'bg-amber-500' : 'bg-emerald-500' }}"></span>{{ $workingCounts['unassigned_sections'] ? $workingCounts['unassigned_sections'].' need faculty' : 'Faculty assignments complete' }}</span>
+          </div>
+        @endif
 
         <div class="mt-8 quick-actions">
-          <a class="btn" href="{{ $nextActionRoute }}">{{ $nextActionLabel }}</a>
-          <a class="btn secondary" href="{{ route('aop.terms.index') }}">Manage Terms</a>
-          <a class="btn secondary" href="{{ route('aop.catalog.index') }}">Review Inputs</a>
+          @if ($workingTerm)
+            <a class="btn" href="{{ route('aop.schedule.home', $workingTerm) }}">Continue Scheduling</a>
+            <a class="btn secondary" href="{{ route('aop.schedule.readiness.index', $workingTerm) }}">Run Schedule Check</a>
+          @else
+            <a class="btn" href="{{ route('aop.terms.index') }}">Choose a Term</a>
+          @endif
         </div>
       </div>
 
       <aside class="briefing-sidebar">
-        <div class="briefing-kicker">Status</div>
-        <h2 class="watchlist-title">Current status</h2>
-        <p class="watchlist-copy">Term and setup status.</p>
-
-        <div class="watchlist-group">
-          <div class="watchlist-item">
-            <div>
-              <div class="watchlist-name">Active term</div>
-              <div class="watchlist-note">{{ $activeTerm ? $activeTerm->name : 'Required before scheduling' }}</div>
-            </div>
-            <span class="watchlist-value {{ $activeTerm ? 'good' : 'warn' }}">{{ $activeTerm ? $activeTerm->code : 'Unset' }}</span>
+        <div class="briefing-kicker">Attention</div>
+        @if (! $needsAttention)
+          <h2 class="watchlist-title">Ready to continue</h2>
+          <p class="watchlist-copy">Core records and faculty assignments are in place.</p>
+          <div class="mt-5"><span class="badge success">No setup blockers</span></div>
+        @else
+          <h2 class="watchlist-title">A few items need review</h2>
+          <p class="watchlist-copy">Resolve these before the final schedule check.</p>
+          <div class="watchlist-group">
+            @if (! $workingTerm)
+              <a class="queue-link" href="{{ route('aop.terms.index') }}"><div><div class="queue-label">Working term</div><div class="queue-copy">Open the term you want to schedule.</div></div><span class="badge warn">Choose</span></a>
+            @endif
+            @if (! $setupReady)
+              <a class="queue-link" href="{{ route('aop.catalog.index') }}"><div><div class="queue-label">Source records</div><div class="queue-copy">Review courses, faculty, and rooms.</div></div><span class="badge warn">Review</span></a>
+            @endif
+            @if ($workingTerm && $workingCounts['unassigned_sections'] > 0)
+              <a class="queue-link" href="{{ route('aop.schedule.sections.index', ['term' => $workingTerm, 'missing' => 'instructor']) }}"><div><div class="queue-label">Faculty assignments</div><div class="queue-copy">{{ $workingCounts['unassigned_sections'] }} {{ $workingCounts['unassigned_sections'] === 1 ? 'section needs' : 'sections need' }} faculty.</div></div><span class="badge warn">Fix</span></a>
+            @endif
           </div>
-          <div class="watchlist-item">
-            <div>
-              <div class="watchlist-name">Fastest next step</div>
-              <div class="watchlist-note">Recommended next page</div>
-            </div>
-            <span class="watchlist-value good">{{ $activeTerm ? 'Schedule' : 'Terms' }}</span>
-          </div>
-          <div class="watchlist-item">
-            <div>
-              <div class="watchlist-name">Setup readiness</div>
-              <div class="watchlist-note">Catalog, instructors, and rooms</div>
-            </div>
-            <span class="watchlist-value {{ $isReadyToSchedule ? 'good' : 'warn' }}">{{ $isReadyToSchedule ? 'Ready' : 'Review' }}</span>
-          </div>
-        </div>
+        @endif
       </aside>
     </section>
 
-    <section class="dock-grid">
-      <a href="{{ route('aop.terms.index') }}" class="dock-item">
-        <div class="dock-kicker">Context</div>
-        <h2 class="dock-title">Terms</h2>
-        <p class="dock-copy">Set the active term and manage planning cycles.</p>
-        <div class="dock-meta">Open terms</div>
-      </a>
+    @if ($workingTerm)
+      <section>
+        <div class="briefing-kicker">Common tasks</div>
+        <h2 class="section-heading mt-2">Everything essential, one click away</h2>
+        <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <a class="dock-item" href="{{ route('aop.schedule.sections.index', $workingTerm) }}"><div class="dock-kicker">Build</div><h3 class="dock-title">Courses &amp; Sections</h3><p class="dock-copy">Create sections, assign faculty, and set meeting times.</p><div class="dock-meta">Open sections</div></a>
+          <a class="dock-item" href="{{ route('aop.schedule.calendar.index', $workingTerm) }}"><div class="dock-kicker">See the week</div><h3 class="dock-title">Calendar</h3><p class="dock-copy">Review class, office-hour, and open-lab placement.</p><div class="dock-meta">Open calendar</div></a>
+          <a class="dock-item" href="{{ route('aop.schedule.officeHours.index', $workingTerm) }}"><div class="dock-kicker">Faculty</div><h3 class="dock-title">Faculty &amp; Office Hours</h3><p class="dock-copy">Review preferences and weekly student availability.</p><div class="dock-meta">Open faculty hours</div></a>
+          <a class="dock-item" href="{{ route('aop.schedule.openLabs.index', $workingTerm) }}"><div class="dock-kicker">Lab operations</div><h3 class="dock-title">Open Labs</h3><p class="dock-copy">Schedule rooms and lab staff for open access.</p><div class="dock-meta">Open labs</div></a>
+          <a class="dock-item" href="{{ route('aop.schedule.readiness.index', $workingTerm) }}"><div class="dock-kicker">Verify</div><h3 class="dock-title">Schedule Check</h3><p class="dock-copy">Find missing information, conflicts, and policy issues.</p><div class="dock-meta">Review issues</div></a>
+          <a class="dock-item" href="{{ route('aop.schedule.reports.index', $workingTerm) }}"><div class="dock-kicker">Finish</div><h3 class="dock-title">Export</h3><p class="dock-copy">Download registrar, faculty, and room schedules.</p><div class="dock-meta">Open exports</div></a>
+        </div>
+      </section>
+    @endif
 
-      <a href="{{ route('aop.catalog.index') }}" class="dock-item">
-        <div class="dock-kicker">Inputs</div>
-        <h2 class="dock-title">Inputs</h2>
-        <p class="dock-copy">Review catalog, instructor, and room data before creating sections.</p>
-        <div class="dock-meta">Review source data</div>
-      </a>
-
-      <a href="{{ route('aop.schedule.home.legacy') }}" class="dock-item">
-        <div class="dock-kicker">Execution</div>
-        <h2 class="dock-title">Schedule</h2>
-        <p class="dock-copy">Build, review, and export the active term schedule.</p>
-        <div class="dock-meta">Launch schedule</div>
-      </a>
-
-    </section>
-
-    <section class="dashboard-grid">
-      <div class="lg:col-span-7 sequence-board">
-        <article class="sequence-item">
-          <div class="sequence-head">
-            <div class="flex gap-4">
-              <div class="sequence-index">1</div>
-              <div>
-                <div class="sequence-label">Set context</div>
-                <h2 class="sequence-title">Choose the active term.</h2>
-                <p class="sequence-copy">Scheduling follows this term.</p>
-              </div>
-            </div>
-            <div class="actions">
-              <a class="btn secondary sm" href="{{ route('aop.terms.index') }}">Terms</a>
-              <a class="btn secondary sm" href="{{ route('aop.terms.create') }}">Create Term</a>
-            </div>
-          </div>
-          <div class="sequence-strip">
-            <div class="sequence-chip"><strong>{{ number_format($counts['terms']) }} terms</strong> Available for planning, cloning, and activation.</div>
-            <div class="sequence-chip"><strong>{{ $activeTerm ? $activeTerm->code : 'No active term' }}</strong> Current active term.</div>
-            <div class="sequence-chip"><strong>{{ $activeTerm ? 'Aligned' : 'Needs action' }}</strong> Schedule pages follow this term.</div>
-          </div>
-        </article>
-
-        <article class="sequence-item">
-          <div class="sequence-head">
-            <div class="flex gap-4">
-              <div class="sequence-index">2</div>
-              <div>
-                <div class="sequence-label">Prepare inputs</div>
-                <h2 class="sequence-title">Check catalog, instructors, and rooms.</h2>
-                <p class="sequence-copy">These records drive scheduling and conflict checks.</p>
-              </div>
-            </div>
-            <div class="actions">
-              <a class="btn secondary sm" href="{{ route('aop.catalog.index') }}">Catalog</a>
-              <a class="btn secondary sm" href="{{ route('aop.instructors.index') }}">Instructors</a>
-              <a class="btn secondary sm" href="{{ route('aop.rooms.index') }}">Rooms</a>
-            </div>
-          </div>
-          <div class="sequence-strip">
-            <div class="sequence-chip"><strong>{{ number_format($counts['catalog_courses']) }} catalog courses</strong> Source for offerings and section creation.</div>
-            <div class="sequence-chip"><strong>{{ number_format($counts['instructors']) }} instructors</strong> Assignment options visible before scheduling begins.</div>
-            <div class="sequence-chip"><strong>{{ number_format($counts['rooms']) }} rooms</strong> Room inventory available for conflict-aware planning.</div>
-          </div>
-        </article>
-
-        <article class="sequence-item">
-          <div class="sequence-head">
-            <div class="flex gap-4">
-              <div class="sequence-index">3</div>
-              <div>
-                <div class="sequence-label">Build and export</div>
-                <h2 class="sequence-title">Build and export the schedule.</h2>
-                <p class="sequence-copy">Open the active term schedule.</p>
-              </div>
-            </div>
-            <div class="actions">
-              <a class="btn" href="{{ route('aop.schedule.home.legacy') }}">Open Schedule</a>
-              <a class="btn secondary sm" href="{{ route('aop.schedule.readiness.legacy') }}">Schedule Check</a>
-            </div>
-          </div>
-          <div class="sequence-strip">
-            <div class="sequence-chip"><strong>{{ number_format($counts['sections']) }} sections</strong> Existing records that feed scheduling work.</div>
-            <div class="sequence-chip"><strong>{{ $activeTerm ? 'Ready to move' : 'Blocked by context' }}</strong> Set the term before scheduling.</div>
-            <div class="sequence-chip"><strong>Schedule Check</strong> Review issues before export.</div>
-          </div>
-        </article>
+    <section class="workspace-card">
+      <div class="workspace-header">
+        <div><div class="briefing-kicker">Configuration</div><h2 class="workspace-title">People, places, and settings</h2><p class="workspace-copy">These records change less often than the schedule.</p></div>
       </div>
-
-      <aside class="lg:col-span-5 watchlist">
-        <div class="briefing-kicker">Totals</div>
-        <h2 class="watchlist-title">Records on file</h2>
-        <p class="watchlist-copy">Terms, courses, instructors, rooms, and sections.</p>
-
-        <div class="watchlist-group">
-          <div class="watchlist-item">
-            <div>
-              <div class="watchlist-name">Terms tracked</div>
-              <div class="watchlist-note">Planning history and future cycles</div>
-            </div>
-            <span class="watchlist-value good">{{ number_format($counts['terms']) }}</span>
-          </div>
-          <div class="watchlist-item">
-            <div>
-              <div class="watchlist-name">Catalog coverage</div>
-              <div class="watchlist-note">Breadth of available course inputs</div>
-            </div>
-            <span class="watchlist-value good">{{ number_format($counts['catalog_courses']) }}</span>
-          </div>
-          <div class="watchlist-item">
-            <div>
-              <div class="watchlist-name">Teaching roster</div>
-              <div class="watchlist-note">Faculty and adjunct availability</div>
-            </div>
-            <span class="watchlist-value good">{{ number_format($counts['instructors']) }}</span>
-          </div>
-          <div class="watchlist-item">
-            <div>
-              <div class="watchlist-name">Room inventory</div>
-              <div class="watchlist-note">Scheduling capacity and constraints</div>
-            </div>
-            <span class="watchlist-value good">{{ number_format($counts['rooms']) }}</span>
-          </div>
-          <div class="watchlist-item">
-            <div>
-              <div class="watchlist-name">Sections on record</div>
-              <div class="watchlist-note">Current volume of scheduled entities</div>
-            </div>
-            <span class="watchlist-value good">{{ number_format($counts['sections']) }}</span>
-          </div>
-        </div>
-      </aside>
+      <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <a class="surface-note" href="{{ route('aop.instructors.index') }}"><strong class="text-slate-900">Faculty</strong><span class="mt-1 block">{{ $counts['instructors'] }} records</span></a>
+        <a class="surface-note" href="{{ route('aop.rooms.index') }}"><strong class="text-slate-900">Rooms</strong><span class="mt-1 block">{{ $counts['rooms'] }} records</span></a>
+        <a class="surface-note" href="{{ route('aop.catalog.index') }}"><strong class="text-slate-900">Course Catalog</strong><span class="mt-1 block">{{ $counts['catalog_courses'] }} records</span></a>
+        <a class="surface-note" href="{{ route('aop.labtechs.index') }}"><strong class="text-slate-900">Lab Staff</strong><span class="mt-1 block">Manage lab staffing</span></a>
+        <a class="surface-note" href="{{ route('aop.terms.index') }}"><strong class="text-slate-900">Terms</strong><span class="mt-1 block">{{ $counts['terms'] }} planning cycles</span></a>
+        <a class="surface-note" href="{{ route('aop.accounts.index') }}"><strong class="text-slate-900">Account Links</strong><span class="mt-1 block">Connect faculty sign-ins</span></a>
+      </div>
     </section>
   </div>
 </x-aop-layout>

@@ -64,7 +64,7 @@
       <section id="my-schedule" class="workspace-card scroll-mt-6">
         <div class="workspace-header">
           <div><div class="briefing-kicker">My schedule</div><h2 class="workspace-title">Classes for {{ $activeTerm->code }}</h2><p class="workspace-copy">Your assigned sections, meeting times, locations, and delivery formats.</p></div>
-          <button class="btn secondary" type="button" onclick="window.print()">Print My Schedule</button>
+          <button class="btn secondary faculty-print-control" type="button" onclick="document.body.classList.add('print-faculty-schedule'); window.print()">Print My Schedule</button>
         </div>
 
         @forelse ($sections as $section)
@@ -185,4 +185,5 @@
       </div>
     @endif
   </div>
+  <script>window.addEventListener('afterprint', () => document.body.classList.remove('print-faculty-schedule'));</script>
 </x-aop-layout>

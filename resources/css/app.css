@@ -2,6 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+@media print {
+    body.print-faculty-schedule {
+        background: white !important;
+    }
+
+    body.print-faculty-schedule > a,
+    body.print-faculty-schedule aside,
+    body.print-faculty-schedule header,
+    body.print-faculty-schedule .page-shell > :not(#my-schedule),
+    body.print-faculty-schedule .faculty-print-control {
+        display: none !important;
+    }
+
+    body.print-faculty-schedule main,
+    body.print-faculty-schedule #my-schedule {
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+}
+
 @layer components {
     :root {
         --aop-bg: #f5f7fb;

@@ -8,6 +8,7 @@ use App\Models\Instructor;
 use App\Models\InstructorPreference;
 use App\Models\InstructorTermLock;
 use App\Models\OfficeHourBlock;
+use App\Models\Offering;
 use App\Models\Room;
 use App\Models\Section;
 use App\Models\Term;
@@ -73,10 +74,26 @@ class DashboardController extends Controller
             'rooms' => Room::count(),
             'sections' => Section::count(),
         ];
+        $workingTerm = $request->user()->selectedTerm ?? $activeTerm;
+        $workingCounts = [
+            'offerings' => $workingTerm ? Offering::query()->where('term_id', $workingTerm->id)->count() : 0,
+            'sections' => $workingTerm
+                ? Section::query()->whereHas('offering', fn ($query) => $query->where('term_id', $workingTerm->id))->count()
+                : 0,
+            'unassigned_sections' => $workingTerm
+                ? Section::query()
+                    ->whereHas('offering', fn ($query) => $query->where('term_id', $workingTerm->id))
+                    ->whereNull('instructor_id')
+                    ->where('instructor_is_staff', false)
+                    ->count()
+                : 0,
+        ];
 
         return view('aop.dashboard', [
             'activeTerm' => $activeTerm,
+            'workingTerm' => $workingTerm,
             'counts' => $counts,
+            'workingCounts' => $workingCounts,
         ]);
     }
 }

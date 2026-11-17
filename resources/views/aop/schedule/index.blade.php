@@ -78,7 +78,7 @@
             @endif
           </div>
         @else
-          <p class="sched-header-copy">Set an active term to begin building the schedule.</p>
+          <p class="sched-header-copy">Choose a working term to begin building the schedule.</p>
         @endif
       </div>
       <div class="sched-header-actions">
@@ -88,11 +88,7 @@
               Review {{ $blockingIssues + $officeHourIssues }} issue{{ ($blockingIssues + $officeHourIssues) === 1 ? '' : 's' }}
             </a>
           @endif
-          <a class="btn success" href="{{ route('aop.schedule.reports.exportRegistrar', $term) }}">Download Registrar CSV</a>
-          <a class="btn secondary" href="{{ route('aop.schedule.readiness.index', $term) }}">Schedule Check</a>
-          <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index', $term) }}">Open Labs</a>
           <a class="btn secondary" href="{{ route('aop.schedule.calendar.index', $term) }}">Calendar</a>
-          <a class="btn secondary" href="{{ route('aop.schedule.grids.index', $term) }}">Print Views</a>
           <a class="btn secondary" href="{{ route('aop.schedule.reports.index', $term) }}">Export</a>
         @else
           <a class="btn" href="{{ route('aop.terms.index') }}">Manage Terms</a>
@@ -104,8 +100,8 @@
       <section class="workspace-card">
         <div class="workspace-header">
           <div>
-            <h2 class="workspace-title">Active term required</h2>
-            <p class="workspace-copy">Set a term as active, then return here to build the schedule.</p>
+            <h2 class="workspace-title">Working term required</h2>
+            <p class="workspace-copy">Choose a term, then return here to build its schedule.</p>
           </div>
           <div class="actions">
             <a class="btn" href="{{ route('aop.terms.index') }}">Manage Terms</a>

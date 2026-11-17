@@ -27,6 +27,27 @@ class InstructorIdentityBoundaryTest extends TestCase
             ->assertSee('Account Links');
     }
 
+    public function test_admin_home_uses_private_working_term_without_relabeling_it_as_institutional_current_term(): void
+    {
+        $institutional = $this->activeTerm();
+        $working = Term::create([
+            'code' => '2027FA', 'name' => 'Fall 2027', 'is_active' => false,
+            'status' => 'draft', 'weeks_in_term' => 15, 'slot_minutes' => 15,
+            'buffer_minutes' => 10,
+        ]);
+        $admin = User::factory()->create([
+            'is_admin' => true,
+            'selected_term_id' => $working->id,
+        ]);
+
+        $this->actingAs($admin)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Working term: '.$working->code)
+            ->assertSee($working->code.' schedule')
+            ->assertSee(route('aop.schedule.sections.index', $working), false)
+            ->assertDontSee($institutional->code.' schedule');
+    }
+
     public function test_linked_instructor_access_survives_an_unrelated_account_email(): void
     {
         $term = $this->activeTerm();
