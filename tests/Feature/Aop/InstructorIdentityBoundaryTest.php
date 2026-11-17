@@ -111,6 +111,38 @@ class InstructorIdentityBoundaryTest extends TestCase
         $this->assertSame('Library consultation room', $block->notes);
     }
 
+    public function test_invalid_faculty_office_hour_edit_preserves_the_editor_context(): void
+    {
+        $term = $this->activeTerm();
+        $instructor = Instructor::create(['name' => 'Context Owner', 'is_active' => true]);
+        $user = User::factory()->create(['is_admin' => false, 'instructor_id' => $instructor->id]);
+        $block = OfficeHourBlock::create([
+            'term_id' => $term->id,
+            'instructor_id' => $instructor->id,
+            'days_json' => ['Mon'],
+            'starts_at' => '09:00',
+            'ends_at' => '10:00',
+        ]);
+
+        $this->actingAs($user)->from(route('dashboard').'#office-hours')
+            ->put(route('instructor.officeHours.update', [$instructor, $block]), [
+                'from_instructor_portal' => '1',
+                'office_hour_block_id' => $block->id,
+                'days' => ['Wed'],
+                'starts_at' => '14:00',
+                'ends_at' => '13:00',
+                'notes' => 'Keep this draft',
+            ])
+            ->assertSessionHasErrors('ends_at')
+            ->assertSessionHasInput('office_hour_block_id', (string) $block->id)
+            ->assertSessionHasInput('notes', 'Keep this draft');
+
+        $this->actingAs($user)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('open', false)
+            ->assertSee('Keep this draft');
+    }
+
     public function test_matching_email_does_not_grant_unlinked_instructor_access(): void
     {
         $this->activeTerm();

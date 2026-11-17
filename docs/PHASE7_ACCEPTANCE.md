@@ -17,7 +17,7 @@ The preserved UI already placed the three editing tasks inline, so there is no h
 
 ## Automated evidence
 
-- The complete isolated suite passes 135 tests / 607 assertions.
+- The complete isolated suite passes 138 tests / 644 assertions.
 - Explicit term-boundary tests cover Studio, calendar, readiness, reports and exports.
 - The calendar page contract includes a skip link, visible-focus target, mobile schedule navigation, horizontally contained weekly grid, keyboard editor links, live save status, deterministic reversion and stale-revision recovery.
 - Section-card and distribution previews sequence requests so old responses cannot replace newer input; errors and advisory findings use live status regions.
@@ -44,3 +44,14 @@ The container has no browser automation runtime. Do not claim the visual/keyboar
 5. Text, controls, advisory states and focus indicators meet the intended contrast in the deployed theme.
 
 Phase 7 remains open until this real-browser pass is recorded. This limitation does not block continued Phase 8 release/recovery work.
+
+## Usability follow-through — 17 November 2026
+
+- Faculty accounts now receive a role-specific navigation model and never see administrator-only Terms, Catalog, People, Rooms, or Account Links destinations.
+- The faculty workspace groups assigned classes, teaching preferences, and office hours on one page; it presents a next action, responsive course cards, plain-language availability entry, editable office-hour blocks, and a schedule-only print mode.
+- Invalid faculty office-hour edits reopen the exact editor with submitted values retained. Deletion uses an inline explanatory confirmation rather than a browser-native prompt.
+- Administrator navigation is grouped by Workspace, People & Places, and Settings. Schedule navigation now uses task language: Courses & Sections, Calendar, Faculty & Office Hours, Open Labs, Schedule Check, and Export.
+- Mobile primary navigation uses a compact disclosed menu rather than a long row of setup destinations. Schedule navigation remains directly available within scheduling pages.
+- The administrator home is a working-term launchpad with a single primary continuation action, a concise attention summary, direct links to six essential scheduling tasks, and secondary configuration links.
+- Institution-wide current-term state is distinguished from an administrator's private working term. The duplicate term-selection action was removed.
+- Schedule Builder header actions were reduced to contextual issue review, Calendar, and Export; less frequent destinations remain one click away in schedule navigation.

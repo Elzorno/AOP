@@ -9,6 +9,8 @@
     $needsPreferences = $activeTerm && ! $preferences;
     $needsOfficeHours = $activeTerm && $officeHours->isEmpty();
     $needsAttention = $needsPreferences || $needsOfficeHours;
+    $oldOfficeBlockId = old('office_hour_block_id') ? (int) old('office_hour_block_id') : null;
+    $addingOfficeHours = old('office_hour_mode') === 'create';
   @endphp
 
   <div class="page-shell">
@@ -138,15 +140,16 @@
                 @foreach ($officeHours as $block)
                   <article class="meeting-card">
                     <div class="meeting-head"><div><h3 class="meeting-title">{{ implode(', ', $block->days_json ?? []) }}</h3><p class="meeting-copy">{{ substr($block->starts_at, 0, 5) }}–{{ substr($block->ends_at, 0, 5) }}{{ $block->notes ? ' · '.$block->notes : '' }}</p></div><span class="badge success">On file</span></div>
-                    <details class="disclosure mt-4">
+                    <details class="disclosure mt-4" {{ $oldOfficeBlockId === $block->id ? 'open' : '' }}>
                       <summary class="disclosure-summary">Edit this block</summary>
                       <div class="disclosure-body">
                         <form method="POST" action="{{ route('instructor.officeHours.update', [$instructor, $block]) }}">
                           @csrf @method('PUT')
                           <input type="hidden" name="from_instructor_portal" value="1">
-                          <fieldset><legend class="font-semibold text-slate-900">Days</legend><div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">@foreach ($days as $day)<label class="checkbox-row"><input type="checkbox" name="days[]" value="{{ $day }}" {{ in_array($day, $block->days_json ?? [], true) ? 'checked' : '' }}><span>{{ $day }}</span></label>@endforeach</div></fieldset>
-                          <div class="inline-form-grid-2"><div><label for="start_{{ $block->id }}">Start</label><input id="start_{{ $block->id }}" type="time" name="starts_at" value="{{ substr($block->starts_at, 0, 5) }}" required></div><div><label for="end_{{ $block->id }}">End</label><input id="end_{{ $block->id }}" type="time" name="ends_at" value="{{ substr($block->ends_at, 0, 5) }}" required></div></div>
-                          <label for="notes_{{ $block->id }}">Location or meeting details</label><input id="notes_{{ $block->id }}" name="notes" value="{{ $block->notes }}" placeholder="Office, library, or video link">
+                          <input type="hidden" name="office_hour_block_id" value="{{ $block->id }}">
+                          <fieldset><legend class="font-semibold text-slate-900">Days</legend><div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">@foreach ($days as $day)<label class="checkbox-row"><input type="checkbox" name="days[]" value="{{ $day }}" {{ in_array($day, $oldOfficeBlockId === $block->id ? old('days', []) : ($block->days_json ?? []), true) ? 'checked' : '' }}><span>{{ $day }}</span></label>@endforeach</div></fieldset>
+                          <div class="inline-form-grid-2"><div><label for="start_{{ $block->id }}">Start</label><input id="start_{{ $block->id }}" type="time" name="starts_at" value="{{ $oldOfficeBlockId === $block->id ? old('starts_at') : substr($block->starts_at, 0, 5) }}" required></div><div><label for="end_{{ $block->id }}">End</label><input id="end_{{ $block->id }}" type="time" name="ends_at" value="{{ $oldOfficeBlockId === $block->id ? old('ends_at') : substr($block->ends_at, 0, 5) }}" required></div></div>
+                          <label for="notes_{{ $block->id }}">Location or meeting details</label><input id="notes_{{ $block->id }}" name="notes" value="{{ $oldOfficeBlockId === $block->id ? old('notes') : $block->notes }}" placeholder="Office, library, or video link">
                           <div class="section-actions"><button class="btn" type="submit">Save Changes</button></div>
                         </form>
                         <details class="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4"><summary class="cursor-pointer font-semibold text-red-800">Delete this block</summary><p class="mt-2 text-sm text-red-700">This removes the office-hour block from the current term.</p><form method="POST" action="{{ route('instructor.officeHours.destroy', [$instructor, $block]) }}" class="mt-3">@csrf @method('DELETE')<input type="hidden" name="from_instructor_portal" value="1"><button type="submit" class="btn danger">Delete Office Hours</button></form></details>
@@ -156,14 +159,14 @@
                 @endforeach
               </div>
 
-              <details class="disclosure mt-5" {{ $officeHours->isEmpty() ? 'open' : '' }}>
+              <details class="disclosure mt-5" {{ $officeHours->isEmpty() || $addingOfficeHours ? 'open' : '' }}>
                 <summary class="disclosure-summary">Add office hours</summary>
                 <div class="disclosure-body">
                   <form method="POST" action="{{ route('instructor.officeHours.store', $instructor) }}">
-                    @csrf <input type="hidden" name="from_instructor_portal" value="1">
-                    <fieldset><legend class="font-semibold text-slate-900">Days</legend><div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">@foreach ($days as $day)<label class="checkbox-row"><input type="checkbox" name="days[]" value="{{ $day }}"><span>{{ $day }}</span></label>@endforeach</div></fieldset>
-                    <div class="inline-form-grid-2"><div><label for="new_office_start">Start</label><input id="new_office_start" type="time" name="starts_at" required></div><div><label for="new_office_end">End</label><input id="new_office_end" type="time" name="ends_at" required></div></div>
-                    <label for="new_office_notes">Location or meeting details</label><input id="new_office_notes" name="notes" placeholder="Office, library, or video link">
+                    @csrf <input type="hidden" name="from_instructor_portal" value="1"><input type="hidden" name="office_hour_mode" value="create">
+                    <fieldset><legend class="font-semibold text-slate-900">Days</legend><div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">@foreach ($days as $day)<label class="checkbox-row"><input type="checkbox" name="days[]" value="{{ $day }}" {{ in_array($day, $addingOfficeHours ? old('days', []) : [], true) ? 'checked' : '' }}><span>{{ $day }}</span></label>@endforeach</div></fieldset>
+                    <div class="inline-form-grid-2"><div><label for="new_office_start">Start</label><input id="new_office_start" type="time" name="starts_at" value="{{ $addingOfficeHours ? old('starts_at') : '' }}" required></div><div><label for="new_office_end">End</label><input id="new_office_end" type="time" name="ends_at" value="{{ $addingOfficeHours ? old('ends_at') : '' }}" required></div></div>
+                    <label for="new_office_notes">Location or meeting details</label><input id="new_office_notes" name="notes" value="{{ $addingOfficeHours ? old('notes') : '' }}" placeholder="Office, library, or video link">
                     <div class="section-actions"><button class="btn" type="submit">Add Office Hours</button></div>
                   </form>
                 </div>
