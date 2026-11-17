@@ -154,13 +154,13 @@
             </div>
             <div class="actions">
               <a class="btn" href="{{ route('aop.schedule.home.legacy') }}">Open Schedule</a>
-              <a class="btn secondary sm" href="{{ route('aop.schedule.readiness.legacy') }}">Readiness</a>
+              <a class="btn secondary sm" href="{{ route('aop.schedule.readiness.legacy') }}">Schedule Check</a>
             </div>
           </div>
           <div class="sequence-strip">
             <div class="sequence-chip"><strong>{{ number_format($counts['sections']) }} sections</strong> Existing records that feed scheduling work.</div>
             <div class="sequence-chip"><strong>{{ $activeTerm ? 'Ready to move' : 'Blocked by context' }}</strong> Set the term before scheduling.</div>
-            <div class="sequence-chip"><strong>Readiness</strong> Review issues before registrar export.</div>
+            <div class="sequence-chip"><strong>Schedule Check</strong> Review issues before export.</div>
           </div>
         </article>
       </div>

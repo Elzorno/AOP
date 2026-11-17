@@ -57,6 +57,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Instructor specific
     Route::post('/instructor-preferences', [App\Http\Controllers\Aop\InstructorPreferenceController::class, 'store'])->name('aop.instructor_preferences.store');
     Route::post('/instructor-office-hours/{instructor}/blocks', [OfficeHoursController::class, 'storeForPortal'])->name('instructor.officeHours.store');
+    Route::put('/instructor-office-hours/{instructor}/blocks/{officeHourBlock}', [OfficeHoursController::class, 'updateForPortal'])->name('instructor.officeHours.update');
     Route::delete('/instructor-office-hours/{instructor}/blocks/{officeHourBlock}', [OfficeHoursController::class, 'destroyForPortal'])->name('instructor.officeHours.destroy');
 
     Route::prefix('/aop')->name('aop.')->middleware(['admin'])->group(function () {

@@ -1,4 +1,4 @@
-<x-aop-layout :activeTermLabel="'Active Term: '.$term->code.' - '.$term->name">
+<x-aop-layout :activeTermLabel="'Working term: '.$term->code.' - '.$term->name">
   <x-slot:title>Schedule Readiness</x-slot:title>
 
   @php

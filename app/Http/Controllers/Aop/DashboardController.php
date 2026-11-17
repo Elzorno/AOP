@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CatalogCourse;
 use App\Models\Instructor;
 use App\Models\InstructorPreference;
+use App\Models\InstructorTermLock;
 use App\Models\OfficeHourBlock;
 use App\Models\Room;
 use App\Models\Section;
@@ -29,20 +30,30 @@ class DashboardController extends Controller
             $sections = [];
             $officeHours = [];
             $preferences = null;
+            $officeHoursLocked = false;
 
             if ($activeTerm) {
                 $sections = Section::with(['offering.catalogCourse', 'meetingBlocks.room'])
                     ->where('instructor_id', $instructor->id)
                     ->whereHas('offering', fn ($q) => $q->where('term_id', $activeTerm->id))
-                    ->get();
+                    ->orderBy('section_code')
+                    ->get()
+                    ->sortBy(fn (Section $section) => $section->offering->catalogCourse->code)
+                    ->values();
 
                 $officeHours = OfficeHourBlock::where('instructor_id', $instructor->id)
                     ->where('term_id', $activeTerm->id)
+                    ->orderBy('starts_at')
                     ->get();
 
                 $preferences = InstructorPreference::where('instructor_id', $instructor->id)
                     ->where('term_id', $activeTerm->id)
                     ->first();
+
+                $officeHoursLocked = (bool) InstructorTermLock::query()
+                    ->where('term_id', $activeTerm->id)
+                    ->where('instructor_id', $instructor->id)
+                    ->value('office_hours_locked');
             }
 
             return view('aop.instructor_dashboard', [
@@ -51,6 +62,7 @@ class DashboardController extends Controller
                 'sections' => $sections,
                 'officeHours' => $officeHours,
                 'preferences' => $preferences,
+                'officeHoursLocked' => $officeHoursLocked,
             ]);
         }
 

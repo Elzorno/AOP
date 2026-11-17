@@ -103,7 +103,7 @@ class OfficeHoursController extends Controller
         $mutations->create($term, $instructor, OfficeHourCommand::fromArray($data));
 
         if ($request->has('from_instructor_portal')) {
-            return redirect()->route('dashboard')->with('status', 'Office hours block added.');
+            return redirect(route('dashboard').'#office-hours')->with('status', 'Office hours added.');
         }
 
         return redirect()->route('aop.schedule.officeHours.show', [$term, $instructor])->with('status', 'Office hours block added.');
@@ -127,7 +127,16 @@ class OfficeHoursController extends Controller
 
         $mutations->update($term, $instructor, $officeHourBlock, OfficeHourCommand::fromArray($data));
 
+        if ($request->has('from_instructor_portal')) {
+            return redirect(route('dashboard').'#office-hours')->with('status', 'Office hours updated.');
+        }
+
         return redirect()->route('aop.schedule.officeHours.show', [$term, $instructor])->with('status', 'Office hours block updated.');
+    }
+
+    public function updateForPortal(Request $request, Instructor $instructor, OfficeHourBlock $officeHourBlock, OfficeHourMutationService $mutations)
+    {
+        return $this->update($request, $this->activeTermOrFail(), $instructor, $officeHourBlock, $mutations);
     }
 
     public function destroyForPortal(Request $request, Instructor $instructor, OfficeHourBlock $officeHourBlock, OfficeHourMutationService $mutations)
@@ -146,7 +155,7 @@ class OfficeHoursController extends Controller
         $mutations->delete($term, $instructor, $officeHourBlock);
 
         if ($request->has('from_instructor_portal')) {
-            return redirect()->route('dashboard')->with('status', 'Office hours block deleted.');
+            return redirect(route('dashboard').'#office-hours')->with('status', 'Office hours deleted.');
         }
 
         return redirect()->route('aop.schedule.officeHours.show', [$term, $instructor])->with('status', 'Office hours block deleted.');

@@ -22,7 +22,9 @@ class InstructorIdentityBoundaryTest extends TestCase
         $this->actingAs($admin)
             ->get('/dashboard')
             ->assertOk()
-            ->assertViewIs('aop.dashboard');
+            ->assertViewIs('aop.dashboard')
+            ->assertSee('Administrator')
+            ->assertSee('Account Links');
     }
 
     public function test_linked_instructor_access_survives_an_unrelated_account_email(): void
@@ -34,18 +36,58 @@ class InstructorIdentityBoundaryTest extends TestCase
         $this->actingAs($user)->get('/dashboard')
             ->assertOk()
             ->assertViewIs('aop.instructor_dashboard')
-            ->assertViewHas('instructor', fn (Instructor $value) => $value->is($instructor));
+            ->assertViewHas('instructor', fn (Instructor $value) => $value->is($instructor))
+            ->assertSee('Faculty workspace')
+            ->assertSee('My Schedule')
+            ->assertSee('Teaching Preferences')
+            ->assertSee('Office Hours')
+            ->assertDontSee('Account Links')
+            ->assertDontSee('Manage Terms')
+            ->assertDontSee('Lab Techs');
 
         $this->actingAs($user)->post(route('aop.instructor_preferences.store'), [
             'max_courses' => 3,
-            'preferred_days' => 'Mon, Wed',
-        ])->assertRedirect(route('dashboard'));
+            'preferred_days' => ['Mon', 'Wed'],
+            'unavailable_times_raw' => "Tuesday 8:00 AM–10:00 AM\nFriday after 2:00 PM",
+        ])->assertRedirect(route('dashboard').'#preferences');
 
         $this->assertDatabaseHas('instructor_preferences', [
             'term_id' => $term->id,
             'instructor_id' => $instructor->id,
             'max_courses' => 3,
         ]);
+        $this->assertSame(['Mon', 'Wed'], InstructorPreference::query()->firstOrFail()->preferred_days);
+        $this->assertSame(
+            ['Tuesday 8:00 AM–10:00 AM', 'Friday after 2:00 PM'],
+            InstructorPreference::query()->firstOrFail()->unavailable_times
+        );
+    }
+
+    public function test_linked_instructor_can_update_own_office_hours_from_faculty_workspace(): void
+    {
+        $term = $this->activeTerm();
+        $instructor = Instructor::create(['name' => 'Office Hours Owner', 'is_active' => true]);
+        $user = User::factory()->create(['is_admin' => false, 'instructor_id' => $instructor->id]);
+        $block = OfficeHourBlock::create([
+            'term_id' => $term->id,
+            'instructor_id' => $instructor->id,
+            'days_json' => ['Mon'],
+            'starts_at' => '09:00',
+            'ends_at' => '10:00',
+        ]);
+
+        $this->actingAs($user)->put(route('instructor.officeHours.update', [$instructor, $block]), [
+            'from_instructor_portal' => '1',
+            'days' => ['Tue', 'Thu'],
+            'starts_at' => '13:00',
+            'ends_at' => '14:00',
+            'notes' => 'Library consultation room',
+        ])->assertRedirect(route('dashboard').'#office-hours');
+
+        $block->refresh();
+        $this->assertSame(['Tue', 'Thu'], $block->days_json);
+        $this->assertSame('13:00', substr((string) $block->starts_at, 0, 5));
+        $this->assertSame('Library consultation room', $block->notes);
     }
 
     public function test_matching_email_does_not_grant_unlinked_instructor_access(): void

@@ -25,36 +25,52 @@
 <body class="font-sans antialiased text-slate-900 min-h-screen selection:bg-blue-100 selection:text-blue-900">
 <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:font-semibold focus:text-blue-700 focus:shadow-xl">Skip to main content</a>
 @php
-  $navGroups = [
+  $isAdmin = (bool) auth()->user()->is_admin;
+  $navGroups = $isAdmin ? [
     [
-      'label' => 'Core',
+      'label' => 'Workspace',
       'items' => [
-        ['route' => 'dashboard', 'label' => 'Dashboard', 'match' => 'dashboard'],
+        ['route' => 'dashboard', 'label' => 'Home', 'match' => 'dashboard'],
         ['route' => 'aop.schedule.home.legacy', 'label' => 'Schedule', 'match' => 'aop.schedule.*'],
       ],
     ],
     [
-      'label' => 'Setup',
+      'label' => 'People & places',
+      'items' => [
+        ['route' => 'aop.instructors.index', 'label' => 'Faculty', 'match' => 'aop.instructors.*'],
+        ['route' => 'aop.labtechs.index', 'label' => 'Lab Staff', 'match' => 'aop.labtechs.*'],
+        ['route' => 'aop.rooms.index', 'label' => 'Rooms', 'match' => 'aop.rooms.*'],
+      ],
+    ],
+    [
+      'label' => 'Settings',
       'items' => [
         ['route' => 'aop.terms.index', 'label' => 'Terms', 'match' => 'aop.terms.*'],
-        ['route' => 'aop.catalog.index', 'label' => 'Catalog', 'match' => 'aop.catalog.*'],
-        ['route' => 'aop.instructors.index', 'label' => 'Instructors', 'match' => 'aop.instructors.*'],
-        ['route' => 'aop.labtechs.index', 'label' => 'Lab Techs', 'match' => 'aop.labtechs.*'],
-        ['route' => 'aop.rooms.index', 'label' => 'Rooms', 'match' => 'aop.rooms.*'],
+        ['route' => 'aop.catalog.index', 'label' => 'Course Catalog', 'match' => 'aop.catalog.*'],
         ['route' => 'aop.accounts.index', 'label' => 'Account Links', 'match' => 'aop.accounts.*'],
+      ],
+    ],
+  ] : [
+    [
+      'label' => 'Faculty workspace',
+      'items' => [
+        ['route' => 'dashboard', 'label' => 'Overview', 'match' => 'dashboard'],
+        ['href' => route('dashboard').'#my-schedule', 'label' => 'My Schedule', 'match' => 'never'],
+        ['href' => route('dashboard').'#preferences', 'label' => 'Teaching Preferences', 'match' => 'never'],
+        ['href' => route('dashboard').'#office-hours', 'label' => 'Office Hours', 'match' => 'never'],
       ],
     ],
   ];
 
   /* Schedule sub-nav: visible when inside any schedule.* route */
   $scheduleSubNav = [
-    ['route' => 'aop.schedule.home.legacy',     'label' => 'Studio',    'match' => 'aop.schedule.home*'],
-    ['route' => 'aop.schedule.events.legacy',   'label' => 'Events',    'match' => 'aop.schedule.events.*'],
-    ['route' => 'aop.schedule.openLabs.legacy', 'label' => 'Open Labs', 'match' => 'aop.schedule.openLabs.*'],
-    ['route' => 'aop.schedule.readiness.legacy', 'label' => 'Readiness', 'match' => 'aop.schedule.readiness.*'],
+    ['route' => 'aop.schedule.home.legacy',     'label' => 'Overview',    'match' => 'aop.schedule.home*'],
+    ['route' => 'aop.schedule.sections.legacy', 'label' => 'Courses & Sections', 'match' => 'aop.schedule.sections.*'],
     ['route' => 'aop.schedule.calendar.legacy', 'label' => 'Calendar',  'match' => 'aop.schedule.calendar.*'],
-    ['route' => 'aop.schedule.grids.legacy',    'label' => 'Grids',     'match' => 'aop.schedule.grids.*'],
-    ['route' => 'aop.schedule.reports.legacy',  'label' => 'Registrar Export', 'match' => 'aop.schedule.reports.*'],
+    ['route' => 'aop.schedule.officeHours.legacy', 'label' => 'Faculty & Office Hours', 'match' => 'aop.schedule.officeHours.*'],
+    ['route' => 'aop.schedule.openLabs.legacy', 'label' => 'Open Labs', 'match' => 'aop.schedule.openLabs.*'],
+    ['route' => 'aop.schedule.readiness.legacy', 'label' => 'Schedule Check', 'match' => 'aop.schedule.readiness.*'],
+    ['route' => 'aop.schedule.reports.legacy',  'label' => 'Export', 'match' => 'aop.schedule.reports.*'],
   ];
   $inSchedule = request()->routeIs('aop.schedule.*');
 @endphp
@@ -68,13 +84,13 @@
             <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Academic Ops</p>
             <h1 class="mt-2 text-2xl font-semibold tracking-tight text-white">Operations Hub</h1>
           </div>
-          <div class="rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-200">Admin</div>
+          <div class="rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-200">{{ $isAdmin ? 'Administrator' : 'Faculty' }}</div>
         </div>
 
         <div class="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
           <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
             <span class="h-2 w-2 rounded-full bg-emerald-300"></span>
-            Active term
+            Term context
           </div>
           <p class="mt-2 text-sm leading-6 text-emerald-50">{{ $activeTermLabel ?? 'No active term selected' }}</p>
         </div>
@@ -86,8 +102,9 @@
             <p class="px-3 text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">{{ $group['label'] }}</p>
             <div class="mt-3 space-y-1">
               @foreach ($group['items'] as $item)
+                @php($itemHref = $item['href'] ?? route($item['route']))
                 <a
-                  href="{{ route($item['route']) }}"
+                  href="{{ $itemHref }}"
                   class="flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 {{ request()->routeIs($item['match']) ? 'bg-white/10 text-white shadow-lg shadow-slate-950/20' : 'text-slate-300 hover:bg-white/5 hover:text-white' }}"
                 >
                   <span>{{ $item['label'] }}</span>
@@ -97,7 +114,7 @@
                 </a>
 
                 {{-- Schedule sub-nav: shown when inside schedule pages --}}
-                @if ($item['route'] === 'aop.schedule.home.legacy' && $inSchedule)
+                @if (($item['route'] ?? null) === 'aop.schedule.home.legacy' && $inSchedule)
                   <div class="ml-3 mt-1 space-y-0.5 border-l border-white/10 pl-3">
                     @foreach ($scheduleSubNav as $sub)
                       <a
@@ -153,21 +170,25 @@
               <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Academic Ops</p>
               <p class="mt-1 text-sm font-medium text-slate-600">{{ $activeTermLabel ?? 'No active term selected' }}</p>
             </div>
-            <a href="{{ route('dashboard') }}" class="btn secondary sm">Dashboard</a>
+            <a href="{{ route('dashboard') }}" class="btn secondary sm">Home</a>
           </div>
 
-          <div class="mt-4 flex gap-2 overflow-x-auto pb-1">
-            @foreach ($navGroups as $group)
-              @foreach ($group['items'] as $item)
-                <a
-                  href="{{ route($item['route']) }}"
-                  class="nav-pill whitespace-nowrap {{ request()->routeIs($item['match']) ? 'nav-pill-active bg-slate-900 text-white border-slate-900' : 'nav-pill-idle bg-white text-slate-600 border-slate-200' }}"
-                >
-                  {{ $item['label'] }}
-                </a>
+          <details class="mt-4 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+            <summary class="cursor-pointer rounded-xl px-3 py-2 text-sm font-semibold text-slate-800">Menu</summary>
+            <nav class="mt-2 grid gap-3 p-2" aria-label="Primary navigation">
+              @foreach ($navGroups as $group)
+                <div>
+                  <div class="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{{ $group['label'] }}</div>
+                  <div class="mt-1 grid gap-1">
+                    @foreach ($group['items'] as $item)
+                      @php($itemHref = $item['href'] ?? route($item['route']))
+                      <a href="{{ $itemHref }}" class="rounded-xl px-3 py-2 text-sm font-medium {{ request()->routeIs($item['match']) ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100' }}">{{ $item['label'] }}</a>
+                    @endforeach
+                  </div>
+                </div>
               @endforeach
-            @endforeach
-          </div>
+            </nav>
+          </details>
 
           @if ($inSchedule)
             <nav class="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label="Schedule navigation">
@@ -189,8 +210,13 @@
             <p class="mt-2 text-sm font-medium text-slate-600">{{ $activeTermLabel ?? 'No active term selected' }}</p>
           </div>
           <div class="flex items-center gap-3">
-            <a href="{{ route('aop.schedule.home.legacy') }}" class="btn secondary">Open Schedule</a>
-            <a href="{{ route('aop.terms.index') }}" class="btn secondary">Manage Terms</a>
+            @if ($isAdmin)
+              <a href="{{ route('aop.schedule.home.legacy') }}" class="btn secondary">Open Schedule</a>
+              <a href="{{ route('aop.terms.index') }}" class="btn secondary">Manage Terms</a>
+            @else
+              <a href="{{ route('dashboard') }}#my-schedule" class="btn secondary">My Schedule</a>
+              <a href="{{ route('dashboard') }}#preferences" class="btn secondary">Update Preferences</a>
+            @endif
           </div>
         </div>
       </div>

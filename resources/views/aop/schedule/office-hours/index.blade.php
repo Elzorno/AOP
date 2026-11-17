@@ -21,7 +21,7 @@
       <section class="workspace-card">
         <div class="workspace-header">
           <div>
-            <h2 class="workspace-title">No active term selected</h2>
+            <h2 class="workspace-title">No working term selected</h2>
             <p class="workspace-copy">Set the term, then manage instructor availability.</p>
           </div>
           <div class="actions">

@@ -1,4 +1,4 @@
-<x-aop-layout :activeTermLabel="'Active Term: '.$term->code.' - '.$term->name">
+<x-aop-layout :activeTermLabel="'Working term: '.$term->code.' - '.$term->name">
   <x-slot:title>New Scheduled Event</x-slot:title>
 
   <div class="row" style="margin-bottom:14px;">

@@ -1,4 +1,4 @@
-<x-aop-layout :activeTermLabel="'Active Term: '.$term->code.' - '.$term->name">
+<x-aop-layout :activeTermLabel="'Working term: '.$term->code.' - '.$term->name">
   <x-slot:title>Sections</x-slot:title>
 
   @php
@@ -43,8 +43,8 @@
       </div>
 
       <div class="toolbar-line">
-        <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Open Schedule Studio</a>
-        <a class="btn secondary" href="{{ route('aop.schedule.readiness.index', $term) }}">Readiness</a>
+        <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Open Schedule Builder</a>
+        <a class="btn secondary" href="{{ route('aop.schedule.readiness.index', $term) }}">Schedule Check</a>
         <a class="btn secondary" href="{{ route('aop.schedule.sections.create', $term) }}">Fallback Create Form</a>
       </div>
     </section>
@@ -117,7 +117,7 @@
             <p class="workspace-copy">Reset the filters or add another section.</p>
           </div>
           <div class="actions">
-            <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Go to Studio</a>
+            <a class="btn" href="{{ route('aop.schedule.home', $term) }}">Go to Schedule Builder</a>
           </div>
         </div>
       </section>

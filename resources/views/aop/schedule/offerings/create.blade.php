@@ -1,4 +1,4 @@
-<x-aop-layout :activeTermLabel="'Selected Term: '.$term->code.' - '.$term->name">
+<x-aop-layout :activeTermLabel="'Working term: '.$term->code.' - '.$term->name">
   <x-slot:title>New Offering</x-slot:title>
 
   <div class="page-shell">

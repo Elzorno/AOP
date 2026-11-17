@@ -1,5 +1,5 @@
-<x-aop-layout :activeTermLabel="($term ? 'Active Term: '.$term->code.' - '.$term->name : 'No active term selected')">
-  <x-slot:title>Schedule Studio</x-slot:title>
+<x-aop-layout :activeTermLabel="($term ? 'Working term: '.$term->code.' - '.$term->name : 'No working term selected')">
+  <x-slot:title>Schedule Builder</x-slot:title>
 
   @php
     $blockingIssues = $summary
@@ -47,7 +47,7 @@
     {{-- ── COMPACT PAGE HEADER ─────────────────────────────────────────────── --}}
     <div class="sched-header">
       <div class="sched-header-main">
-        <div class="sched-header-eyebrow">Schedule Studio</div>
+        <div class="sched-header-eyebrow">Schedule Builder</div>
         <h1 class="sched-header-title">
           {{ $term ? $term->code.' — '.$term->name : 'No active term set' }}
         </h1>
@@ -89,11 +89,11 @@
             </a>
           @endif
           <a class="btn success" href="{{ route('aop.schedule.reports.exportRegistrar', $term) }}">Download Registrar CSV</a>
-          <a class="btn secondary" href="{{ route('aop.schedule.readiness.index', $term) }}">Readiness</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.readiness.index', $term) }}">Schedule Check</a>
           <a class="btn secondary" href="{{ route('aop.schedule.openLabs.index', $term) }}">Open Labs</a>
           <a class="btn secondary" href="{{ route('aop.schedule.calendar.index', $term) }}">Calendar</a>
-          <a class="btn secondary" href="{{ route('aop.schedule.grids.index', $term) }}">Grids</a>
-          <a class="btn secondary" href="{{ route('aop.schedule.reports.index', $term) }}">Registrar Export</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.grids.index', $term) }}">Print Views</a>
+          <a class="btn secondary" href="{{ route('aop.schedule.reports.index', $term) }}">Export</a>
         @else
           <a class="btn" href="{{ route('aop.terms.index') }}">Manage Terms</a>
         @endif
@@ -320,7 +320,7 @@
                 <li>Add an offering for the active term.</li>
                 <li>Add sections inside each offering card below.</li>
                 <li>Add meeting blocks and resolve conflicts inline.</li>
-                <li>Review Readiness, then download the registrar CSV.</li>
+                <li>Run Schedule Check, then download the registrar CSV.</li>
               </ol>
               @if($availableCourses->isEmpty())
                 <div class="status-note mt-4">Every active catalog course already has an offering this term. Add more sections below, or activate additional courses in Catalog.</div>

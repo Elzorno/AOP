@@ -1,4 +1,4 @@
-<x-aop-layout :activeTermLabel="$active ? 'Active Term: '.$active->code.' - '.$active->name : 'No active term selected'">
+<x-aop-layout :activeTermLabel="$active ? 'Current institutional term: '.$active->code.' — '.$active->name : 'No institutional term selected'">
   <x-slot:title>Terms</x-slot:title>
 
   @php
@@ -10,13 +10,13 @@
     <section class="briefing-grid">
       <div class="briefing-panel briefing-panel-strong">
         <div class="briefing-kicker">Term control</div>
-        <h1 class="briefing-title">{{ $active ? $active->code.' is active' : 'Set the active term' }}</h1>
-        <p class="briefing-copy">Manage active, draft, and published terms.</p>
+        <h1 class="briefing-title">{{ $active ? $active->code.' is current' : 'Set the current institutional term' }}</h1>
+        <p class="briefing-copy">Choose the institution-wide current term and open any term as your private scheduling workspace.</p>
 
         <div class="status-ribbon">
           <span class="status-ribbon-item">
             <span class="status-ribbon-dot {{ $active ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>
-            {{ $active ? $active->code.' is active' : 'No active term selected' }}
+            {{ $active ? $active->code.' is current' : 'No current term selected' }}
           </span>
           <span class="status-ribbon-item">
             <span class="status-ribbon-dot bg-blue-500"></span>
@@ -38,14 +38,14 @@
 
       <aside class="briefing-sidebar">
         <div class="briefing-kicker">Status</div>
-        <h2 class="watchlist-title">Current term status</h2>
-        <p class="watchlist-copy">Active, draft, and published counts.</p>
+        <h2 class="watchlist-title">Institutional term status</h2>
+        <p class="watchlist-copy">Current, draft, and published counts.</p>
 
         <div class="watchlist-group">
           <div class="watchlist-item">
             <div>
-              <div class="watchlist-name">Active term</div>
-              <div class="watchlist-note">Used across schedule pages</div>
+              <div class="watchlist-name">Current institutional term</div>
+              <div class="watchlist-note">Default term for faculty and public workflows</div>
             </div>
             <span class="watchlist-value {{ $active ? 'good' : 'warn' }}">{{ $active ? $active->code : 'Unset' }}</span>
           </div>
@@ -75,15 +75,15 @@
               <div class="sequence-index">1</div>
               <div>
                 <div class="sequence-label">Primary action</div>
-                <h2 class="sequence-title">Set the active term.</h2>
-                <p class="sequence-copy">Schedule pages follow this term automatically.</p>
+                <h2 class="sequence-title">Set the institutional term.</h2>
+                <p class="sequence-copy">Faculty workspaces follow this term. Administrators can still open another term without changing it.</p>
               </div>
             </div>
           </div>
 
           <form method="POST" action="{{ route('aop.terms.setActive') }}" class="mt-6">
             @csrf
-            <label for="term_id">Active term</label>
+            <label for="term_id">Current institutional term</label>
             <div class="mt-2 flex flex-col gap-3 md:flex-row">
               <select name="term_id" id="term_id" required class="md:flex-1">
                 <option value="" disabled {{ $active ? '' : 'selected' }}>Choose a term</option>
@@ -93,7 +93,7 @@
                   </option>
                 @endforeach
               </select>
-              <button class="btn md:self-end" type="submit">Set Active Term</button>
+              <button class="btn md:self-end" type="submit">Set Current Term</button>
             </div>
           </form>
         </article>
@@ -176,7 +176,7 @@
                 <td>
                   <div class="font-semibold text-slate-900">{{ $t->code }}</div>
                   @if ($active && $active->id === $t->id)
-                    <span class="badge mt-2">Active</span>
+                    <span class="badge mt-2">Current</span>
                   @endif
                 </td>
                 <td>
@@ -197,12 +197,6 @@
                     </form>
                     <a class="btn secondary sm" href="{{ route('aop.terms.edit', $t) }}">Edit</a>
                     <a class="btn secondary sm" href="{{ route('aop.terms.clone.create', $t) }}">Clone</a>
-                    <form method="POST" action="{{ route('aop.terms.schedule.select', $t) }}" class="actions">
-                      @csrf
-                      <button class="btn secondary sm" type="submit">
-                        {{ auth()->user()->selected_term_id === $t->id ? 'Selected' : 'Select for Schedule' }}
-                      </button>
-                    </form>
                     <form method="POST" action="{{ route('aop.terms.draft', $t) }}" class="actions">
                       @csrf
                       <button class="btn secondary sm" type="submit">Clone to Draft</button>

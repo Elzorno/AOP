@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\InstructorPreference;
 use App\Models\Term;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class InstructorPreferenceController extends Controller
 {
@@ -17,16 +18,14 @@ class InstructorPreferenceController extends Controller
         abort_unless($instructor, 403, 'Your account is not linked to an instructor profile.');
 
         $data = $request->validate([
-            'max_courses' => 'required|integer|min:1',
-            'preferred_days' => 'nullable|string',
-            'unavailable_times_raw' => 'nullable|string',
-            'notes' => 'nullable|string',
+            'max_courses' => ['required', 'integer', 'min:1', 'max:20'],
+            'preferred_days' => ['nullable', 'array'],
+            'preferred_days.*' => ['string', Rule::in(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']), 'distinct'],
+            'unavailable_times_raw' => ['nullable', 'string', 'max:4000'],
+            'notes' => ['nullable', 'string', 'max:4000'],
         ]);
 
-        $prefDays = null;
-        if (! empty($data['preferred_days'])) {
-            $prefDays = array_values(array_filter(array_map('trim', explode(',', $data['preferred_days']))));
-        }
+        $prefDays = array_values($data['preferred_days'] ?? []);
 
         $unavailRaw = null;
         if (! empty($data['unavailable_times_raw'])) {
@@ -43,6 +42,6 @@ class InstructorPreferenceController extends Controller
             ]
         );
 
-        return redirect()->route('dashboard')->with('status', 'Preferences saved.');
+        return redirect(route('dashboard').'#preferences')->with('status', 'Teaching preferences saved.');
     }
 }
